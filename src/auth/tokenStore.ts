@@ -49,7 +49,8 @@ export async function getUser(): Promise<StoredUser | null> {
   const raw = await SecureStore.getItemAsync(SECURE_STORE_KEYS.USER_JSON);
   if (!raw) return null;
   try {
-    return JSON.parse(raw) as StoredUser;
+    const user: StoredUser = JSON.parse(raw);
+    return user;
   } catch {
     return null;
   }
