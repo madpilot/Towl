@@ -12,6 +12,9 @@ export default [
         project: './tsconfig.json',
       },
     },
+    settings: {
+      react: { version: '19' },
+    },
     plugins: {
       '@typescript-eslint': tsPlugin,
       react: reactPlugin,
