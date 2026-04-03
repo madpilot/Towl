@@ -12,8 +12,6 @@ import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import AddItemSheet from '@/components/AddItemSheet';
 import { useItemSuggestions } from '@/hooks/useItemSuggestions';
 
-const noop = jest.fn();
-
 function makeProps(overrides: Partial<React.ComponentProps<typeof AddItemSheet>> = {}) {
   return {
     visible: true,

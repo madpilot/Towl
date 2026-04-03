@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Animated, StyleSheet } from 'react-native';
 import { useSyncStore } from '@/store/syncStore';
 import { useNetworkStore } from '@/sync/connectivityMonitor';
@@ -16,7 +16,7 @@ export default function SyncIndicator() {
   const pendingCount = useSyncStore((s) => s.pendingCount);
   const isOnline = useNetworkStore((s) => s.isOnline);
 
-  const spin = useRef(new Animated.Value(0)).current;
+  const [spin] = useState(() => new Animated.Value(0));
   const spinAnim = useRef<Animated.CompositeAnimation | null>(null);
 
   useEffect(() => {

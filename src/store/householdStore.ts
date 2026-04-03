@@ -29,7 +29,7 @@ export async function restoreSelectedHousehold(): Promise<void> {
   try {
     const raw = await SecureStore.getItemAsync(SECURE_STORE_KEYS.SELECTED_HOUSEHOLD);
     if (raw) {
-      const household = JSON.parse(raw) as Household;
+      const household: Household = JSON.parse(raw);
       useHouseholdStore.getState().selectHousehold(household);
     }
   } catch {

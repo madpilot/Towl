@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { searchHistory } from '@/db/history';
 import { suggestIcons } from '@/data/foodMatcher';
+import { getIconMeta } from '@/data/iconMetadata';
 import type { HistoryEntry } from '@/db/history';
+import type { IconMeta } from '@/data/iconMetadata';
 
 export interface ItemSuggestion {
   /** Unique key for React lists. */
@@ -32,18 +34,19 @@ export function useItemSuggestions(input: string, limit = 8): ItemSuggestion[] {
   useEffect(() => {
     const trimmed = input.trim();
 
-    if (trimmed.length < 2) {
-      setSuggestions([]);
-      return;
-    }
-
     if (timerRef.current) clearTimeout(timerRef.current);
 
+    // Use 0ms delay for clearing so setState never fires synchronously in the effect.
+    const delay = trimmed.length < 2 ? 0 : DEBOUNCE_MS;
     timerRef.current = setTimeout(() => {
+      if (trimmed.length < 2) {
+        setSuggestions([]);
+        return;
+      }
       buildSuggestions(trimmed, limit).then(setSuggestions).catch(() => {
         setSuggestions([]);
       });
-    }, DEBOUNCE_MS);
+    }, delay);
 
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
@@ -93,10 +96,6 @@ async function buildSuggestions(
 
 /** Returns the emoji for a given icon key via iconMetadata. */
 function iconToEmoji(iconKey: string): string {
-  try {
-    const { getIconMeta } = require('@/data/iconMetadata');
-    return (getIconMeta(iconKey) as { emoji: string }).emoji;
-  } catch {
-    return '🛒';
-  }
+  const meta: IconMeta = getIconMeta(iconKey);
+  return meta.emoji;
 }
