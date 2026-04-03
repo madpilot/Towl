@@ -9,9 +9,13 @@ import { getDb } from '@/db/schema';
 
 import ServerSetupScreen from '@/screens/auth/ServerSetupScreen';
 import LoginScreen from '@/screens/auth/LoginScreen';
-import type { AuthStackParamList } from './types';
+import ListsScreen from '@/screens/lists/ListsScreen';
+import ListDetailScreen from '@/screens/lists/ListDetailScreen';
+
+import type { AuthStackParamList, MainStackParamList } from './types';
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
+const MainStack = createNativeStackNavigator<MainStackParamList>();
 
 function AuthNavigator() {
   return (
@@ -22,12 +26,20 @@ function AuthNavigator() {
   );
 }
 
-// Placeholder until feat/towl-screens lands
-function AppNavigator() {
+function MainNavigator() {
   return (
-    <View style={styles.placeholder}>
-      <ActivityIndicator />
-    </View>
+    <MainStack.Navigator>
+      <MainStack.Screen
+        name="Lists"
+        component={ListsScreen}
+        options={{ title: 'Shopping Lists' }}
+      />
+      <MainStack.Screen
+        name="ListDetail"
+        component={ListDetailScreen}
+        options={({ route }) => ({ title: route.params.listName })}
+      />
+    </MainStack.Navigator>
   );
 }
 
@@ -50,18 +62,13 @@ export default function RootNavigator() {
 
   return (
     <NavigationContainer>
-      {status === 'authenticated' ? <AppNavigator /> : <AuthNavigator />}
+      {status === 'authenticated' ? <MainNavigator /> : <AuthNavigator />}
     </NavigationContainer>
   );
 }
 
 const styles = StyleSheet.create({
   splash: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  placeholder: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
