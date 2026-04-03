@@ -32,12 +32,19 @@ export default [
     },
   },
   {
-    // Tests may use `as` for mocking purposes
-    files: ['**/__tests__/**/*.{ts,tsx}', '**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}'],
+    // Tests and mocks may use `as` for mocking purposes and require() in jest.mock factories
+    files: [
+      '**/__tests__/**/*.{ts,tsx}',
+      '**/__mocks__/**/*.{ts,tsx}',
+      '**/*.test.{ts,tsx}',
+      '**/*.spec.{ts,tsx}',
+    ],
     rules: {
       '@typescript-eslint/consistent-type-assertions': 'off',
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-non-null-assertion': 'off',
+      '@typescript-eslint/no-require-imports': 'off',
+      'react-hooks/exhaustive-deps': 'off',
     },
   },
 ];
