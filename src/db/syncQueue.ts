@@ -69,9 +69,10 @@ interface SyncQueueRow {
 }
 
 function rowToOp(row: SyncQueueRow): SyncOp {
+  const payload: SyncPayload = JSON.parse(row.payload);
   return {
     id: row.id,
-    payload: JSON.parse(row.payload) as SyncPayload,
+    payload,
     listLocalId: row.list_local_id,
     createdAt: row.created_at,
     attempts: row.attempts,
