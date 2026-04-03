@@ -329,7 +329,7 @@ export const ICON_METADATA: Record<string, IconMeta> = {
   // Pet
   dog_bone: { emoji: '🦴', category: 'Pet' },
   doggy_bag: { emoji: '🐕', category: 'Pet' },
-  fish_food: { emoji: '🐠', category: 'Pet' },
+  fish_pet_food: { emoji: '🐠', category: 'Pet' },
 
   // Clothing
   hanger: { emoji: '👗', category: 'Clothing' },
