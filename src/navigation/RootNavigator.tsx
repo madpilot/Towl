@@ -6,11 +6,14 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuthStore } from '@/store/authStore';
 import { initializeAuth } from '@/auth/authManager';
 import { getDb } from '@/db/schema';
+import { startNetworkMonitoring, stopNetworkMonitoring } from '@/sync/connectivityMonitor';
+import { drain } from '@/sync/syncManager';
 
 import ServerSetupScreen from '@/screens/auth/ServerSetupScreen';
 import LoginScreen from '@/screens/auth/LoginScreen';
 import ListsScreen from '@/screens/lists/ListsScreen';
 import ListDetailScreen from '@/screens/lists/ListDetailScreen';
+import SyncIndicator from '@/components/SyncIndicator';
 
 import type { AuthStackParamList, MainStackParamList } from './types';
 
@@ -27,8 +30,17 @@ function AuthNavigator() {
 }
 
 function MainNavigator() {
+  useEffect(() => {
+    // Start network monitoring; drain queue immediately and on reconnect.
+    startNetworkMonitoring(() => { void drain(); });
+    void drain();
+    return () => stopNetworkMonitoring();
+  }, []);
+
+  const headerRight = () => <SyncIndicator />;
+
   return (
-    <MainStack.Navigator>
+    <MainStack.Navigator screenOptions={{ headerRight }}>
       <MainStack.Screen
         name="Lists"
         component={ListsScreen}
