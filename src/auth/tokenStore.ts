@@ -1,4 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
+import { z } from 'zod';
 import { SECURE_STORE_KEYS } from '@/utils/constants';
 
 export interface StoredTokens {
@@ -7,11 +8,13 @@ export interface StoredTokens {
   llt: string | null;
 }
 
-export interface StoredUser {
-  id: number;
-  name: string;
-  email: string;
-}
+export const StoredUserSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  email: z.string(),
+});
+
+export type StoredUser = z.infer<typeof StoredUserSchema>;
 
 export async function saveTokens(tokens: StoredTokens): Promise<void> {
   await Promise.all([
@@ -49,8 +52,7 @@ export async function getUser(): Promise<StoredUser | null> {
   const raw = await SecureStore.getItemAsync(SECURE_STORE_KEYS.USER_JSON);
   if (!raw) return null;
   try {
-    const user: StoredUser = JSON.parse(raw);
-    return user;
+    return StoredUserSchema.parse(JSON.parse(raw));
   } catch {
     return null;
   }

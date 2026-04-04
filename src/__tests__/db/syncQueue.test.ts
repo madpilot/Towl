@@ -114,6 +114,22 @@ describe('syncQueue', () => {
       expect(ops[0].payload).toEqual(payload);
       expect(ops[0].id).toBe('some-id');
     });
+
+    it('throws when stored payload has an unknown opType', async () => {
+      const { getAll } = getModule();
+      mockDb.getAllAsync.mockResolvedValueOnce([
+        {
+          id: 'bad-id',
+          op_type: 'UNKNOWN_OP',
+          payload: JSON.stringify({ opType: 'UNKNOWN_OP', data: 'garbage' }),
+          list_local_id: null,
+          created_at: 1000,
+          attempts: 0,
+        },
+      ]);
+
+      await expect(getAll()).rejects.toThrow();
+    });
   });
 
   describe('remove', () => {
