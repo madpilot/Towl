@@ -1,49 +1,58 @@
 import { getDb } from './schema';
 import { v4 as uuid } from 'uuid';
+import { z } from 'zod';
 
 // ── Typed payloads per operation ────────────────────────────────────────────
 
-export interface AddItemPayload {
-  readonly opType: 'ADD_ITEM';
-  readonly listServerId: number;
-  readonly listLocalId: string;
-  readonly itemLocalId: string;
-  readonly name: string;
-  readonly description: string;
-}
+export const AddItemPayloadSchema = z.object({
+  opType: z.literal('ADD_ITEM'),
+  listServerId: z.number(),
+  listLocalId: z.string(),
+  itemLocalId: z.string(),
+  name: z.string(),
+  description: z.string(),
+});
+export type AddItemPayload = z.infer<typeof AddItemPayloadSchema>;
 
-export interface RemoveItemPayload {
-  readonly opType: 'REMOVE_ITEM';
-  readonly listServerId: number;
-  readonly itemServerId: number;
-  readonly itemLocalId: string;
-}
+export const RemoveItemPayloadSchema = z.object({
+  opType: z.literal('REMOVE_ITEM'),
+  listServerId: z.number(),
+  itemServerId: z.number(),
+  itemLocalId: z.string(),
+});
+export type RemoveItemPayload = z.infer<typeof RemoveItemPayloadSchema>;
 
-export interface UpdateItemDescPayload {
-  readonly opType: 'UPDATE_ITEM_DESC';
-  readonly listServerId: number;
-  readonly itemServerId: number;
-  readonly description: string;
-}
+export const UpdateItemDescPayloadSchema = z.object({
+  opType: z.literal('UPDATE_ITEM_DESC'),
+  listServerId: z.number(),
+  itemServerId: z.number(),
+  description: z.string(),
+});
+export type UpdateItemDescPayload = z.infer<typeof UpdateItemDescPayloadSchema>;
 
-export interface CreateListPayload {
-  readonly opType: 'CREATE_LIST';
-  readonly listLocalId: string;
-  readonly name: string;
-}
+export const CreateListPayloadSchema = z.object({
+  opType: z.literal('CREATE_LIST'),
+  listLocalId: z.string(),
+  name: z.string(),
+});
+export type CreateListPayload = z.infer<typeof CreateListPayloadSchema>;
 
-export interface DeleteListPayload {
-  readonly opType: 'DELETE_LIST';
-  readonly listLocalId: string;
-  readonly listServerId: number | null;
-}
+export const DeleteListPayloadSchema = z.object({
+  opType: z.literal('DELETE_LIST'),
+  listLocalId: z.string(),
+  listServerId: z.number().nullable(),
+});
+export type DeleteListPayload = z.infer<typeof DeleteListPayloadSchema>;
 
-export type SyncPayload =
-  | AddItemPayload
-  | RemoveItemPayload
-  | UpdateItemDescPayload
-  | CreateListPayload
-  | DeleteListPayload;
+export const SyncPayloadSchema = z.discriminatedUnion('opType', [
+  AddItemPayloadSchema,
+  RemoveItemPayloadSchema,
+  UpdateItemDescPayloadSchema,
+  CreateListPayloadSchema,
+  DeleteListPayloadSchema,
+]);
+
+export type SyncPayload = z.infer<typeof SyncPayloadSchema>;
 
 export type SyncOpType = SyncPayload['opType'];
 
@@ -69,7 +78,7 @@ interface SyncQueueRow {
 }
 
 function rowToOp(row: SyncQueueRow): SyncOp {
-  const payload: SyncPayload = JSON.parse(row.payload);
+  const payload = SyncPayloadSchema.parse(JSON.parse(row.payload));
   return {
     id: row.id,
     payload,
