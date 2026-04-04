@@ -33,13 +33,15 @@ jest.mock('@react-navigation/native-stack', () => {
 jest.mock('@/screens/auth/ServerSetupScreen', () => {
   const React = require('react');
   const { Text } = require('react-native');
-  return () => React.createElement(Text, null, 'ServerSetup');
+  function ServerSetupScreen() { return React.createElement(Text, null, 'ServerSetup'); }
+  return ServerSetupScreen;
 });
 
 jest.mock('@/screens/auth/LoginScreen', () => {
   const React = require('react');
   const { Text } = require('react-native');
-  return () => React.createElement(Text, null, 'Login');
+  function LoginScreen() { return React.createElement(Text, null, 'Login'); }
+  return LoginScreen;
 });
 
 jest.mock('@/store/authStore', () => ({
