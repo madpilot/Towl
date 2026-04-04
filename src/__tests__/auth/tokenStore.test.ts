@@ -73,6 +73,12 @@ describe('tokenStore', () => {
       store[SECURE_STORE_KEYS.USER_JSON] = 'not-json{{{';
       expect(await getUser()).toBeNull();
     });
+
+    it('returns null when stored JSON has wrong shape', async () => {
+      // Valid JSON but missing required fields — Zod parse should fail
+      store[SECURE_STORE_KEYS.USER_JSON] = JSON.stringify({ id: 'not-a-number', name: 42 });
+      expect(await getUser()).toBeNull();
+    });
   });
 
   describe('saveServerUrl / getServerUrl', () => {

@@ -1,5 +1,13 @@
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import { getApiClient } from './client';
+
+export interface AxiosAuthError extends AxiosError {
+  response: NonNullable<AxiosError['response']>;
+}
+
+export function isAxiosAuthError(err: unknown): err is AxiosAuthError {
+  return axios.isAxiosError(err) && err.response !== undefined;
+}
 
 export interface AuthResponse {
   access_token: string;
