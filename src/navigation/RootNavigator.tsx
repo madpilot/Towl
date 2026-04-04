@@ -69,7 +69,7 @@ export default function RootNavigator() {
   if (status === 'unknown') {
     return (
       <View style={styles.splash}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" testID="splash-indicator" />
       </View>
     );
   }
