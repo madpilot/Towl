@@ -4,7 +4,7 @@ import { SECURE_STORE_KEYS } from '@/utils/constants';
 import { HouseholdSchema } from '@/api/households';
 import type { Household } from '@/api/households';
 
-interface HouseholdState {
+type HouseholdState = {
   households: Household[];
   selectedHousehold: Household | null;
   setHouseholds: (households: Household[]) => void;

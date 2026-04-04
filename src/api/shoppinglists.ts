@@ -1,49 +1,53 @@
+import { z } from 'zod';
 import { getApiClient } from './client';
 
-export interface ApiItem {
-  id: number;
-  name: string;
-  icon: string | null;
-  ordering: number;
-}
+export const ApiItemSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  icon: z.string().nullable(),
+  ordering: z.number(),
+});
+export type ApiItem = z.infer<typeof ApiItemSchema>;
 
-export interface ApiShoppingListItem {
-  item_id: number;
-  item: ApiItem;
-  description: string;
-  created_by: number | null;
-}
+export const ApiShoppingListItemSchema = z.object({
+  item_id: z.number(),
+  item: ApiItemSchema,
+  description: z.string(),
+  created_by: z.number().nullable(),
+});
+export type ApiShoppingListItem = z.infer<typeof ApiShoppingListItemSchema>;
 
-export interface ApiShoppingList {
-  id: number;
-  name: string;
-  household_id: number;
-}
+export const ApiShoppingListSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  household_id: z.number(),
+});
+export type ApiShoppingList = z.infer<typeof ApiShoppingListSchema>;
 
 export async function getShoppingLists(): Promise<ApiShoppingList[]> {
   const client = getApiClient();
-  const res = await client.get<ApiShoppingList[]>('/shoppinglist');
-  return res.data;
+  const res = await client.get<unknown>('/shoppinglist');
+  return z.array(ApiShoppingListSchema).parse(res.data);
 }
 
 export async function getShoppingListItems(listId: number): Promise<ApiShoppingListItem[]> {
   const client = getApiClient();
-  const res = await client.get<ApiShoppingListItem[]>(`/shoppinglist/${listId}/items`);
-  return res.data;
+  const res = await client.get<unknown>(`/shoppinglist/${listId}/items`);
+  return z.array(ApiShoppingListItemSchema).parse(res.data);
 }
 
 export async function getRecentItems(listId: number, limit = 20): Promise<ApiItem[]> {
   const client = getApiClient();
-  const res = await client.get<ApiItem[]>(`/shoppinglist/${listId}/recent-items`, {
+  const res = await client.get<unknown>(`/shoppinglist/${listId}/recent-items`, {
     params: { limit },
   });
-  return res.data;
+  return z.array(ApiItemSchema).parse(res.data);
 }
 
 export async function getSuggestedItems(listId: number): Promise<ApiItem[]> {
   const client = getApiClient();
-  const res = await client.get<ApiItem[]>(`/shoppinglist/${listId}/suggested-items`);
-  return res.data;
+  const res = await client.get<unknown>(`/shoppinglist/${listId}/suggested-items`);
+  return z.array(ApiItemSchema).parse(res.data);
 }
 
 export async function addItemByName(
@@ -52,11 +56,11 @@ export async function addItemByName(
   description?: string
 ): Promise<ApiShoppingListItem> {
   const client = getApiClient();
-  const res = await client.post<ApiShoppingListItem>(
+  const res = await client.post<unknown>(
     `/shoppinglist/${listId}/add-item-by-name`,
     { name, description: description ?? '' }
   );
-  return res.data;
+  return ApiShoppingListItemSchema.parse(res.data);
 }
 
 export async function removeItem(listId: number, itemId: number): Promise<void> {
@@ -77,8 +81,8 @@ export async function updateItemDescription(
 
 export async function createShoppingList(name: string): Promise<ApiShoppingList> {
   const client = getApiClient();
-  const res = await client.post<ApiShoppingList>('/shoppinglist', { name });
-  return res.data;
+  const res = await client.post<unknown>('/shoppinglist', { name });
+  return ApiShoppingListSchema.parse(res.data);
 }
 
 export async function deleteShoppingList(listId: number): Promise<void> {

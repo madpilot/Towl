@@ -2,7 +2,7 @@ import Fuse from 'fuse.js';
 import { ALL_ICON_KEYS } from '@/icons/kitchenowlIcons';
 import { getIconMeta, DEFAULT_META, type IconMeta } from './iconMetadata';
 
-export interface MatchResult {
+export type MatchResult = {
   iconKey: string | null;
   emoji: string;
   category: string;
@@ -10,7 +10,7 @@ export interface MatchResult {
 
 // ── Build search corpus ──────────────────────────────────────────────────────
 
-interface SearchEntry {
+type SearchEntry = {
   /** Display label — underscores replaced with spaces. */
   label: string;
   /** Original icon key stored in KitchenOwl. */

@@ -12,17 +12,17 @@ import {
 } from 'react-native';
 import { useItemSuggestions } from '@/hooks/useItemSuggestions';
 
-export interface AddItemSheetHandle {
+export type AddItemSheetHandle = {
   focus: () => void;
-}
+};
 
-interface Props {
+type AddItemSheetProps = {
   visible: boolean;
   onClose: () => void;
   onAdd: (name: string, description: string) => Promise<void>;
-}
+};
 
-const AddItemSheet = forwardRef<AddItemSheetHandle, Props>(
+const AddItemSheet = forwardRef<AddItemSheetHandle, AddItemSheetProps>(
   function AddItemSheet({ visible, onClose, onAdd }, ref) {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');

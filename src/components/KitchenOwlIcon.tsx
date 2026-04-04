@@ -2,12 +2,12 @@ import React from 'react';
 import { Text, TextStyle } from 'react-native';
 import { getIconChar, FONT_FAMILY } from '@/icons/kitchenowlIcons';
 
-interface KitchenOwlIconProps {
+type KitchenOwlIconProps = {
   iconKey: string | null | undefined;
   fallbackEmoji: string;
   size?: number;
   style?: TextStyle;
-}
+};
 
 /**
  * Renders a KitchenOwl icon using the Items.ttf custom font.

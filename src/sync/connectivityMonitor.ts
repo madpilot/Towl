@@ -1,7 +1,7 @@
 import NetInfo from '@react-native-community/netinfo';
 import { create } from 'zustand';
 
-interface NetworkState {
+type NetworkState = {
   isOnline: boolean;
   setOnline: (online: boolean) => void;
 }

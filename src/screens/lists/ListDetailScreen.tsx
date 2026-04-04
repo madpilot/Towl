@@ -19,6 +19,10 @@ import AddItemSheet from '@/components/AddItemSheet';
 import type { LocalItem } from '@/db/items';
 import type { ListDetailScreenProps } from '@/navigation/types';
 
+function ItemSeparator() {
+  return <View style={styles.separator} />;
+}
+
 export default function ListDetailScreen({ route }: ListDetailScreenProps) {
   const { listLocalId, listServerId } = route.params;
 
@@ -160,7 +164,7 @@ export default function ListDetailScreen({ route }: ListDetailScreenProps) {
             {item.isDirty && <View style={styles.dirtyDot} />}
           </TouchableOpacity>
         )}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
+        ItemSeparatorComponent={ItemSeparator}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
