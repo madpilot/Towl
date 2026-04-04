@@ -1,10 +1,13 @@
+import { z } from 'zod';
 import { getApiClient } from './client';
 
-export interface Household {
-  id: number;
-  name: string;
-  photo: string | null;
-}
+export const HouseholdSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  photo: z.string().nullable(),
+});
+
+export type Household = z.infer<typeof HouseholdSchema>;
 
 export async function getHouseholds(): Promise<Household[]> {
   const client = getApiClient();
