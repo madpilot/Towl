@@ -58,7 +58,7 @@ export type SyncOpType = SyncPayload['opType'];
 
 // ── Public record type ───────────────────────────────────────────────────────
 
-export interface SyncOp {
+export type SyncOp = {
   readonly id: string;
   readonly payload: SyncPayload;
   readonly listLocalId: string | null;
@@ -68,7 +68,7 @@ export interface SyncOp {
 
 // ── Internal SQLite row ──────────────────────────────────────────────────────
 
-interface SyncQueueRow {
+type SyncQueueRow = {
   id: string;
   op_type: string;
   payload: string;

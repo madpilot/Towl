@@ -1,23 +1,26 @@
 import axios, { AxiosError } from 'axios';
+import { z } from 'zod';
 import { getApiClient } from './client';
 
-export interface AxiosAuthError extends AxiosError {
+export type AxiosAuthError = AxiosError & {
   response: NonNullable<AxiosError['response']>;
-}
+};
 
 export function isAxiosAuthError(err: unknown): err is AxiosAuthError {
   return axios.isAxiosError(err) && err.response !== undefined;
 }
 
-export interface AuthResponse {
-  access_token: string;
-  refresh_token: string;
-  user: {
-    id: number;
-    name: string;
-    email: string;
-  };
-}
+export const AuthResponseSchema = z.object({
+  access_token: z.string(),
+  refresh_token: z.string(),
+  user: z.object({
+    id: z.number(),
+    name: z.string(),
+    email: z.string(),
+  }),
+});
+
+export type AuthResponse = z.infer<typeof AuthResponseSchema>;
 
 export async function login(
   serverUrl: string,
@@ -25,18 +28,18 @@ export async function login(
   password: string
 ): Promise<AuthResponse> {
   const base = serverUrl.replace(/\/$/, '') + '/api';
-  const res = await axios.post<AuthResponse>(
+  const res = await axios.post<unknown>(
     `${base}/auth`,
     { username, password, device: 'Towl' },
     { timeout: 15_000 }
   );
-  return res.data;
+  return AuthResponseSchema.parse(res.data);
 }
 
 export async function refreshToken(): Promise<AuthResponse> {
   const client = getApiClient();
-  const res = await client.get<AuthResponse>('/auth/refresh');
-  return res.data;
+  const res = await client.get<unknown>('/auth/refresh');
+  return AuthResponseSchema.parse(res.data);
 }
 
 export async function createLongLivedToken(): Promise<string> {

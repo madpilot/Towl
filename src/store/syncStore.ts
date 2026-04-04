@@ -2,7 +2,7 @@ import { create } from 'zustand';
 
 export type SyncStatus = 'idle' | 'syncing' | 'error';
 
-interface SyncState {
+type SyncState = {
   status: SyncStatus;
   pendingCount: number;
   setStatus: (status: SyncStatus) => void;

@@ -3,7 +3,7 @@ import type { StoredUser } from '@/auth/tokenStore';
 
 export type AuthStatus = 'unknown' | 'unauthenticated' | 'authenticated';
 
-interface AuthState {
+type AuthState = {
   status: AuthStatus;
   user: StoredUser | null;
   serverUrl: string | null;

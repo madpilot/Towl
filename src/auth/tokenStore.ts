@@ -2,7 +2,7 @@ import * as SecureStore from 'expo-secure-store';
 import { z } from 'zod';
 import { SECURE_STORE_KEYS } from '@/utils/constants';
 
-export interface StoredTokens {
+export type StoredTokens = {
   accessToken: string;
   refreshToken: string;
   llt: string | null;

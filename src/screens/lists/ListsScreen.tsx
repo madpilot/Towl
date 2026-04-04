@@ -22,6 +22,10 @@ import { useAuthStore } from '@/store/authStore';
 import type { LocalList } from '@/db/lists';
 import type { ListsScreenProps } from '@/navigation/types';
 
+function ListSeparator() {
+  return <View style={styles.separator} />;
+}
+
 export default function ListsScreen({ navigation }: ListsScreenProps) {
   const [lists, setLists] = useState<LocalList[]>([]);
   const [loading, setLoading] = useState(true);
@@ -157,7 +161,7 @@ export default function ListsScreen({ navigation }: ListsScreenProps) {
             {item.isDirty && <View style={styles.dirtyDot} />}
           </TouchableOpacity>
         )}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
+        ItemSeparatorComponent={ListSeparator}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
