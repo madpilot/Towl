@@ -29,6 +29,10 @@ function AuthNavigator() {
   );
 }
 
+function HeaderRight() {
+  return <SyncIndicator />;
+}
+
 function MainNavigator() {
   useEffect(() => {
     // Start network monitoring; drain queue immediately and on reconnect.
@@ -37,10 +41,8 @@ function MainNavigator() {
     return () => stopNetworkMonitoring();
   }, []);
 
-  const headerRight = () => <SyncIndicator />;
-
   return (
-    <MainStack.Navigator screenOptions={{ headerRight }}>
+    <MainStack.Navigator screenOptions={{ headerRight: HeaderRight }}>
       <MainStack.Screen
         name="Lists"
         component={ListsScreen}

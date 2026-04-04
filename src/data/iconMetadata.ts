@@ -3,7 +3,7 @@
  * Category is used for grouping items when no server category is available.
  */
 
-export interface IconMeta {
+export type IconMeta = {
   emoji: string;
   category: string;
 }

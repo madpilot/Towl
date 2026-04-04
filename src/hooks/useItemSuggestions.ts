@@ -5,7 +5,7 @@ import { getIconMeta } from '@/data/iconMetadata';
 import type { HistoryEntry } from '@/db/history';
 import type { IconMeta } from '@/data/iconMetadata';
 
-export interface ItemSuggestion {
+export type ItemSuggestion = {
   /** Unique key for React lists. */
   key: string;
   /** Display name shown to the user. */

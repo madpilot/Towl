@@ -10,35 +10,30 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
-import { useItemSuggestions, type ItemSuggestion } from '@/hooks/useItemSuggestions';
+import { useItemSuggestions } from '@/hooks/useItemSuggestions';
 
-export interface AddItemSheetHandle {
+export type AddItemSheetHandle = {
   focus: () => void;
-}
+};
 
-interface Props {
+type AddItemSheetProps = {
   visible: boolean;
   onClose: () => void;
   onAdd: (name: string, description: string) => Promise<void>;
-}
+};
 
-const AddItemSheet = forwardRef<AddItemSheetHandle, Props>(
+const AddItemSheet = forwardRef<AddItemSheetHandle, AddItemSheetProps>(
   function AddItemSheet({ visible, onClose, onAdd }, ref) {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [adding, setAdding] = useState(false);
 
-    const suggestions: ItemSuggestion[] = useItemSuggestions(name);
-
     const nameInputRef = useRef<TextInput>(null);
+    const suggestions = useItemSuggestions(name);
 
     useImperativeHandle(ref, () => ({
       focus: () => nameInputRef.current?.focus(),
     }));
-
-    const handleNameChange = useCallback((text: string) => {
-      setName(text);
-    }, []);
 
     const handleAdd = useCallback(async () => {
       const trimmedName = name.trim();
@@ -62,8 +57,8 @@ const AddItemSheet = forwardRef<AddItemSheetHandle, Props>(
       onClose();
     }, [onClose]);
 
-    const handleSuggestionPress = useCallback((suggestion: ItemSuggestion) => {
-      setName(suggestion.displayName);
+    const handleSuggestionPress = useCallback((displayName: string) => {
+      setName(displayName);
     }, []);
 
     return (
@@ -86,7 +81,7 @@ const AddItemSheet = forwardRef<AddItemSheetHandle, Props>(
               ref={nameInputRef}
               style={styles.input}
               value={name}
-              onChangeText={handleNameChange}
+              onChangeText={setName}
               placeholder="Item name (e.g. Milk)"
               autoFocus
               returnKeyType="next"
@@ -99,8 +94,11 @@ const AddItemSheet = forwardRef<AddItemSheetHandle, Props>(
                 {suggestions.map((s) => (
                   <TouchableOpacity
                     key={s.key}
-                    style={styles.suggestionChip}
-                    onPress={() => handleSuggestionPress(s)}
+                    style={[
+                      styles.suggestionChip,
+                      s.fromHistory ? styles.suggestionChipHistory : undefined,
+                    ]}
+                    onPress={() => handleSuggestionPress(s.displayName)}
                   >
                     <Text style={styles.suggestionEmoji}>{s.emoji}</Text>
                     <Text style={styles.suggestionLabel}>{s.displayName}</Text>
@@ -183,6 +181,9 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     paddingVertical: 6,
     paddingHorizontal: 12,
+  },
+  suggestionChipHistory: {
+    backgroundColor: '#f0fdf4',
   },
   suggestionEmoji: { fontSize: 16 },
   suggestionLabel: { fontSize: 13, color: '#2563eb' },
