@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 import { SECURE_STORE_KEYS } from '@/utils/constants';
+import { HouseholdSchema } from '@/api/households';
 import type { Household } from '@/api/households';
 
 interface HouseholdState {
@@ -29,7 +30,7 @@ export async function restoreSelectedHousehold(): Promise<void> {
   try {
     const raw = await SecureStore.getItemAsync(SECURE_STORE_KEYS.SELECTED_HOUSEHOLD);
     if (raw) {
-      const household: Household = JSON.parse(raw);
+      const household = HouseholdSchema.parse(JSON.parse(raw));
       useHouseholdStore.getState().selectHousehold(household);
     }
   } catch {
