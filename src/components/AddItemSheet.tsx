@@ -10,7 +10,7 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
-import { suggestIcons } from '@/data/foodMatcher';
+import { useItemSuggestions, type ItemSuggestion } from '@/hooks/useItemSuggestions';
 
 export interface AddItemSheetHandle {
   focus: () => void;
@@ -27,7 +27,8 @@ const AddItemSheet = forwardRef<AddItemSheetHandle, Props>(
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [adding, setAdding] = useState(false);
-    const [suggestions, setSuggestions] = useState<Array<{ iconKey: string; emoji: string; category: string }>>([]);
+
+    const suggestions: ItemSuggestion[] = useItemSuggestions(name);
 
     const nameInputRef = useRef<TextInput>(null);
 
@@ -37,11 +38,6 @@ const AddItemSheet = forwardRef<AddItemSheetHandle, Props>(
 
     const handleNameChange = useCallback((text: string) => {
       setName(text);
-      if (text.trim().length >= 2) {
-        setSuggestions(suggestIcons(text, 5));
-      } else {
-        setSuggestions([]);
-      }
     }, []);
 
     const handleAdd = useCallback(async () => {
@@ -52,7 +48,6 @@ const AddItemSheet = forwardRef<AddItemSheetHandle, Props>(
         await onAdd(trimmedName, description.trim());
         setName('');
         setDescription('');
-        setSuggestions([]);
         onClose();
       } catch {
         // Error handling delegated to parent
@@ -64,14 +59,11 @@ const AddItemSheet = forwardRef<AddItemSheetHandle, Props>(
     const handleClose = useCallback(() => {
       setName('');
       setDescription('');
-      setSuggestions([]);
       onClose();
     }, [onClose]);
 
-    const handleSuggestionPress = useCallback((iconKey: string) => {
-      const label = iconKey.replaceAll('_', ' ');
-      setName(label);
-      setSuggestions([]);
+    const handleSuggestionPress = useCallback((suggestion: ItemSuggestion) => {
+      setName(suggestion.displayName);
     }, []);
 
     return (
@@ -106,14 +98,12 @@ const AddItemSheet = forwardRef<AddItemSheetHandle, Props>(
               <View style={styles.suggestions}>
                 {suggestions.map((s) => (
                   <TouchableOpacity
-                    key={s.iconKey}
+                    key={s.key}
                     style={styles.suggestionChip}
-                    onPress={() => handleSuggestionPress(s.iconKey)}
+                    onPress={() => handleSuggestionPress(s)}
                   >
                     <Text style={styles.suggestionEmoji}>{s.emoji}</Text>
-                    <Text style={styles.suggestionLabel}>
-                      {s.iconKey.replaceAll('_', ' ')}
-                    </Text>
+                    <Text style={styles.suggestionLabel}>{s.displayName}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
