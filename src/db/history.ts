@@ -1,6 +1,6 @@
 import { getDb } from './schema';
 
-export interface HistoryEntry {
+export type HistoryEntry = {
   id: number;
   name: string;
   displayName: string;
@@ -10,7 +10,7 @@ export interface HistoryEntry {
   lastUsedAt: number;
 }
 
-interface HistoryRow {
+type HistoryRow = {
   id: number;
   name: string;
   display_name: string;

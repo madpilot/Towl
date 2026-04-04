@@ -17,8 +17,16 @@ export type LoginScreenProps = NativeStackScreenProps<
   'Login'
 >;
 
-// ─── Main (app) stack — populated in future branches ─────────────────────────
+// ─── Main (app) stack ────────────────────────────────────────────────────────
 
 export type MainStackParamList = {
   Lists: undefined;
+  ListDetail: {
+    listLocalId: string;
+    listName: string;
+    listServerId: number | null;
+  };
 };
+
+export type ListsScreenProps = NativeStackScreenProps<MainStackParamList, 'Lists'>;
+export type ListDetailScreenProps = NativeStackScreenProps<MainStackParamList, 'ListDetail'>;

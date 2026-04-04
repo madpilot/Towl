@@ -11,11 +11,21 @@ jest.mock('@/db/schema', () => ({
   getDb: jest.fn().mockResolvedValue({}),
 }));
 
+jest.mock('@/sync/syncManager', () => ({
+  drain: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock('@/sync/connectivityMonitor', () => ({
+  startNetworkMonitoring: jest.fn(),
+  stopNetworkMonitoring: jest.fn(),
+}));
+
 jest.mock('@react-navigation/native', () => {
   const React = require('react');
   return {
     NavigationContainer: ({ children }: { children: React.ReactNode }) =>
       React.createElement(React.Fragment, null, children),
+    useFocusEffect: jest.fn(),
   };
 });
 
@@ -42,6 +52,20 @@ jest.mock('@/screens/auth/LoginScreen', () => {
   const { Text } = require('react-native');
   function LoginScreen() { return React.createElement(Text, null, 'Login'); }
   return LoginScreen;
+});
+
+jest.mock('@/screens/lists/ListsScreen', () => {
+  const React = require('react');
+  const { Text } = require('react-native');
+  function ListsScreen() { return React.createElement(Text, null, 'Lists'); }
+  return ListsScreen;
+});
+
+jest.mock('@/screens/lists/ListDetailScreen', () => {
+  const React = require('react');
+  const { Text } = require('react-native');
+  function ListDetailScreen() { return React.createElement(Text, null, 'ListDetail'); }
+  return ListDetailScreen;
 });
 
 jest.mock('@/store/authStore', () => ({
@@ -79,12 +103,10 @@ describe('RootNavigator', () => {
     await waitFor(() => expect(getByText('ServerSetup')).toBeTruthy());
   });
 
-  it('renders app navigator when authenticated', () => {
+  it('renders app navigator when authenticated', async () => {
     mockAuth('authenticated');
-    // The placeholder AppNavigator renders an ActivityIndicator
-    const { UNSAFE_getAllByType } = render(<RootNavigator />);
-    const { ActivityIndicator } = require('react-native');
-    expect(UNSAFE_getAllByType(ActivityIndicator).length).toBeGreaterThan(0);
+    const { getByText } = render(<RootNavigator />);
+    await waitFor(() => expect(getByText('Lists')).toBeTruthy());
   });
 
   it('calls getDb and initializeAuth on mount', async () => {

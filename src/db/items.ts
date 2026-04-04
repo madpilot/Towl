@@ -1,7 +1,7 @@
 import { getDb } from './schema';
 import { v4 as uuid } from 'uuid';
 
-export interface LocalItem {
+export type LocalItem = {
   localId: string;
   serverId: number | null;
   listLocalId: string;
@@ -16,7 +16,7 @@ export interface LocalItem {
 }
 
 /** Row shape returned by SQLite for the local_items table. */
-interface ItemRow {
+type ItemRow = {
   local_id: string;
   server_id: number | null;
   list_local_id: string;
