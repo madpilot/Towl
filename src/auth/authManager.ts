@@ -13,6 +13,7 @@ import { createApiClient } from '@/api/client';
 import * as tokenStore from '@/auth/tokenStore';
 import * as authApi from '@/api/auth';
 import { useAuthStore } from '@/store/authStore';
+import { restoreSelectedHousehold } from '@/store/householdStore';
 import { createLongLivedToken } from '@/api/auth';
 import axios from 'axios';
 
@@ -25,6 +26,9 @@ export async function initializeAuth(): Promise<void> {
 
   useAuthStore.getState().setServerUrl(serverUrl);
   createApiClient(serverUrl);
+
+  // Restore the previously selected household so returning users skip the picker.
+  await restoreSelectedHousehold();
 
   const tokens = await tokenStore.getTokens();
   if (!tokens) {
@@ -77,7 +81,7 @@ export async function onLoginSuccess(
   serverUrl: string,
   accessToken: string,
   refreshToken: string,
-  user: { id: number; name: string; email: string }
+  user: { id: number; name: string; username: string }
 ): Promise<void> {
   await tokenStore.saveServerUrl(serverUrl);
   await tokenStore.saveTokens({ accessToken, refreshToken, llt: null });

@@ -83,7 +83,7 @@ async function dispatchPayload(payload: SyncPayload): Promise<void> {
         payload.name,
         payload.description
       );
-      await itemsDb.markItemSynced(payload.itemLocalId, result.item_id);
+      await itemsDb.markItemSynced(payload.itemLocalId, result.id);
       break;
     }
 

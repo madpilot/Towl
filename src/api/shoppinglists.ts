@@ -1,19 +1,12 @@
 import { z } from 'zod';
 import { getApiClient } from './client';
 
-export const ApiItemSchema = z.object({
+export const ApiShoppingListItemSchema = z.object({
   id: z.number(),
   name: z.string(),
-  icon: z.string().nullable(),
-  ordering: z.number(),
-});
-export type ApiItem = z.infer<typeof ApiItemSchema>;
-
-export const ApiShoppingListItemSchema = z.object({
-  item_id: z.number(),
-  item: ApiItemSchema,
-  description: z.string(),
-  created_by: z.number().nullable(),
+  description: z.string().optional().default(''),
+  icon: z.string().nullable().optional(),
+  ordering: z.number().optional(),
 });
 export type ApiShoppingListItem = z.infer<typeof ApiShoppingListItemSchema>;
 
@@ -24,9 +17,9 @@ export const ApiShoppingListSchema = z.object({
 });
 export type ApiShoppingList = z.infer<typeof ApiShoppingListSchema>;
 
-export async function getShoppingLists(): Promise<ApiShoppingList[]> {
+export async function getShoppingLists(householdId: number): Promise<ApiShoppingList[]> {
   const client = getApiClient();
-  const res = await client.get<unknown>('/shoppinglist');
+  const res = await client.get<unknown>(`/household/${householdId}/shoppinglist`);
   return z.array(ApiShoppingListSchema).parse(res.data);
 }
 
@@ -36,18 +29,18 @@ export async function getShoppingListItems(listId: number): Promise<ApiShoppingL
   return z.array(ApiShoppingListItemSchema).parse(res.data);
 }
 
-export async function getRecentItems(listId: number, limit = 20): Promise<ApiItem[]> {
+export async function getRecentItems(listId: number, limit = 20): Promise<ApiShoppingListItem[]> {
   const client = getApiClient();
   const res = await client.get<unknown>(`/shoppinglist/${listId}/recent-items`, {
     params: { limit },
   });
-  return z.array(ApiItemSchema).parse(res.data);
+  return z.array(ApiShoppingListItemSchema).parse(res.data);
 }
 
-export async function getSuggestedItems(listId: number): Promise<ApiItem[]> {
+export async function getSuggestedItems(listId: number): Promise<ApiShoppingListItem[]> {
   const client = getApiClient();
   const res = await client.get<unknown>(`/shoppinglist/${listId}/suggested-items`);
-  return z.array(ApiItemSchema).parse(res.data);
+  return z.array(ApiShoppingListItemSchema).parse(res.data);
 }
 
 export async function addItemByName(

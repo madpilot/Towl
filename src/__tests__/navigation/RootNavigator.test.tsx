@@ -72,13 +72,26 @@ jest.mock('@/store/authStore', () => ({
   useAuthStore: jest.fn(),
 }));
 
+jest.mock('@/store/householdStore', () => ({
+  useHouseholdStore: jest.fn(),
+}));
+
+jest.mock('@/screens/households/HouseholdPickerScreen', () => {
+  const React = require('react');
+  const { Text } = require('react-native');
+  function HouseholdPickerScreen() { return React.createElement(Text, null, 'HouseholdPicker'); }
+  return HouseholdPickerScreen;
+});
+
 import React from 'react';
 import { render, waitFor } from '@testing-library/react-native';
 import RootNavigator from '@/navigation/RootNavigator';
 import { useAuthStore } from '@/store/authStore';
+import { useHouseholdStore } from '@/store/householdStore';
 import { initializeAuth } from '@/auth/authManager';
 
 type AuthState = { status: 'unknown' | 'unauthenticated' | 'authenticated' };
+type HouseholdState = { selectedHousehold: { id: number; name: string; photo: null } | null };
 
 function mockAuth(status: AuthState['status']) {
   (useAuthStore as unknown as jest.Mock).mockImplementation(
@@ -86,8 +99,15 @@ function mockAuth(status: AuthState['status']) {
   );
 }
 
+function mockHousehold(selected: HouseholdState['selectedHousehold']) {
+  (useHouseholdStore as unknown as jest.Mock).mockImplementation(
+    (sel: (s: HouseholdState) => unknown) => sel({ selectedHousehold: selected })
+  );
+}
+
 beforeEach(() => {
   jest.clearAllMocks();
+  mockHousehold({ id: 1, name: 'Home', photo: null });
 });
 
 describe('RootNavigator', () => {
@@ -107,6 +127,13 @@ describe('RootNavigator', () => {
     mockAuth('authenticated');
     const { getByText } = render(<RootNavigator />);
     await waitFor(() => expect(getByText('Lists')).toBeTruthy());
+  });
+
+  it('renders household picker when authenticated but no household selected', async () => {
+    mockAuth('authenticated');
+    mockHousehold(null);
+    const { getByText } = render(<RootNavigator />);
+    await waitFor(() => expect(getByText('HouseholdPicker')).toBeTruthy());
   });
 
   it('calls getDb and initializeAuth on mount', async () => {

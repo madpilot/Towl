@@ -26,6 +26,13 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "fonts": ["./assets/fonts/Items.ttf"]
+    "fonts": [
+      "./assets/fonts/Items.ttf"
+    ],
+    "plugins": [
+      "expo-font",
+      "expo-secure-store",
+      "expo-sqlite"
+    ]
   }
 }

@@ -60,7 +60,7 @@ describe('tokenStore', () => {
 
   describe('saveUser / getUser', () => {
     it('round-trips user object', async () => {
-      const user = { id: 1, name: 'Alice', email: 'alice@example.com' };
+      const user = { id: 1, name: 'Alice', username: 'alice' };
       await saveUser(user);
       expect(await getUser()).toEqual(user);
     });
@@ -91,7 +91,7 @@ describe('tokenStore', () => {
   describe('clearAll', () => {
     it('removes access token, refresh token, LLT and user', async () => {
       await saveTokens({ accessToken: 'a', refreshToken: 'r', llt: 'l' });
-      await saveUser({ id: 1, name: 'Bob', email: 'b@b.com' });
+      await saveUser({ id: 1, name: 'Bob', username: 'bob' });
 
       await clearAll();
 
