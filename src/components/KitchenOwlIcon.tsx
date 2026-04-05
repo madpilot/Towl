@@ -4,37 +4,28 @@ import { getIconChar, FONT_FAMILY } from '@/icons/kitchenowlIcons';
 
 type KitchenOwlIconProps = {
   iconKey: string | null | undefined;
-  fallbackEmoji: string;
   size?: number;
   style?: TextStyle;
 };
 
 /**
  * Renders a KitchenOwl icon using the Items.ttf custom font.
- * Falls back to the provided emoji string if the icon key has no codepoint.
+ * Returns null when the icon key has no codepoint in the font.
  */
 export default function KitchenOwlIcon({
   iconKey,
-  fallbackEmoji,
   size = 24,
   style,
 }: KitchenOwlIconProps) {
   const char = getIconChar(iconKey);
-
-  if (char) {
-    return (
-      <Text
-        style={[{ fontFamily: FONT_FAMILY, fontSize: size }, style]}
-        accessibilityLabel={iconKey ?? undefined}
-      >
-        {char}
-      </Text>
-    );
-  }
+  if (!char) return null;
 
   return (
-    <Text style={[{ fontSize: size }, style]} accessibilityLabel={iconKey ?? undefined}>
-      {fallbackEmoji}
+    <Text
+      style={[{ fontFamily: FONT_FAMILY, fontSize: size }, style]}
+      accessibilityLabel={iconKey ?? undefined}
+    >
+      {char}
     </Text>
   );
 }

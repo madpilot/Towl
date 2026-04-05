@@ -10,6 +10,7 @@ export type LocalItem = {
   iconKey: string | null;
   category: string;
   isChecked: boolean;
+  isImportant: boolean;
   isDirty: boolean;
   isDeleted: boolean;
   createdAt: number;
@@ -25,6 +26,7 @@ type ItemRow = {
   icon_key: string | null;
   category: string;
   is_checked: number;
+  is_important: number;
   is_dirty: number;
   is_deleted: number;
   created_at: number;
@@ -40,6 +42,7 @@ function rowToItem(row: ItemRow): LocalItem {
     iconKey: row.icon_key,
     category: row.category,
     isChecked: row.is_checked !== 0,
+    isImportant: row.is_important !== 0,
     isDirty: row.is_dirty !== 0,
     isDeleted: row.is_deleted !== 0,
     createdAt: row.created_at,
@@ -83,6 +86,7 @@ export async function addItemLocally(
     iconKey,
     category,
     isChecked: false,
+    isImportant: false,
     isDirty: true,
     isDeleted: false,
     createdAt: now,
@@ -157,4 +161,32 @@ export async function softDeleteItem(localId: string): Promise<void> {
 export async function hardDeleteItem(localId: string): Promise<void> {
   const db = await getDb();
   await db.runAsync('DELETE FROM local_items WHERE local_id = ?', [localId]);
+}
+
+export async function toggleItemChecked(localId: string, checked: boolean): Promise<void> {
+  const db = await getDb();
+  await db.runAsync(
+    'UPDATE local_items SET is_checked = ? WHERE local_id = ?',
+    [checked ? 1 : 0, localId]
+  );
+}
+
+export async function toggleItemImportant(localId: string, important: boolean): Promise<void> {
+  const db = await getDb();
+  await db.runAsync(
+    'UPDATE local_items SET is_important = ? WHERE local_id = ?',
+    [important ? 1 : 0, localId]
+  );
+}
+
+export async function updateItemNameAndIcon(
+  localId: string,
+  name: string,
+  iconKey: string | null
+): Promise<void> {
+  const db = await getDb();
+  await db.runAsync(
+    'UPDATE local_items SET name = ?, icon_key = ?, is_dirty = 1 WHERE local_id = ?',
+    [name, iconKey, localId]
+  );
 }

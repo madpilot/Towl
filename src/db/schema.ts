@@ -81,4 +81,11 @@ async function migrate(database: SQLite.SQLiteDatabase): Promise<void> {
       UPDATE schema_version SET version = 1;
     `);
   }
+
+  if (currentVersion < 2) {
+    await database.execAsync(`
+      ALTER TABLE local_items ADD COLUMN is_important INTEGER NOT NULL DEFAULT 0;
+      UPDATE schema_version SET version = 2;
+    `);
+  }
 }
