@@ -1,21 +1,26 @@
-import React, { useEffect } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import React, { useEffect } from "react";
+import { View, ActivityIndicator, StyleSheet } from "react-native";
+import { NavigationContainer } from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
-import { useAuthStore } from '@/store/authStore';
-import { initializeAuth } from '@/auth/authManager';
-import { getDb } from '@/db/schema';
-import { startNetworkMonitoring, stopNetworkMonitoring } from '@/sync/connectivityMonitor';
-import { drain } from '@/sync/syncManager';
+import { useAuthStore } from "@/store/authStore";
+import { useHouseholdStore } from "@/store/householdStore";
+import { initializeAuth } from "@/auth/authManager";
+import { getDb } from "@/db/schema";
+import {
+  startNetworkMonitoring,
+  stopNetworkMonitoring,
+} from "@/sync/connectivityMonitor";
+import { drain } from "@/sync/syncManager";
 
-import ServerSetupScreen from '@/screens/auth/ServerSetupScreen';
-import LoginScreen from '@/screens/auth/LoginScreen';
-import ListsScreen from '@/screens/lists/ListsScreen';
-import ListDetailScreen from '@/screens/lists/ListDetailScreen';
-import SyncIndicator from '@/components/SyncIndicator';
+import ServerSetupScreen from "@/screens/auth/ServerSetupScreen";
+import LoginScreen from "@/screens/auth/LoginScreen";
+import HouseholdPickerScreen from "@/screens/households/HouseholdPickerScreen";
+import ListsScreen from "@/screens/lists/ListsScreen";
+import ListDetailScreen from "@/screens/lists/ListDetailScreen";
+import SyncIndicator from "@/components/SyncIndicator";
 
-import type { AuthStackParamList, MainStackParamList } from './types';
+import type { AuthStackParamList, MainStackParamList } from "./types";
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 const MainStack = createNativeStackNavigator<MainStackParamList>();
@@ -34,25 +39,39 @@ function HeaderRight() {
 }
 
 function MainNavigator() {
+  const selectedHousehold = useHouseholdStore((s) => s.selectedHousehold);
+
   useEffect(() => {
     // Start network monitoring; drain queue immediately and on reconnect.
-    startNetworkMonitoring(() => { void drain(); });
+    startNetworkMonitoring(() => {
+      void drain();
+    });
     void drain();
     return () => stopNetworkMonitoring();
   }, []);
 
   return (
     <MainStack.Navigator screenOptions={{ headerRight: HeaderRight }}>
-      <MainStack.Screen
-        name="Lists"
-        component={ListsScreen}
-        options={{ title: 'Shopping Lists' }}
-      />
-      <MainStack.Screen
-        name="ListDetail"
-        component={ListDetailScreen}
-        options={({ route }) => ({ title: route.params.listName })}
-      />
+      {selectedHousehold === null ? (
+        <MainStack.Screen
+          name="HouseholdPicker"
+          component={HouseholdPickerScreen}
+          options={{ title: "Select Household" }}
+        />
+      ) : (
+        <>
+          <MainStack.Screen
+            name="Lists"
+            component={ListsScreen}
+            options={{ title: "Shopping Lists" }}
+          />
+          <MainStack.Screen
+            name="ListDetail"
+            component={ListDetailScreen}
+            options={({ route }) => ({ title: route.params.listName })}
+          />
+        </>
+      )}
     </MainStack.Navigator>
   );
 }
@@ -61,12 +80,10 @@ export default function RootNavigator() {
   const status = useAuthStore((s) => s.status);
 
   useEffect(() => {
-    getDb()
-      .then(initializeAuth)
-      .catch(console.error);
+    getDb().then(initializeAuth).catch(console.error);
   }, []);
 
-  if (status === 'unknown') {
+  if (status === "unknown") {
     return (
       <View style={styles.splash}>
         <ActivityIndicator size="large" testID="splash-indicator" />
@@ -76,7 +93,7 @@ export default function RootNavigator() {
 
   return (
     <NavigationContainer>
-      {status === 'authenticated' ? <MainNavigator /> : <AuthNavigator />}
+      {status === "authenticated" ? <MainNavigator /> : <AuthNavigator />}
     </NavigationContainer>
   );
 }
@@ -84,7 +101,7 @@ export default function RootNavigator() {
 const styles = StyleSheet.create({
   splash: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

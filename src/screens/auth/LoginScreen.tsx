@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   Text,
   TextInput,
@@ -8,15 +8,15 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-} from 'react-native';
-import * as authApi from '@/api/auth';
-import { onLoginSuccess } from '@/auth/authManager';
-import type { LoginScreenProps } from '@/navigation/types';
+} from "react-native";
+import * as authApi from "@/api/auth";
+import { onLoginSuccess } from "@/auth/authManager";
+import type { LoginScreenProps } from "@/navigation/types";
 
 export default function LoginScreen({ route }: LoginScreenProps) {
   const { serverUrl } = route.params;
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -24,11 +24,11 @@ export default function LoginScreen({ route }: LoginScreenProps) {
 
   async function handleLogin() {
     if (!username.trim()) {
-      setError('Please enter your username or email.');
+      setError("Please enter your username or email.");
       return;
     }
     if (!password) {
-      setError('Please enter your password.');
+      setError("Please enter your password.");
       return;
     }
 
@@ -37,16 +37,20 @@ export default function LoginScreen({ route }: LoginScreenProps) {
 
     try {
       const res = await authApi.login(serverUrl, username.trim(), password);
-      await onLoginSuccess(serverUrl, res.access_token, res.refresh_token, res.user);
+      await onLoginSuccess(
+        serverUrl,
+        res.access_token,
+        res.refresh_token,
+        res.user,
+      );
       // Navigation to authenticated stack is handled by RootNavigator on state change
     } catch (err: unknown) {
-      if (
-        authApi.isAxiosAuthError(err) &&
-        err.response?.status === 401
-      ) {
-        setError('Invalid username or password.');
+      if (authApi.isAxiosAuthError(err) && err.response?.status === 401) {
+        setError("Invalid username or password.");
       } else {
-        setError('Could not connect to server. Check your network and try again.');
+        setError(
+          "Could not connect to server. Check your network and try again.",
+        );
       }
     } finally {
       setLoading(false);
@@ -56,20 +60,25 @@ export default function LoginScreen({ route }: LoginScreenProps) {
   return (
     <KeyboardAvoidingView
       style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
       >
         <Text style={styles.title}>Sign in</Text>
-        <Text style={styles.serverLabel} numberOfLines={1}>{serverUrl}</Text>
+        <Text style={styles.serverLabel} numberOfLines={1}>
+          {serverUrl}
+        </Text>
 
         <Text style={styles.label}>Username or email</Text>
         <TextInput
           style={[styles.input, error ? styles.inputError : undefined]}
           value={username}
-          onChangeText={(v) => { setUsername(v); setError(null); }}
+          onChangeText={(v) => {
+            setUsername(v);
+            setError(null);
+          }}
           placeholder="you@example.com"
           autoCapitalize="none"
           autoCorrect={false}
@@ -84,7 +93,10 @@ export default function LoginScreen({ route }: LoginScreenProps) {
           ref={passwordRef}
           style={[styles.input, error ? styles.inputError : undefined]}
           value={password}
-          onChangeText={(v) => { setPassword(v); setError(null); }}
+          onChangeText={(v) => {
+            setPassword(v);
+            setError(null);
+          }}
           placeholder="••••••••"
           secureTextEntry
           returnKeyType="go"
@@ -101,10 +113,11 @@ export default function LoginScreen({ route }: LoginScreenProps) {
           disabled={loading}
           activeOpacity={0.8}
         >
-          {loading
-            ? <ActivityIndicator color="#fff" />
-            : <Text style={styles.buttonText}>Sign in</Text>
-          }
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.buttonText}>Sign in</Text>
+          )}
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -112,61 +125,61 @@ export default function LoginScreen({ route }: LoginScreenProps) {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: '#fff' },
+  flex: { flex: 1, backgroundColor: "#fff" },
   container: {
     flexGrow: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
     paddingHorizontal: 32,
     paddingVertical: 48,
   },
   title: {
     fontSize: 28,
-    fontWeight: '700',
-    color: '#1a1a1a',
+    fontWeight: "700",
+    color: "#1a1a1a",
     marginBottom: 4,
   },
   serverLabel: {
     fontSize: 13,
-    color: '#888',
+    color: "#888",
     marginBottom: 32,
   },
   label: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#444',
+    fontWeight: "500",
+    color: "#444",
     marginBottom: 6,
   },
   input: {
     borderWidth: 1.5,
-    borderColor: '#ddd',
+    borderColor: "#ddd",
     borderRadius: 10,
     paddingVertical: 14,
     paddingHorizontal: 16,
     fontSize: 16,
-    color: '#1a1a1a',
+    color: "#1a1a1a",
     marginBottom: 16,
   },
   inputError: {
-    borderColor: '#e53e3e',
+    borderColor: "#e53e3e",
   },
   errorText: {
-    color: '#e53e3e',
+    color: "#e53e3e",
     fontSize: 13,
     marginBottom: 16,
   },
   button: {
-    backgroundColor: '#2563eb',
+    backgroundColor: "#2563eb",
     borderRadius: 10,
     paddingVertical: 16,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 8,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
   buttonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });

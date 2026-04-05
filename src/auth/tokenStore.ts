@@ -11,7 +11,7 @@ export type StoredTokens = {
 export const StoredUserSchema = z.object({
   id: z.number(),
   name: z.string(),
-  email: z.string(),
+  username: z.string(),
 });
 
 export type StoredUser = z.infer<typeof StoredUserSchema>;

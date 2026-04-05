@@ -98,7 +98,7 @@ describe('drain()', () => {
     (syncQueue.getAll as jest.Mock)
       .mockResolvedValueOnce([op])
       .mockResolvedValue([]);
-    (api.addItemByName as jest.Mock).mockResolvedValue({ item_id: 99 });
+    (api.addItemByName as jest.Mock).mockResolvedValue({ id: 99, name: 'Milk', description: '' });
 
     await drain();
 

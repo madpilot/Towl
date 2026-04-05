@@ -93,11 +93,11 @@ export default function ListDetailScreen({ route, navigation }: ListDetailScreen
     try {
       const apiItems = await shoppingListsApi.getShoppingListItems(serverId);
       for (const apiItem of apiItems) {
-        const match = matchItem(apiItem.item.icon ?? apiItem.item.name);
+        const match = matchItem(apiItem.icon ?? apiItem.name);
         await itemsDb.upsertItemFromServer(
-          apiItem.item_id,
+          apiItem.id,
           localId,
-          apiItem.item.name,
+          apiItem.name,
           apiItem.description,
           match.iconKey,
           match.category
