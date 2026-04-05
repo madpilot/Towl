@@ -30,6 +30,16 @@ export const UpdateItemDescPayloadSchema = z.object({
 });
 export type UpdateItemDescPayload = z.infer<typeof UpdateItemDescPayloadSchema>;
 
+export const UpdateItemPayloadSchema = z.object({
+  opType: z.literal('UPDATE_ITEM'),
+  listServerId: z.number(),
+  itemServerId: z.number(),
+  itemLocalId: z.string(),
+  name: z.string(),
+  iconKey: z.string().nullable(),
+});
+export type UpdateItemPayload = z.infer<typeof UpdateItemPayloadSchema>;
+
 export const CreateListPayloadSchema = z.object({
   opType: z.literal('CREATE_LIST'),
   listLocalId: z.string(),
@@ -49,6 +59,7 @@ export const SyncPayloadSchema = z.discriminatedUnion('opType', [
   AddItemPayloadSchema,
   RemoveItemPayloadSchema,
   UpdateItemDescPayloadSchema,
+  UpdateItemPayloadSchema,
   CreateListPayloadSchema,
   DeleteListPayloadSchema,
 ]);

@@ -79,6 +79,16 @@ export async function updateItemDescription(
   await client.post(`/shoppinglist/${listId}/item/${itemId}`, { description });
 }
 
+export async function updateItem(
+  listId: number,
+  itemId: number,
+  name: string,
+  iconKey: string | null
+): Promise<void> {
+  const client = getApiClient();
+  await client.post(`/shoppinglist/${listId}/item/${itemId}`, { name, icon: iconKey });
+}
+
 export async function createShoppingList(name: string, householdId: number): Promise<ApiShoppingList> {
   const client = getApiClient();
   const res = await client.post<unknown>(`/household/${householdId}/shoppinglist`, { name });

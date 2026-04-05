@@ -24,6 +24,7 @@ jest.mock('@/api/shoppinglists', () => ({
   createShoppingList: jest.fn(),
   deleteShoppingList: jest.fn(),
   updateItemDescription: jest.fn(),
+  updateItem: jest.fn(),
 }));
 
 jest.mock('@/sync/connectivityMonitor', () => ({
@@ -162,6 +163,32 @@ describe('drain()', () => {
 
     expect(syncQueue.remove).toHaveBeenCalledWith('op-1');
     expect(syncQueue.incrementAttempts).not.toHaveBeenCalled();
+  });
+
+  it('processes UPDATE_ITEM op and calls updateItem API', async () => {
+    const op = {
+      id: 'op-upd',
+      attempts: 0,
+      listLocalId: 'list-local-1',
+      createdAt: Date.now(),
+      payload: {
+        opType: 'UPDATE_ITEM' as const,
+        listServerId: 5,
+        itemServerId: 12,
+        itemLocalId: 'item-local-1',
+        name: 'Almond Milk',
+        iconKey: 'milk_carton',
+      },
+    };
+    (syncQueue.getAll as jest.Mock)
+      .mockResolvedValueOnce([op])
+      .mockResolvedValue([]);
+    (api.updateItem as jest.Mock).mockResolvedValue(undefined);
+
+    await drain();
+
+    expect(api.updateItem).toHaveBeenCalledWith(5, 12, 'Almond Milk', 'milk_carton');
+    expect(syncQueue.remove).toHaveBeenCalledWith('op-upd');
   });
 
   it('drops ops that have exceeded MAX_SYNC_RETRIES', async () => {

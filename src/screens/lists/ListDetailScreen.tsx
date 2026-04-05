@@ -184,11 +184,26 @@ export default function ListDetailScreen({ route, navigation }: ListDetailScreen
   }, [items, activeLocalId, activeServerId]);
 
   const handleSave = useCallback(async (localId: string, name: string, iconKey: string | null) => {
+    const item = items.find((i) => i.localId === localId);
+    if (!item) return;
     await itemsDb.updateItemNameAndIcon(localId, name, iconKey);
+    if (item.serverId !== null && activeServerId !== null) {
+      await syncQueue.enqueue(
+        {
+          opType: 'UPDATE_ITEM',
+          listServerId: activeServerId,
+          itemServerId: item.serverId,
+          itemLocalId: localId,
+          name,
+          iconKey,
+        },
+        activeLocalId
+      );
+    }
     setItems((prev) =>
       prev.map((i) => (i.localId === localId ? { ...i, name, iconKey } : i))
     );
-  }, []);
+  }, [items, activeLocalId, activeServerId]);
 
   const handleAddItem = useCallback(async (
     name: string,
