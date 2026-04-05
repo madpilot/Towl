@@ -11,12 +11,20 @@ jest.mock('@/db/lists', () => ({
   hardDeleteList: jest.fn(),
 }));
 
+jest.mock('@/db/items', () => ({
+  upsertItemFromServer: jest.fn(),
+}));
+
 jest.mock('@/db/syncQueue', () => ({
   enqueue: jest.fn(),
 }));
 
 jest.mock('@/api/shoppinglists', () => ({
   getShoppingLists: jest.fn(),
+}));
+
+jest.mock('@/data/foodMatcher', () => ({
+  matchItem: jest.fn(() => ({ iconKey: null, emoji: null, category: 'Other' })),
 }));
 
 jest.mock('@/store/householdStore', () => ({

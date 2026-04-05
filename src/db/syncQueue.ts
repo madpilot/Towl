@@ -1,5 +1,5 @@
 import { getDb } from './schema';
-import { v4 as uuid } from 'uuid';
+import { randomUUID } from 'expo-crypto';
 import { z } from 'zod';
 
 // ── Typed payloads per operation ────────────────────────────────────────────
@@ -33,6 +33,7 @@ export type UpdateItemDescPayload = z.infer<typeof UpdateItemDescPayloadSchema>;
 export const CreateListPayloadSchema = z.object({
   opType: z.literal('CREATE_LIST'),
   listLocalId: z.string(),
+  householdId: z.number(),
   name: z.string(),
 });
 export type CreateListPayload = z.infer<typeof CreateListPayloadSchema>;
@@ -92,7 +93,7 @@ function rowToOp(row: SyncQueueRow): SyncOp {
 
 export async function enqueue(payload: SyncPayload, listLocalId?: string): Promise<SyncOp> {
   const db = await getDb();
-  const id = uuid();
+  const id = randomUUID();
   const now = Date.now();
   await db.runAsync(
     `INSERT INTO sync_queue (id, op_type, payload, list_local_id, created_at, attempts)

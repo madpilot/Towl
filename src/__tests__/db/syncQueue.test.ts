@@ -3,10 +3,10 @@ jest.mock('expo-sqlite', () => ({
   openDatabaseAsync: jest.fn(),
 }));
 
-jest.mock('uuid', () => ({ v4: jest.fn() }));
+jest.mock('expo-crypto', () => ({ randomUUID: jest.fn() }));
 
 import * as SQLite from 'expo-sqlite';
-import { v4 as uuid } from 'uuid';
+import { randomUUID } from 'expo-crypto';
 import type { AddItemPayload, RemoveItemPayload } from '@/db/syncQueue';
 
 // Shared mock db — shared across all tests in this file because schema.ts
@@ -31,7 +31,7 @@ beforeEach(() => {
   mockDb.getAllAsync.mockResolvedValue([]);
 
   (SQLite.openDatabaseAsync as jest.Mock).mockResolvedValue(mockDb);
-  (uuid as jest.Mock).mockImplementation(() => `test-uuid-${++uuidCounter}`);
+  (randomUUID as jest.Mock).mockImplementation(() => `test-uuid-${++uuidCounter}`);
 });
 
 // Lazy import so the module picks up the mock.

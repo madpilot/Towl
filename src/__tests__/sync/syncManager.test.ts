@@ -116,6 +116,7 @@ describe('drain()', () => {
       payload: {
         opType: 'CREATE_LIST' as const,
         listLocalId: 'list-local-1',
+        householdId: 1,
         name: 'Groceries',
       },
     };
@@ -126,7 +127,7 @@ describe('drain()', () => {
 
     await drain();
 
-    expect(api.createShoppingList).toHaveBeenCalledWith('Groceries');
+    expect(api.createShoppingList).toHaveBeenCalledWith('Groceries', 1);
     expect(listsDb.markListSynced).toHaveBeenCalledWith('list-local-1', 42);
     expect(syncQueue.remove).toHaveBeenCalledWith('op-2');
   });
