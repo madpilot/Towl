@@ -68,13 +68,13 @@
     "axios-mock-adapter": "^2.1.0",
     "babel-plugin-module-resolver": "^5.0.3",
     "babel-preset-expo": "^55.0.15",
-    "eslint": "^10.1.0",
+    "eslint": "^9.7.0",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",
     "jest": "^30.3.0",
     "jest-environment-jsdom": "^30.3.0",
     "jest-expo": "^55.0.13",
-    "react-test-renderer": "^19.1.0",
+    "react-test-renderer": "19.1.0",
     "typescript": "~5.9.2"
   },
   "private": true
