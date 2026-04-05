@@ -72,7 +72,7 @@ export default function ListsScreen({ navigation }: ListsScreenProps) {
         }
       }
       await loadFromDb();
-    } catch () {
+    } catch {
       // Offline — local data is fine
     }
   }, [serverUrl, householdId, loadFromDb]);
