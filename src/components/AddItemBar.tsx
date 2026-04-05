@@ -8,7 +8,6 @@ import {
 } from 'react-native';
 import KitchenOwlIcon from '@/components/KitchenOwlIcon';
 import { useItemSuggestions } from '@/hooks/useItemSuggestions';
-import { getIconMeta } from '@/data/iconMetadata';
 import { Colors, Spacing, Radii, FontSize } from '@/theme';
 import type { ItemSuggestion } from '@/hooks/useItemSuggestions';
 
@@ -90,12 +89,7 @@ export default function AddItemBar({ onAdd }: AddItemBarProps) {
               activeOpacity={0.8}
             >
               <View style={styles.suggestIconWrap}>
-                <KitchenOwlIcon
-                  iconKey={s.iconKey}
-                  size={22}
-                  fallbackEmoji={getIconMeta(s.iconKey).emoji}
-                  style={{ color: Colors.mint }}
-                />
+                <KitchenOwlIcon iconKey={s.iconKey} size={22} style={{ color: Colors.mint }} />
               </View>
               <Text style={styles.suggestName} numberOfLines={1}>
                 <SuggestLabel name={s.displayName} query={value} />

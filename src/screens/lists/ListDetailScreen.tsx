@@ -21,6 +21,8 @@ import { useHouseholdStore } from '@/store/householdStore';
 import CategorySection from '@/components/CategorySection';
 import AddItemBar from '@/components/AddItemBar';
 import TommyOwl from '@/components/TommyOwl';
+import ListsIcon from '@/components/icons/ListsIcon';
+import SettingsIcon from '@/components/icons/SettingsIcon';
 import { Colors, Spacing, Radii, FontSize } from '@/theme';
 import type { LocalItem } from '@/db/items';
 import type { LocalList } from '@/db/lists';
@@ -345,7 +347,7 @@ function BottomNav({ onListsPress }: BottomNavProps) {
   return (
     <View style={navStyles.bar}>
       <TouchableOpacity style={navStyles.navBtn} onPress={onListsPress} activeOpacity={0.7}>
-        <Text style={navStyles.navIcon}>≡</Text>
+        <ListsIcon color={Colors.mint} size={24} />
         <Text style={navStyles.navLabel}>Lists</Text>
       </TouchableOpacity>
 
@@ -354,7 +356,7 @@ function BottomNav({ onListsPress }: BottomNavProps) {
       </View>
 
       <TouchableOpacity style={navStyles.navBtn} activeOpacity={0.7}>
-        <Text style={[navStyles.navIcon, navStyles.navIconFaded]}>⚙</Text>
+        <SettingsIcon color={Colors.mintLight} size={24} />
         <Text style={[navStyles.navLabel, navStyles.navLabelFaded]}>Settings</Text>
       </TouchableOpacity>
     </View>
@@ -520,14 +522,6 @@ const navStyles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.xs,
     minWidth: 48,
-  },
-  navIcon: {
-    fontSize: 22,
-    color: Colors.mint,
-    lineHeight: 26,
-  },
-  navIconFaded: {
-    color: Colors.mintLight,
   },
   navLabel: {
     fontSize: FontSize.tiny,

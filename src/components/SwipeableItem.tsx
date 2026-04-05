@@ -10,7 +10,6 @@ import {
 } from 'react-native';
 import KitchenOwlIcon from '@/components/KitchenOwlIcon';
 import IconPicker from '@/components/IconPicker';
-import { getIconMeta } from '@/data/iconMetadata';
 import { Colors, Spacing, Radii, FontSize } from '@/theme';
 import type { LocalItem } from '@/db/items';
 
@@ -104,12 +103,7 @@ function EditRow({ item, onSave, onCancel }: EditRowProps) {
           onPress={() => setPickerVisible(true)}
           activeOpacity={0.7}
         >
-          <KitchenOwlIcon
-            iconKey={iconKey}
-            size={24}
-            fallbackEmoji={getIconMeta(iconKey).emoji}
-            style={{ color: Colors.mint }}
-          />
+          <KitchenOwlIcon iconKey={iconKey} size={24} style={{ color: Colors.mint }} />
           <View style={editStyles.chevronBadge}>
             <Text style={editStyles.chevronText}>▾</Text>
           </View>
@@ -253,7 +247,6 @@ function SwipeRow({ item, onToggleDone, onToggleImportant, onDelete, onEdit }: S
           <KitchenOwlIcon
             iconKey={item.iconKey}
             size={28}
-            fallbackEmoji={getIconMeta(item.iconKey).emoji}
             style={{ color: Colors.mint }}
           />
         </View>

@@ -11,7 +11,6 @@ import {
 } from 'react-native';
 import { ICON_CODEPOINTS } from '@/icons/kitchenowlIcons';
 import KitchenOwlIcon from '@/components/KitchenOwlIcon';
-import { getIconMeta } from '@/data/iconMetadata';
 import { Colors, Spacing, Radii, FontSize } from '@/theme';
 
 type IconPickerProps = {
@@ -82,12 +81,7 @@ export default function IconPicker({ visible, selected, onSelect, onClose }: Ico
               onPress={() => handleSelect(item)}
               activeOpacity={0.7}
             >
-              <KitchenOwlIcon
-                iconKey={item}
-                size={28}
-                fallbackEmoji={getIconMeta(item).emoji}
-                style={{ color: Colors.mint }}
-              />
+              <KitchenOwlIcon iconKey={item} size={28} style={{ color: Colors.mint }} />
             </TouchableOpacity>
           )}
           contentContainerStyle={styles.grid}
