@@ -1,5 +1,5 @@
 import { getDb } from './schema';
-import { v4 as uuid } from 'uuid';
+import { randomUUID } from 'expo-crypto';
 
 export type LocalList = {
   localId: string;
@@ -50,7 +50,7 @@ export async function upsertListFromServer(
   existingLocalId?: string
 ): Promise<LocalList> {
   const db = await getDb();
-  const localId = existingLocalId ?? uuid();
+  const localId = existingLocalId ?? randomUUID();
   await db.runAsync(
     `INSERT INTO local_lists (local_id, server_id, household_id, name, is_dirty, is_deleted, last_synced)
      VALUES (?, ?, ?, ?, 0, 0, ?)
@@ -72,7 +72,7 @@ export async function upsertListFromServer(
 
 export async function createListLocally(householdId: number, name: string): Promise<LocalList> {
   const db = await getDb();
-  const localId = uuid();
+  const localId = randomUUID();
   await db.runAsync(
     `INSERT INTO local_lists (local_id, server_id, household_id, name, is_dirty, is_deleted, last_synced)
      VALUES (?, NULL, ?, ?, 1, 0, 0)`,

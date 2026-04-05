@@ -1,46 +1,53 @@
 import { z } from 'zod';
 import { getApiClient } from './client';
 
+// ─── Item schema ──────────────────────────────────────────────────────────────
+// Matches the flat item objects returned both inline in the list response
+// and from the individual /shoppinglist/{id}/items endpoint.
+
+const ApiCategorySchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  default_key: z.string().nullable(),
+});
+
 export const ApiShoppingListItemSchema = z.object({
   id: z.number(),
   name: z.string(),
-  description: z.string().optional().default(''),
+  description: z.string().default(''),
   icon: z.string().nullable().optional(),
   ordering: z.number().optional(),
+  category_id: z.number().nullable().optional(),
+  category: ApiCategorySchema.optional(),
+  support: z.number().optional(),
+  household_id: z.number().optional(),
+  created_at: z.number().optional(),
+  updated_at: z.number().optional(),
+  created_by: z.number().nullable().optional(),
+  default: z.boolean().optional(),
+  default_key: z.string().nullable().optional(),
 });
 export type ApiShoppingListItem = z.infer<typeof ApiShoppingListItemSchema>;
+
+// ─── Shopping list schema ─────────────────────────────────────────────────────
+// The household shopping list endpoint returns lists with embedded items and
+// recentItems already populated — no separate items call needed.
 
 export const ApiShoppingListSchema = z.object({
   id: z.number(),
   name: z.string(),
   household_id: z.number(),
+  items: z.array(ApiShoppingListItemSchema).default([]),
+  recentItems: z.array(ApiShoppingListItemSchema).default([]),
 });
 export type ApiShoppingList = z.infer<typeof ApiShoppingListSchema>;
+
+// ─── API functions ────────────────────────────────────────────────────────────
 
 export async function getShoppingLists(householdId: number): Promise<ApiShoppingList[]> {
   const client = getApiClient();
   const res = await client.get<unknown>(`/household/${householdId}/shoppinglist`);
   return z.array(ApiShoppingListSchema).parse(res.data);
-}
-
-export async function getShoppingListItems(listId: number): Promise<ApiShoppingListItem[]> {
-  const client = getApiClient();
-  const res = await client.get<unknown>(`/shoppinglist/${listId}/items`);
-  return z.array(ApiShoppingListItemSchema).parse(res.data);
-}
-
-export async function getRecentItems(listId: number, limit = 20): Promise<ApiShoppingListItem[]> {
-  const client = getApiClient();
-  const res = await client.get<unknown>(`/shoppinglist/${listId}/recent-items`, {
-    params: { limit },
-  });
-  return z.array(ApiShoppingListItemSchema).parse(res.data);
-}
-
-export async function getSuggestedItems(listId: number): Promise<ApiShoppingListItem[]> {
-  const client = getApiClient();
-  const res = await client.get<unknown>(`/shoppinglist/${listId}/suggested-items`);
-  return z.array(ApiShoppingListItemSchema).parse(res.data);
 }
 
 export async function addItemByName(
@@ -72,9 +79,9 @@ export async function updateItemDescription(
   await client.post(`/shoppinglist/${listId}/item/${itemId}`, { description });
 }
 
-export async function createShoppingList(name: string): Promise<ApiShoppingList> {
+export async function createShoppingList(name: string, householdId: number): Promise<ApiShoppingList> {
   const client = getApiClient();
-  const res = await client.post<unknown>('/shoppinglist', { name });
+  const res = await client.post<unknown>(`/household/${householdId}/shoppinglist`, { name });
   return ApiShoppingListSchema.parse(res.data);
 }
 

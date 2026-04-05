@@ -91,8 +91,10 @@ export default function ListDetailScreen({ route, navigation }: ListDetailScreen
   const syncItems = useCallback(async (localId: string, serverId: number | null) => {
     if (serverId === null) return;
     try {
-      const apiItems = await shoppingListsApi.getShoppingListItems(serverId);
-      for (const apiItem of apiItems) {
+      const allLists = await shoppingListsApi.getShoppingLists(householdId);
+      const apiList = allLists.find((l) => l.id === serverId);
+      if (!apiList) return;
+      for (const apiItem of apiList.items) {
         const match = matchItem(apiItem.icon ?? apiItem.name);
         await itemsDb.upsertItemFromServer(
           apiItem.id,
@@ -107,7 +109,7 @@ export default function ListDetailScreen({ route, navigation }: ListDetailScreen
     } catch {
       // Offline — local data is fine
     }
-  }, [loadItems]);
+  }, [householdId, loadItems]);
 
   useFocusEffect(
     useCallback(() => {

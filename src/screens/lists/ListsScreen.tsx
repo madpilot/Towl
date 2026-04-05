@@ -15,8 +15,10 @@ import {
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import * as listsDb from "@/db/lists";
+import * as itemsDb from "@/db/items";
 import * as syncQueue from "@/db/syncQueue";
 import * as shoppingListsApi from "@/api/shoppinglists";
+import { matchItem } from "@/data/foodMatcher";
 import { useHouseholdStore } from "@/store/householdStore";
 import { useAuthStore } from "@/store/authStore";
 import type { LocalList } from "@/db/lists";
@@ -37,10 +39,11 @@ export default function ListsScreen({ navigation }: ListsScreenProps) {
   const selectedHousehold = useHouseholdStore((s) => s.selectedHousehold);
   const serverUrl = useAuthStore((s) => s.serverUrl);
 
-  const householdId = selectedHousehold?.id ?? 1;
+  const householdId = selectedHousehold?.id ?? 0;
 
   const loadFromDb = useCallback(async () => {
     const rows = await listsDb.getAllLists(householdId);
+    console.debug(rows);
     setLists(rows);
   }, [householdId]);
 
@@ -50,18 +53,29 @@ export default function ListsScreen({ navigation }: ListsScreenProps) {
       const apiLists = await shoppingListsApi.getShoppingLists(householdId);
       for (const apiList of apiLists) {
         const existing = await listsDb.getListByServerId(apiList.id);
-        await listsDb.upsertListFromServer(
+        const localList = await listsDb.upsertListFromServer(
           apiList.id,
           apiList.household_id,
           apiList.name,
           existing?.localId,
         );
+        for (const apiItem of apiList.items) {
+          const match = matchItem(apiItem.icon ?? apiItem.name);
+          await itemsDb.upsertItemFromServer(
+            apiItem.id,
+            localList.localId,
+            apiItem.name,
+            apiItem.description,
+            match.iconKey,
+            match.category,
+          );
+        }
       }
       await loadFromDb();
     } catch {
       // Offline — local data is fine
     }
-  }, [serverUrl, loadFromDb]);
+  }, [serverUrl, householdId, loadFromDb]);
 
   useFocusEffect(
     useCallback(() => {
@@ -94,7 +108,12 @@ export default function ListsScreen({ navigation }: ListsScreenProps) {
     try {
       const newList = await listsDb.createListLocally(householdId, name);
       await syncQueue.enqueue(
-        { opType: "CREATE_LIST", listLocalId: newList.localId, name },
+        {
+          opType: "CREATE_LIST",
+          listLocalId: newList.localId,
+          householdId,
+          name,
+        },
         newList.localId,
       );
       setCreateModalVisible(false);

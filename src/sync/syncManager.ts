@@ -108,7 +108,7 @@ async function dispatchPayload(payload: SyncPayload): Promise<void> {
     }
 
     case 'CREATE_LIST': {
-      const result = await api.createShoppingList(payload.name);
+      const result = await api.createShoppingList(payload.name, payload.householdId);
       await listsDb.markListSynced(payload.listLocalId, result.id);
       break;
     }

@@ -2,10 +2,10 @@ jest.mock('expo-sqlite', () => ({
   openDatabaseAsync: jest.fn(),
 }));
 
-jest.mock('uuid', () => ({ v4: jest.fn() }));
+jest.mock('expo-crypto', () => ({ randomUUID: jest.fn() }));
 
 import * as SQLite from 'expo-sqlite';
-import { v4 as uuid } from 'uuid';
+import { randomUUID } from 'expo-crypto';
 
 const mockDb = {
   execAsync: jest.fn().mockResolvedValue(undefined),
@@ -32,7 +32,7 @@ beforeEach(() => {
   mockDb.getFirstAsync.mockResolvedValue({ version: 1 });
   mockDb.getAllAsync.mockResolvedValue([]);
   (SQLite.openDatabaseAsync as jest.Mock).mockResolvedValue(mockDb);
-  (uuid as jest.Mock).mockImplementation(() => `uuid-${++uuidCounter}`);
+  (randomUUID as jest.Mock).mockImplementation(() => `uuid-${++uuidCounter}`);
 });
 
 const getModule = () => require('@/db/lists');

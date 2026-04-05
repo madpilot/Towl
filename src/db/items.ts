@@ -1,5 +1,5 @@
 import { getDb } from './schema';
-import { v4 as uuid } from 'uuid';
+import { randomUUID } from 'expo-crypto';
 
 export type LocalItem = {
   localId: string;
@@ -68,7 +68,7 @@ export async function addItemLocally(
   category: string
 ): Promise<LocalItem> {
   const db = await getDb();
-  const localId = uuid();
+  const localId = randomUUID();
   const now = Date.now();
   await db.runAsync(
     `INSERT INTO local_items
@@ -126,7 +126,7 @@ export async function upsertItemFromServer(
     return rowToItem(updated);
   }
 
-  const localId = uuid();
+  const localId = randomUUID();
   await db.runAsync(
     `INSERT INTO local_items
      (local_id, server_id, list_local_id, name, description, icon_key, category,

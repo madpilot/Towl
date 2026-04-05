@@ -42,3 +42,9 @@ jest.mock('expo/src/winter/runtime.native', () => ({}));
 // ReadableStream implementation that conflicts with axios's fetch adapter in
 // Node.js, causing "Cannot cancel a stream that already has a reader" crashes.
 jest.mock('expo/virtual/streams', () => ({}));
+
+// expo-crypto — delegate randomUUID() to Node's built-in crypto so DB helpers
+// that generate local IDs work correctly in the Jest/Node environment.
+jest.mock('expo-crypto', () => ({
+  randomUUID: () => require('node:crypto').randomUUID(),
+}));
