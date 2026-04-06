@@ -14,6 +14,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import * as itemsDb from '@/db/items';
 import * as listsDb from '@/db/lists';
 import * as syncQueue from '@/db/syncQueue';
+import { drain } from '@/sync/syncManager';
 import * as shoppingListsApi from '@/api/shoppinglists';
 import { recordItemUsed } from '@/db/history';
 import { matchItem } from '@/data/foodMatcher';
@@ -177,6 +178,7 @@ export default function ListDetailScreen({ route, navigation }: ListDetailScreen
         },
         activeLocalId
       );
+      void drain();
     } else {
       await itemsDb.hardDeleteItem(localId);
     }
@@ -199,6 +201,7 @@ export default function ListDetailScreen({ route, navigation }: ListDetailScreen
         },
         activeLocalId
       );
+      void drain();
     }
     setItems((prev) =>
       prev.map((i) => (i.localId === localId ? { ...i, name, iconKey } : i))
@@ -228,6 +231,7 @@ export default function ListDetailScreen({ route, navigation }: ListDetailScreen
         },
         activeLocalId
       );
+      void drain();
     }
     setItems((prev) => [...prev, newItem]);
   }, [activeLocalId, activeServerId]);

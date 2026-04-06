@@ -24,6 +24,10 @@ jest.mock('@/db/syncQueue', () => ({
   enqueue: jest.fn(),
 }));
 
+jest.mock('@/sync/syncManager', () => ({
+  drain: jest.fn().mockResolvedValue(undefined),
+}));
+
 jest.mock('@/db/history', () => ({
   recordItemUsed: jest.fn(),
 }));
