@@ -11,6 +11,11 @@ import axios from 'axios';
 let draining = false;
 let retryTimer: ReturnType<typeof setTimeout> | null = null;
 
+export async function enqueue(payload: SyncPayload, listLocalId?: string): Promise<void> {
+  await syncQueue.enqueue(payload, listLocalId);
+  void drain();
+}
+
 export async function drain(): Promise<void> {
   if (draining) return;
   if (!useNetworkStore.getState().isOnline) return;
