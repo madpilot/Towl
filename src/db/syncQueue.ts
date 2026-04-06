@@ -30,13 +30,22 @@ export const UpdateItemDescPayloadSchema = z.object({
 });
 export type UpdateItemDescPayload = z.infer<typeof UpdateItemDescPayloadSchema>;
 
+const ServerCategorySchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  ordering: z.number(),
+});
+export type ServerCategory = z.infer<typeof ServerCategorySchema>;
+
 export const UpdateItemPayloadSchema = z.object({
   opType: z.literal('UPDATE_ITEM'),
   listServerId: z.number(),
   itemServerId: z.number(),
   itemLocalId: z.string(),
   name: z.string(),
+  description: z.string(),
   iconKey: z.string().nullable(),
+  category: ServerCategorySchema.nullable(),
 });
 export type UpdateItemPayload = z.infer<typeof UpdateItemPayloadSchema>;
 

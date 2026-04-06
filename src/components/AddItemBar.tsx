@@ -7,6 +7,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import KitchenOwlIcon from '@/components/KitchenOwlIcon';
+import CameraIcon from '@/components/icons/CameraIcon';
 import { useItemSuggestions } from '@/hooks/useItemSuggestions';
 import { Colors, Spacing, Radii, FontSize } from '@/theme';
 import type { ItemSuggestion } from '@/hooks/useItemSuggestions';
@@ -57,7 +58,7 @@ export default function AddItemBar({ onAdd }: AddItemBarProps) {
           {value.trim() ? (
             <Text style={styles.addBtnPlus}>+</Text>
           ) : (
-            <Text style={styles.addBtnCamera}>📷</Text>
+            <CameraIcon size={20} color={Colors.white} />
           )}
         </TouchableOpacity>
       </View>
@@ -162,9 +163,6 @@ const styles = StyleSheet.create({
     fontWeight: '300',
     lineHeight: 28,
     includeFontPadding: false,
-  },
-  addBtnCamera: {
-    fontSize: 18,
   },
   suggestions: {
     backgroundColor: Colors.white,

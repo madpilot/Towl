@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import * as SecureStore from 'expo-secure-store';
 import * as itemsDb from '@/db/items';
 import * as listsDb from '@/db/lists';
 import * as syncManager from '@/sync/syncManager';
@@ -22,9 +22,10 @@ import { useSyncStore } from '@/store/syncStore';
 import CategorySection from '@/components/CategorySection';
 import AddItemBar from '@/components/AddItemBar';
 import TommyOwl from '@/components/TommyOwl';
-import ListsIcon from '@/components/icons/ListsIcon';
 import SettingsIcon from '@/components/icons/SettingsIcon';
+import HouseIcon from '@/components/icons/HouseIcon';
 import { Colors, Spacing, Radii, FontSize } from '@/theme';
+import { SECURE_STORE_KEYS } from '@/utils/constants';
 import type { LocalItem } from '@/db/items';
 import type { LocalList } from '@/db/lists';
 import type { ListDetailScreenProps } from '@/navigation/types';
@@ -48,10 +49,9 @@ function groupByCategory(items: LocalItem[]): { category: string; items: LocalIt
   const ordered = CATEGORY_ORDER
     .filter((c) => map.has(c))
     .map((c) => ({ category: c, items: map.get(c) ?? [] }));
-  // Append any unknown categories not in the order list
-  for (const [cat, items] of map.entries()) {
+  for (const [cat, catItems] of map.entries()) {
     if (!CATEGORY_ORDER.includes(cat)) {
-      ordered.push({ category: cat, items });
+      ordered.push({ category: cat, items: catItems });
     }
   }
   return ordered;
@@ -59,13 +59,10 @@ function groupByCategory(items: LocalItem[]): { category: string; items: LocalIt
 
 // ─── Screen ──────────────────────────────────────────────────────
 
-export default function ListDetailScreen({ route, navigation }: ListDetailScreenProps) {
-  const { listLocalId, listServerId, listName } = route.params;
-
-  // Active list identity — can be switched via the picker
-  const [activeLocalId, setActiveLocalId] = useState(listLocalId);
-  const [activeServerId, setActiveServerId] = useState<number | null>(listServerId);
-  const [activeName, setActiveName] = useState(listName);
+export default function ListDetailScreen({ navigation }: ListDetailScreenProps) {
+  const [activeLocalId, setActiveLocalId] = useState<string | null>(null);
+  const [activeServerId, setActiveServerId] = useState<number | null>(null);
+  const [activeName, setActiveName] = useState('');
 
   const [items, setItems] = useState<LocalItem[]>([]);
   const [allLists, setAllLists] = useState<LocalList[]>([]);
@@ -77,8 +74,9 @@ export default function ListDetailScreen({ route, navigation }: ListDetailScreen
   const selectedHousehold = useHouseholdStore((s) => s.selectedHousehold);
   const householdId = selectedHousehold?.id ?? 0;
 
+
   const syncVersion = useSyncStore((s) => s.syncVersion);
-  const syncVersionMountRef = useRef(true);
+  const lastSyncVersionRef = useRef(syncVersion);
 
   // ── Data loading ───────────────────────────────────────────────
 
@@ -90,13 +88,14 @@ export default function ListDetailScreen({ route, navigation }: ListDetailScreen
   const loadLists = useCallback(async () => {
     const rows = await listsDb.getAllLists(householdId);
     setAllLists(rows);
+    return rows;
   }, [householdId]);
 
   const syncItems = useCallback(async (localId: string, serverId: number | null) => {
     if (serverId === null) return;
     try {
-      const allLists = await shoppingListsApi.getShoppingLists(householdId);
-      const apiList = allLists.find((l) => l.id === serverId);
+      const serverLists = await shoppingListsApi.getShoppingLists(householdId);
+      const apiList = serverLists.find((l) => l.id === serverId);
       if (!apiList) return;
       for (const apiItem of apiList.items) {
         const match = matchItem(apiItem.icon ?? apiItem.name);
@@ -106,7 +105,10 @@ export default function ListDetailScreen({ route, navigation }: ListDetailScreen
           apiItem.name,
           apiItem.description,
           match.iconKey,
-          match.category
+          match.category,
+          apiItem.category?.id ?? null,
+          apiItem.category?.name ?? null,
+          apiItem.category?.ordering ?? null
         );
       }
       await loadItems(localId);
@@ -115,34 +117,54 @@ export default function ListDetailScreen({ route, navigation }: ListDetailScreen
     }
   }, [householdId, loadItems]);
 
-  useFocusEffect(
-    useCallback(() => {
-      let active = true;
-      setLoading(true);
-      Promise.all([loadItems(activeLocalId), loadLists()])
-        .then(() => { if (active) setLoading(false); })
-        .catch(() => { if (active) setLoading(false); });
-      syncItems(activeLocalId, activeServerId).catch(() => {});
-      return () => { active = false; };
-    }, [activeLocalId, activeServerId, loadItems, loadLists, syncItems])
-  );
+  // Bootstrap: restore last list from SecureStore, fall back to first DB list
+  useEffect(() => {
+    let active = true;
+    async function bootstrap() {
+      const lists = await loadLists();
+      if (!active || lists.length === 0) {
+        if (active) setLoading(false);
+        return;
+      }
+
+      const lastId = await SecureStore.getItemAsync(SECURE_STORE_KEYS.LAST_LIST_LOCAL_ID);
+      const initial = (lastId ? lists.find((l) => l.localId === lastId) : null) ?? lists[0];
+
+      if (!active) return;
+      setActiveLocalId(initial.localId);
+      setActiveServerId(initial.serverId);
+      setActiveName(initial.name);
+
+      await loadItems(initial.localId);
+      if (active) setLoading(false);
+      void syncItems(initial.localId, initial.serverId);
+    }
+    void bootstrap();
+    return () => { active = false; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Reload items from DB whenever a sync pass completes so isDirty clears.
-  // The first-mount guard prevents a redundant load on top of useFocusEffect.
+  // Only fires when syncVersion actually increments — guards against re-running
+  // when activeLocalId or loadItems reference changes without a new sync pass.
   useEffect(() => {
-    if (syncVersionMountRef.current) { syncVersionMountRef.current = false; return; }
-    // loadItems is async — setState is invoked asynchronously, not synchronously.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void loadItems(activeLocalId);
+    if (syncVersion === lastSyncVersionRef.current) return;
+    lastSyncVersionRef.current = syncVersion;
+    if (activeLocalId) void loadItems(activeLocalId);
   }, [syncVersion, activeLocalId, loadItems]);
 
   const handleRefresh = useCallback(async () => {
+    if (!activeLocalId) return;
     setRefreshing(true);
     await syncItems(activeLocalId, activeServerId).catch(() => {});
     setRefreshing(false);
   }, [activeLocalId, activeServerId, syncItems]);
 
   // ── List switching ─────────────────────────────────────────────
+
+  async function persistLastList(localId: string) {
+    await SecureStore.setItemAsync(SECURE_STORE_KEYS.LAST_LIST_LOCAL_ID, localId);
+  }
 
   function switchToList(list: LocalList) {
     setActiveLocalId(list.localId);
@@ -151,6 +173,7 @@ export default function ListDetailScreen({ route, navigation }: ListDetailScreen
     setListPickerVisible(false);
     setItems([]);
     setLoading(true);
+    void persistLastList(list.localId);
     Promise.all([loadItems(list.localId), syncItems(list.localId, list.serverId)])
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -177,15 +200,17 @@ export default function ListDetailScreen({ route, navigation }: ListDetailScreen
   }, [items]);
 
   const handleDelete = useCallback(async (localId: string) => {
-    const item = items.find((i) => i.localId === localId);
-    if (!item) return;
+    // Soft-delete first, then read fresh from DB — state.serverId may be stale
+    // if markItemSynced ran asynchronously since the item was added to state.
     await itemsDb.softDeleteItem(localId);
-    if (item.serverId !== null && activeServerId !== null) {
+    const freshItem = await itemsDb.getItem(localId);
+    if (freshItem?.serverId !== null && freshItem?.serverId !== undefined
+        && activeServerId !== null && activeLocalId !== null) {
       await syncManager.enqueue(
         {
           opType: 'REMOVE_ITEM',
           listServerId: activeServerId,
-          itemServerId: item.serverId,
+          itemServerId: freshItem.serverId,
           itemLocalId: localId,
         },
         activeLocalId
@@ -194,21 +219,32 @@ export default function ListDetailScreen({ route, navigation }: ListDetailScreen
       await itemsDb.hardDeleteItem(localId);
     }
     setItems((prev) => prev.filter((i) => i.localId !== localId));
-  }, [items, activeLocalId, activeServerId]);
+  }, [activeLocalId, activeServerId]);
 
   const handleSave = useCallback(async (localId: string, name: string, iconKey: string | null) => {
-    const item = items.find((i) => i.localId === localId);
-    if (!item) return;
     await itemsDb.updateItemNameAndIcon(localId, name, iconKey);
-    if (item.serverId !== null && activeServerId !== null) {
+    // Read fresh from DB — React state serverId may be stale if markItemSynced
+    // ran asynchronously since the item was added to state.
+    const freshItem = await itemsDb.getItem(localId);
+    if (freshItem?.serverId !== null && freshItem?.serverId !== undefined
+        && activeServerId !== null && activeLocalId !== null) {
+      const category = freshItem.serverCategoryId !== null
+        ? {
+            id: freshItem.serverCategoryId,
+            name: freshItem.serverCategoryName ?? '',
+            ordering: freshItem.serverCategoryOrdering ?? 0,
+          }
+        : null;
       await syncManager.enqueue(
         {
           opType: 'UPDATE_ITEM',
           listServerId: activeServerId,
-          itemServerId: item.serverId,
+          itemServerId: freshItem.serverId,
           itemLocalId: localId,
           name,
+          description: freshItem.description,
           iconKey,
+          category,
         },
         activeLocalId
       );
@@ -216,7 +252,7 @@ export default function ListDetailScreen({ route, navigation }: ListDetailScreen
     setItems((prev) =>
       prev.map((i) => (i.localId === localId ? { ...i, name, iconKey } : i))
     );
-  }, [items, activeLocalId, activeServerId]);
+  }, [activeLocalId, activeServerId]);
 
   const handleAddItem = useCallback(async (
     name: string,
@@ -224,6 +260,7 @@ export default function ListDetailScreen({ route, navigation }: ListDetailScreen
     iconKey: string | null,
     category: string,
   ) => {
+    if (!activeLocalId) return;
     const match = iconKey ? { iconKey, category } : matchItem(name);
     const newItem = await itemsDb.addItemLocally(
       activeLocalId, name, description, match.iconKey, match.category
@@ -306,7 +343,6 @@ export default function ListDetailScreen({ route, navigation }: ListDetailScreen
             />
           }
         >
-          {/* Active items, grouped by category */}
           {categoryGroups.map(({ category, items: catItems }) => (
             <CategorySection
               key={category}
@@ -316,7 +352,6 @@ export default function ListDetailScreen({ route, navigation }: ListDetailScreen
             />
           ))}
 
-          {/* Done / in-the-trolley section */}
           {doneItems.length > 0 && (
             <View style={styles.trolleySection}>
               <View style={styles.trolleyHeader}>
@@ -335,25 +370,21 @@ export default function ListDetailScreen({ route, navigation }: ListDetailScreen
       )}
 
       {/* Bottom navigation bar */}
-      <BottomNav onListsPress={() => navigation.navigate('Lists')} />
+      <BottomNav onHouseholdPress={() => navigation.navigate('HouseholdPicker')} />
 
       {/* List picker modal */}
       <ListPickerModal
         visible={listPickerVisible}
         lists={allLists}
-        activeLocalId={activeLocalId}
+        activeLocalId={activeLocalId ?? ''}
         onSelect={switchToList}
         onClose={() => setListPickerVisible(false)}
-        onNewList={() => {
-          setListPickerVisible(false);
-          navigation.navigate('Lists');
-        }}
       />
     </SafeAreaView>
   );
 }
 
-// ─── SwipeableItemInline (re-exports SwipeableItem without extra margin) ─────
+// ─── SwipeableItemInline ──────────────────────────────────────────
 
 import SwipeableItem from '@/components/SwipeableItem';
 import type { SwipeableItemHandlers } from '@/components/SwipeableItem';
@@ -370,15 +401,15 @@ function SwipeableItemInline({ item, handlers }: SwipeableItemInlineProps) {
 // ─── Bottom navigation bar ────────────────────────────────────────
 
 type BottomNavProps = {
-  onListsPress: () => void;
-}
+  onHouseholdPress: () => void;
+};
 
-function BottomNav({ onListsPress }: BottomNavProps) {
+function BottomNav({ onHouseholdPress }: BottomNavProps) {
   return (
     <View style={navStyles.bar}>
-      <TouchableOpacity style={navStyles.navBtn} onPress={onListsPress} activeOpacity={0.7}>
-        <ListsIcon color={Colors.mint} size={24} />
-        <Text style={navStyles.navLabel}>Lists</Text>
+      <TouchableOpacity style={navStyles.navBtn} onPress={onHouseholdPress} activeOpacity={0.7}>
+        <HouseIcon color={Colors.mint} size={24} />
+        <Text style={navStyles.navLabel}>Household</Text>
       </TouchableOpacity>
 
       <View style={navStyles.owlWrap}>
@@ -401,7 +432,6 @@ type ListPickerModalProps = {
   activeLocalId: string;
   onSelect: (list: LocalList) => void;
   onClose: () => void;
-  onNewList: () => void;
 }
 
 function ListPickerModal({
@@ -410,7 +440,6 @@ function ListPickerModal({
   activeLocalId,
   onSelect,
   onClose,
-  onNewList,
 }: ListPickerModalProps) {
   return (
     <Modal
@@ -440,9 +469,6 @@ function ListPickerModal({
               {list.isDirty && <View style={pickerStyles.dirtyDot} />}
             </TouchableOpacity>
           ))}
-          <TouchableOpacity style={pickerStyles.newRow} onPress={onNewList} activeOpacity={0.7}>
-            <Text style={pickerStyles.newText}>+ New list</Text>
-          </TouchableOpacity>
         </View>
       </TouchableOpacity>
     </Modal>
@@ -610,17 +636,5 @@ const pickerStyles = StyleSheet.create({
     height: 7,
     borderRadius: Radii.full,
     backgroundColor: Colors.yellow,
-  },
-  newRow: {
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.xl,
-    borderTopWidth: 1,
-    borderTopColor: Colors.mintPale,
-    backgroundColor: Colors.white,
-  },
-  newText: {
-    fontSize: FontSize.small,
-    fontWeight: '700',
-    color: Colors.mintLight,
   },
 });

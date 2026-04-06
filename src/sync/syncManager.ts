@@ -25,6 +25,7 @@ export async function drain(): Promise<void> {
   store.setStatus('syncing');
 
   let anyRemoved = false;
+  let failedDuringDrain = false;
 
   try {
     const ops = await syncQueue.getAll();
@@ -53,6 +54,7 @@ export async function drain(): Promise<void> {
           await syncQueue.incrementAttempts(op.id);
           const delay = SYNC_BACKOFF_MS[Math.min(op.attempts, SYNC_BACKOFF_MS.length - 1)];
           scheduleRetry(delay);
+          failedDuringDrain = true;
           break;
         }
       }
@@ -63,6 +65,9 @@ export async function drain(): Promise<void> {
     useSyncStore.getState().setPendingCount(remaining);
     useSyncStore.getState().setStatus(remaining > 0 ? 'error' : 'idle');
     if (anyRemoved) useSyncStore.getState().bumpSyncVersion();
+    // Re-drain if ops were concurrently enqueued while this pass was running.
+    // Don't re-drain immediately after a failure — scheduleRetry handles backoff.
+    if (remaining > 0 && !failedDuringDrain) void drain();
   }
 }
 
@@ -94,7 +99,13 @@ async function dispatchPayload(payload: SyncPayload): Promise<void> {
         payload.name,
         payload.description
       );
-      await itemsDb.markItemSynced(payload.itemLocalId, result.id);
+      await itemsDb.markItemSynced(
+        payload.itemLocalId,
+        result.id,
+        result.category?.id ?? null,
+        result.category?.name ?? null,
+        result.category?.ordering ?? null
+      );
       break;
     }
 
@@ -120,10 +131,11 @@ async function dispatchPayload(payload: SyncPayload): Promise<void> {
 
     case 'UPDATE_ITEM': {
       await api.updateItem(
-        payload.listServerId,
         payload.itemServerId,
         payload.name,
-        payload.iconKey
+        payload.description,
+        payload.iconKey,
+        payload.category
       );
       break;
     }

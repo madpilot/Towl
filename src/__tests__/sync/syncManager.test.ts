@@ -101,12 +101,15 @@ describe('drain()', () => {
     (syncQueue.getAll as jest.Mock)
       .mockResolvedValueOnce([op])
       .mockResolvedValue([]);
-    (api.addItemByName as jest.Mock).mockResolvedValue({ id: 99, name: 'Milk', description: '' });
+    (api.addItemByName as jest.Mock).mockResolvedValue({
+      id: 99, name: 'Milk', description: '',
+      category: { id: 9, name: '🥛 Dairy', ordering: 0, default_key: 'dairy' },
+    });
 
     await drain();
 
     expect(api.addItemByName).toHaveBeenCalledWith(5, 'Milk', '');
-    expect(itemsDb.markItemSynced).toHaveBeenCalledWith('item-local-1', 99);
+    expect(itemsDb.markItemSynced).toHaveBeenCalledWith('item-local-1', 99, 9, '🥛 Dairy', 0);
     expect(syncQueue.remove).toHaveBeenCalledWith('op-1');
   });
 
@@ -179,7 +182,9 @@ describe('drain()', () => {
         itemServerId: 12,
         itemLocalId: 'item-local-1',
         name: 'Almond Milk',
+        description: '2 bunches',
         iconKey: 'milk_carton',
+        category: { id: 9, name: '🥛 Dairy', ordering: 0 },
       },
     };
     (syncQueue.getAll as jest.Mock)
@@ -189,7 +194,7 @@ describe('drain()', () => {
 
     await drain();
 
-    expect(api.updateItem).toHaveBeenCalledWith(5, 12, 'Almond Milk', 'milk_carton');
+    expect(api.updateItem).toHaveBeenCalledWith(12, 'Almond Milk', '2 bunches', 'milk_carton', { id: 9, name: '🥛 Dairy', ordering: 0 });
     expect(syncQueue.remove).toHaveBeenCalledWith('op-upd');
   });
 
@@ -265,5 +270,26 @@ describe('drain()', () => {
       expect(syncQueue.remove).not.toHaveBeenCalled();
       expect(mockBumpSyncVersion).not.toHaveBeenCalled();
     });
+  });
+
+  it('resets draining flag after completion so a follow-up drain processes remaining ops', async () => {
+    // Simulates the case where ops were enqueued concurrently during a drain.
+    // After the first drain completes (with remaining ops in the queue), `draining`
+    // must be reset to false so the internally re-invoked drain (or any caller) can
+    // pick up the remaining ops immediately.
+    const op = makeAddOp();
+    const op2 = makeAddOp({ id: 'op-2' });
+    (syncQueue.getAll as jest.Mock)
+      .mockResolvedValueOnce([op])   // first drain: initial read
+      .mockResolvedValueOnce([op2])  // first drain: finally remaining (re-drain triggered)
+      .mockResolvedValueOnce([op2])  // second drain: initial read
+      .mockResolvedValue([]);         // second drain: finally remaining
+    (api.addItemByName as jest.Mock).mockResolvedValue({ id: 99 });
+
+    await drain();
+    // Verify draining flag was reset: a second explicit drain runs successfully.
+    await drain();
+
+    expect(api.addItemByName).toHaveBeenCalledTimes(2);
   });
 });

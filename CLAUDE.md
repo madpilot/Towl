@@ -228,3 +228,71 @@ describe('syncQueue', () => {
 - ESLint and TypeScript must be clean (`npm run lint` and `npm run typecheck` exit 0) before pushing
 - All tests must pass (`npm run test:ci` exit 0) before pushing
 - Fixes to shared files must be backported down the stack via `git checkout <branch> -- <file>`
+
+## KitchenOwl API Reference
+
+### Data model
+KitchenOwl items are **catalog-level entities** shared across a household. Name and icon are catalog properties; `description` is the only per-list-instance field. Shopping lists hold references to catalog items — not independent copies.
+
+### Relevant endpoints
+
+| Action | Method | Path | Body |
+|--------|--------|------|------|
+| Fetch lists + items | GET | `/household/{id}/shoppinglist` | — |
+| Add item to list | POST | `/shoppinglist/{listId}/add-item-by-name` | `{name, description}` |
+| Remove item from list | DELETE | `/shoppinglist/{listId}/item` | `{item_id}` |
+| Update item description | POST | `/shoppinglist/{listId}/item/{itemId}` | `{description}` |
+| **Update item name/icon** | POST | `/item/{itemId}` | see below |
+| Create list | POST | `/household/{id}/shoppinglist` | `{name}` |
+| Delete list | DELETE | `/shoppinglist/{id}` | — |
+
+### Updating an item (`POST /item/{itemId}`)
+
+The endpoint expects the full item object. At minimum include `name`, `icon` (omit if null), and `category`:
+
+```json
+{
+  "name": "celery",
+  "icon": "celery",
+  "category": { "id": 4, "name": "🥬 Fruits and vegetables", "ordering": 0 }
+}
+```
+
+`category` is a nested object — not a flat `category_id`. Send `null` / omit for items with no server category yet.
+
+The category `id` + `name` + `ordering` come from `GET /household/{id}/category` (or from the `category` field on items returned by the shopping list endpoint). We store `server_category_id`, `server_category_name`, and `server_category_ordering` on `local_items` for this purpose, populated when syncing from server (`upsertItemFromServer`) and after an ADD_ITEM drain (`markItemSynced`).
+
+## Known Patterns and Pitfalls
+
+### Stale React state vs. DB state
+`syncManager.drain()` runs asynchronously after `enqueue()`. By the time the user triggers a follow-up action (edit, delete), `markItemSynced` may have already updated `server_id` in the DB while React state still shows `serverId: null`.
+
+**Rule**: Any sync op that depends on `serverId` (UPDATE_ITEM, REMOVE_ITEM) must read fresh from the DB via `itemsDb.getItem(localId)`, not from React state:
+
+```typescript
+const freshItem = await itemsDb.getItem(localId);
+if (freshItem?.serverId !== null && freshItem?.serverId !== undefined) {
+  await syncManager.enqueue({ opType: 'UPDATE_ITEM', itemServerId: freshItem.serverId, ... });
+}
+```
+
+### Dirty indicator after sync
+`item.isDirty` is shown as a yellow dot in `SwipeableItem`. It is set to `true` on local writes and cleared by `markItemSynced` in the DB — but React state is not automatically updated. The screen watches `useSyncStore` status and reloads items from DB whenever it transitions to `'idle'`:
+
+```typescript
+const syncStatus = useSyncStore((s) => s.status);
+useEffect(() => {
+  if (syncStatus === 'idle' && activeLocalId) void loadItems(activeLocalId);
+}, [syncStatus, activeLocalId, loadItems]);
+```
+
+### `beforeAll` for DB cache priming in tests
+When a test file exercises DB functions, `getDb()` calls `getFirstAsync` internally for the schema version check. If tests mock `mockResolvedValueOnce`, the schema check consumes the first mock value. Prime the DB cache once with `beforeAll` so individual tests only mock their own queries:
+
+```typescript
+beforeAll(async () => {
+  (SQLite.openDatabaseAsync as jest.Mock).mockResolvedValue(mockDb);
+  const { getDb } = require('@/db/schema');
+  await getDb();
+});
+```
