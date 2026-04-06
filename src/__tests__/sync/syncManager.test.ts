@@ -99,12 +99,15 @@ describe('drain()', () => {
     (syncQueue.getAll as jest.Mock)
       .mockResolvedValueOnce([op])
       .mockResolvedValue([]);
-    (api.addItemByName as jest.Mock).mockResolvedValue({ id: 99, name: 'Milk', description: '' });
+    (api.addItemByName as jest.Mock).mockResolvedValue({
+      id: 99, name: 'Milk', description: '',
+      category: { id: 9, name: '🥛 Dairy', ordering: 0, default_key: 'dairy' },
+    });
 
     await drain();
 
     expect(api.addItemByName).toHaveBeenCalledWith(5, 'Milk', '');
-    expect(itemsDb.markItemSynced).toHaveBeenCalledWith('item-local-1', 99);
+    expect(itemsDb.markItemSynced).toHaveBeenCalledWith('item-local-1', 99, 9, '🥛 Dairy', 0);
     expect(syncQueue.remove).toHaveBeenCalledWith('op-1');
   });
 
@@ -178,6 +181,7 @@ describe('drain()', () => {
         itemLocalId: 'item-local-1',
         name: 'Almond Milk',
         iconKey: 'milk_carton',
+        category: { id: 9, name: '🥛 Dairy', ordering: 0 },
       },
     };
     (syncQueue.getAll as jest.Mock)
@@ -187,7 +191,7 @@ describe('drain()', () => {
 
     await drain();
 
-    expect(api.updateItem).toHaveBeenCalledWith(5, 12, 'Almond Milk', 'milk_carton');
+    expect(api.updateItem).toHaveBeenCalledWith(12, 'Almond Milk', 'milk_carton', { id: 9, name: '🥛 Dairy', ordering: 0 });
     expect(syncQueue.remove).toHaveBeenCalledWith('op-upd');
   });
 

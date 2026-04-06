@@ -5,11 +5,13 @@ import { getApiClient } from './client';
 // Matches the flat item objects returned both inline in the list response
 // and from the individual /shoppinglist/{id}/items endpoint.
 
-const ApiCategorySchema = z.object({
+export const ApiCategorySchema = z.object({
   id: z.number(),
   name: z.string(),
+  ordering: z.number().optional().default(0),
   default_key: z.string().nullable(),
 });
+export type ApiCategory = z.infer<typeof ApiCategorySchema>;
 
 export const ApiShoppingListItemSchema = z.object({
   id: z.number(),
@@ -80,13 +82,16 @@ export async function updateItemDescription(
 }
 
 export async function updateItem(
-  listId: number,
   itemId: number,
   name: string,
-  iconKey: string | null
+  iconKey: string | null,
+  category: { id: number; name: string; ordering: number } | null
 ): Promise<void> {
   const client = getApiClient();
-  await client.post(`/shoppinglist/${listId}/item/${itemId}`, { name, icon: iconKey });
+  const body: Record<string, unknown> = { name };
+  if (iconKey !== null) body.icon = iconKey;
+  if (category !== null) body.category = category;
+  await client.post(`/item/${itemId}`, body);
 }
 
 export async function createShoppingList(name: string, householdId: number): Promise<ApiShoppingList> {

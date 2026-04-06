@@ -18,6 +18,7 @@ import * as shoppingListsApi from '@/api/shoppinglists';
 import { recordItemUsed } from '@/db/history';
 import { matchItem } from '@/data/foodMatcher';
 import { useHouseholdStore } from '@/store/householdStore';
+import { useSyncStore } from '@/store/syncStore';
 import CategorySection from '@/components/CategorySection';
 import AddItemBar from '@/components/AddItemBar';
 import TommyOwl from '@/components/TommyOwl';
@@ -72,6 +73,7 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
 
   const selectedHousehold = useHouseholdStore((s) => s.selectedHousehold);
   const householdId = selectedHousehold?.id ?? 0;
+  const syncStatus = useSyncStore((s) => s.status);
 
   // ── Data loading ───────────────────────────────────────────────
 
@@ -100,7 +102,10 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
           apiItem.name,
           apiItem.description,
           match.iconKey,
-          match.category
+          match.category,
+          apiItem.category?.id ?? null,
+          apiItem.category?.name ?? null,
+          apiItem.category?.ordering ?? null
         );
       }
       await loadItems(localId);
@@ -135,6 +140,14 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
     return () => { active = false; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // When sync drains to idle, reload items from DB so isDirty flags reflect
+  // the current persisted state (e.g. dirty dot clears after a successful sync).
+  useEffect(() => {
+    if (syncStatus === 'idle' && activeLocalId) {
+      void loadItems(activeLocalId);
+    }
+  }, [syncStatus, activeLocalId, loadItems]);
 
   const handleRefresh = useCallback(async () => {
     if (!activeLocalId) return;
@@ -205,18 +218,28 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
   }, [activeLocalId, activeServerId]);
 
   const handleSave = useCallback(async (localId: string, name: string, iconKey: string | null) => {
-    const item = items.find((i) => i.localId === localId);
-    if (!item) return;
     await itemsDb.updateItemNameAndIcon(localId, name, iconKey);
-    if (item.serverId !== null && activeServerId !== null && activeLocalId !== null) {
+    // Read fresh from DB — React state serverId may be stale if markItemSynced
+    // ran asynchronously since the item was added to state.
+    const freshItem = await itemsDb.getItem(localId);
+    if (freshItem?.serverId !== null && freshItem?.serverId !== undefined
+        && activeServerId !== null && activeLocalId !== null) {
+      const category = freshItem.serverCategoryId !== null
+        ? {
+            id: freshItem.serverCategoryId,
+            name: freshItem.serverCategoryName ?? '',
+            ordering: freshItem.serverCategoryOrdering ?? 0,
+          }
+        : null;
       await syncManager.enqueue(
         {
           opType: 'UPDATE_ITEM',
           listServerId: activeServerId,
-          itemServerId: item.serverId,
+          itemServerId: freshItem.serverId,
           itemLocalId: localId,
           name,
           iconKey,
+          category,
         },
         activeLocalId
       );
@@ -224,7 +247,7 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
     setItems((prev) =>
       prev.map((i) => (i.localId === localId ? { ...i, name, iconKey } : i))
     );
-  }, [items, activeLocalId, activeServerId]);
+  }, [activeLocalId, activeServerId]);
 
   const handleAddItem = useCallback(async (
     name: string,
