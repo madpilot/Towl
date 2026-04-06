@@ -120,7 +120,6 @@ async function dispatchPayload(payload: SyncPayload): Promise<void> {
 
     case 'UPDATE_ITEM': {
       await api.updateItem(
-        payload.listServerId,
         payload.itemServerId,
         payload.name,
         payload.iconKey

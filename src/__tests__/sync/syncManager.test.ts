@@ -187,7 +187,7 @@ describe('drain()', () => {
 
     await drain();
 
-    expect(api.updateItem).toHaveBeenCalledWith(5, 12, 'Almond Milk', 'milk_carton');
+    expect(api.updateItem).toHaveBeenCalledWith(12, 'Almond Milk', 'milk_carton');
     expect(syncQueue.remove).toHaveBeenCalledWith('op-upd');
   });
 

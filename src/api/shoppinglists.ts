@@ -80,13 +80,14 @@ export async function updateItemDescription(
 }
 
 export async function updateItem(
-  listId: number,
   itemId: number,
   name: string,
   iconKey: string | null
 ): Promise<void> {
   const client = getApiClient();
-  await client.post(`/shoppinglist/${listId}/item/${itemId}`, { name, icon: iconKey });
+  const body: Record<string, string> = { name };
+  if (iconKey !== null) body.icon = iconKey;
+  await client.post(`/item/${itemId}`, body);
 }
 
 export async function createShoppingList(name: string, householdId: number): Promise<ApiShoppingList> {

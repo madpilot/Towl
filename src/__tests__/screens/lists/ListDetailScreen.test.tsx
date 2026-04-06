@@ -222,7 +222,7 @@ describe('ListDetailScreen', () => {
 
     mockSyncStatus = 'idle';
     // Re-render to trigger the useSyncStore selector with the new status value.
-    (useSyncStore as jest.Mock).mockImplementation(
+    (useSyncStore as unknown as jest.Mock).mockImplementation(
       (selector: (s: { status: string }) => unknown) => selector({ status: 'idle' })
     );
     rerender(<ListDetailScreen {...baseProps} />);
