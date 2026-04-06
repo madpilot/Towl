@@ -46,7 +46,7 @@ describe('LoginScreen', () => {
       <LoginScreen {...baseProps} />,
     );
     expect(getByText(SERVER_URL)).toBeTruthy();
-    expect(getByPlaceholderText('your_username')).toBeTruthy();
+    expect(getByPlaceholderText('tommy')).toBeTruthy();
     expect(getByPlaceholderText('••••••••')).toBeTruthy();
   });
 
@@ -63,7 +63,7 @@ describe('LoginScreen', () => {
     const { getByText, getByPlaceholderText, getByTestId } = render(
       <LoginScreen {...baseProps} />,
     );
-    fireEvent.changeText(getByPlaceholderText('your_username'), 'alice');
+    fireEvent.changeText(getByPlaceholderText('tommy'), 'alice');
     await act(async () => {
       fireEvent.press(getByTestId('login-button'));
     });
@@ -82,7 +82,7 @@ describe('LoginScreen', () => {
     const { getByPlaceholderText, getByTestId } = render(
       <LoginScreen {...baseProps} />,
     );
-    fireEvent.changeText(getByPlaceholderText('your_username'), 'alice');
+    fireEvent.changeText(getByPlaceholderText('tommy'), 'alice');
     fireEvent.changeText(getByPlaceholderText('••••••••'), 'secret');
     await act(async () => {
       fireEvent.press(getByTestId('login-button'));
@@ -106,7 +106,7 @@ describe('LoginScreen', () => {
     const { getByText, getByPlaceholderText, getByTestId } = render(
       <LoginScreen {...baseProps} />,
     );
-    fireEvent.changeText(getByPlaceholderText('your_username'), 'alice');
+    fireEvent.changeText(getByPlaceholderText('tommy'), 'alice');
     fireEvent.changeText(getByPlaceholderText('••••••••'), 'wrong');
     await act(async () => {
       fireEvent.press(getByTestId('login-button'));
@@ -124,7 +124,7 @@ describe('LoginScreen', () => {
     const { getByText, getByPlaceholderText, getByTestId } = render(
       <LoginScreen {...baseProps} />,
     );
-    fireEvent.changeText(getByPlaceholderText('your_username'), 'alice');
+    fireEvent.changeText(getByPlaceholderText('tommy'), 'alice');
     fireEvent.changeText(getByPlaceholderText('••••••••'), 'pass');
     await act(async () => {
       fireEvent.press(getByTestId('login-button'));
