@@ -100,14 +100,25 @@ const layoutStyles = StyleSheet.create({
 });
 
 // ─── Tommy Owl (onboarding variant) ──────────────────────────────────────────
+// React.memo prevents re-renders when parent state (e.g. url text) changes —
+// the bob animation's Animated.Value should never be recreated mid-animation.
 
 type OnboardingTommyProps = {
   size?: number;
   animate?: boolean;
 };
 
-export function OnboardingTommy({ size = 80, animate = false }: OnboardingTommyProps) {
+export const OnboardingTommy = React.memo(function OnboardingTommy({
+  size = 80,
+  animate = false,
+}: OnboardingTommyProps) {
   const bobAnim = useMemo(() => new Animated.Value(0), []);
+  // useMemo keeps the interpolation node stable across any re-renders that
+  // do occur, preventing React Native from touching the native animation node.
+  const translateY = useMemo(
+    () => bobAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -5] }),
+    [bobAnim]
+  );
 
   useEffect(() => {
     if (!animate) {
@@ -123,8 +134,6 @@ export function OnboardingTommy({ size = 80, animate = false }: OnboardingTommyP
     anim.start();
     return () => anim.stop();
   }, [animate, bobAnim]);
-
-  const translateY = bobAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -5] });
 
   return (
     <Animated.View style={{ transform: [{ translateY }] }}>
@@ -155,7 +164,7 @@ export function OnboardingTommy({ size = 80, animate = false }: OnboardingTommyP
       </Svg>
     </Animated.View>
   );
-}
+});
 
 // ─── Speech bubble ────────────────────────────────────────────────────────────
 
