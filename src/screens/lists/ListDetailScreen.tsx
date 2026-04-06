@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -73,7 +73,10 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
 
   const selectedHousehold = useHouseholdStore((s) => s.selectedHousehold);
   const householdId = selectedHousehold?.id ?? 0;
-  const syncStatus = useSyncStore((s) => s.status);
+
+
+  const syncVersion = useSyncStore((s) => s.syncVersion);
+  const lastSyncVersionRef = useRef(syncVersion);
 
   // ── Data loading ───────────────────────────────────────────────
 
@@ -141,13 +144,14 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // When sync drains to idle, reload items from DB so isDirty flags reflect
-  // the current persisted state (e.g. dirty dot clears after a successful sync).
+  // Reload items from DB whenever a sync pass completes so isDirty clears.
+  // Only fires when syncVersion actually increments — guards against re-running
+  // when activeLocalId or loadItems reference changes without a new sync pass.
   useEffect(() => {
-    if (syncStatus === 'idle' && activeLocalId) {
-      void loadItems(activeLocalId);
-    }
-  }, [syncStatus, activeLocalId, loadItems]);
+    if (syncVersion === lastSyncVersionRef.current) return;
+    lastSyncVersionRef.current = syncVersion;
+    if (activeLocalId) void loadItems(activeLocalId);
+  }, [syncVersion, activeLocalId, loadItems]);
 
   const handleRefresh = useCallback(async () => {
     if (!activeLocalId) return;

@@ -35,11 +35,13 @@ jest.mock('@/sync/connectivityMonitor', () => ({
 
 const mockSetStatus = jest.fn();
 const mockSetPendingCount = jest.fn();
+const mockBumpSyncVersion = jest.fn();
 jest.mock('@/store/syncStore', () => ({
   useSyncStore: {
     getState: jest.fn(() => ({
       setStatus: mockSetStatus,
       setPendingCount: mockSetPendingCount,
+      bumpSyncVersion: mockBumpSyncVersion,
     })),
   },
 }));
@@ -206,6 +208,68 @@ describe('drain()', () => {
 
     expect(syncQueue.remove).toHaveBeenCalledWith('op-1');
     expect(api.addItemByName).not.toHaveBeenCalled();
+  });
+
+  describe('syncVersion', () => {
+    it('bumps syncVersion after a successful op is removed', async () => {
+      const op = makeAddOp();
+      (syncQueue.getAll as jest.Mock)
+        .mockResolvedValueOnce([op])
+        .mockResolvedValue([]);
+      (api.addItemByName as jest.Mock).mockResolvedValue({ id: 99, name: 'Milk', description: '' });
+
+      await drain();
+
+      expect(mockBumpSyncVersion).toHaveBeenCalledTimes(1);
+    });
+
+    it('bumps syncVersion when a max-retries op is dropped', async () => {
+      const op = makeAddOp({ attempts: 999 });
+      (syncQueue.getAll as jest.Mock)
+        .mockResolvedValueOnce([op])
+        .mockResolvedValue([]);
+
+      await drain();
+
+      expect(mockBumpSyncVersion).toHaveBeenCalledTimes(1);
+    });
+
+    it('bumps syncVersion when a non-retryable op is removed', async () => {
+      const op = makeAddOp();
+      (syncQueue.getAll as jest.Mock)
+        .mockResolvedValueOnce([op])
+        .mockResolvedValue([]);
+      const axiosErr = Object.assign(new Error('Bad Request'), {
+        isAxiosError: true,
+        response: { status: 400 },
+      });
+      (api.addItemByName as jest.Mock).mockRejectedValue(axiosErr);
+
+      await drain();
+
+      expect(mockBumpSyncVersion).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not bump syncVersion when queue is empty', async () => {
+      (syncQueue.getAll as jest.Mock).mockResolvedValue([]);
+
+      await drain();
+
+      expect(mockBumpSyncVersion).not.toHaveBeenCalled();
+    });
+
+    it('does not bump syncVersion when op fails with a retryable error', async () => {
+      const op = makeAddOp();
+      (syncQueue.getAll as jest.Mock)
+        .mockResolvedValueOnce([op])
+        .mockResolvedValue([op]);
+      (api.addItemByName as jest.Mock).mockRejectedValue(new Error('Network error'));
+
+      await drain();
+
+      expect(syncQueue.remove).not.toHaveBeenCalled();
+      expect(mockBumpSyncVersion).not.toHaveBeenCalled();
+    });
   });
 
   it('resets draining flag after completion so a follow-up drain processes remaining ops', async () => {

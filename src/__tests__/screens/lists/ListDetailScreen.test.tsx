@@ -48,10 +48,10 @@ jest.mock('@/store/householdStore', () => ({
   useHouseholdStore: jest.fn(() => ({ selectedHousehold: { id: 1, name: 'Home', photo: null } })),
 }));
 
-let mockSyncStatus = 'idle';
+let mockSyncVersion = 0;
 jest.mock('@/store/syncStore', () => ({
-  useSyncStore: jest.fn((selector: (s: { status: string }) => unknown) =>
-    selector({ status: mockSyncStatus })
+  useSyncStore: jest.fn((selector: (s: { syncVersion: number }) => unknown) =>
+    selector({ syncVersion: mockSyncVersion })
   ),
 }));
 
@@ -138,7 +138,7 @@ function makeItem(overrides: Partial<LocalItem> = {}): LocalItem {
 
 beforeEach(() => {
   jest.clearAllMocks();
-  mockSyncStatus = 'idle';
+  mockSyncVersion = 0;
   (SecureStore.getItemAsync as jest.Mock).mockResolvedValue(null);
   (SecureStore.setItemAsync as jest.Mock).mockResolvedValue(undefined);
   (itemsDb.getItemsForList as jest.Mock).mockResolvedValue([]);
@@ -217,16 +217,15 @@ describe('ListDetailScreen', () => {
     expect(syncManager.enqueue).not.toHaveBeenCalled();
   });
 
-  it('reloads items from db when sync status transitions to idle', async () => {
-    // Start syncing, then go idle — screen should re-fetch items from DB.
-    mockSyncStatus = 'syncing';
+  it('reloads items from db when syncVersion increments', async () => {
+    // syncVersion starts at 0; initial mount loads items once.
     const { rerender } = render(<ListDetailScreen {...baseProps} />);
     await waitFor(() => expect(itemsDb.getItemsForList).toHaveBeenCalledTimes(1));
 
-    mockSyncStatus = 'idle';
-    // Re-render to trigger the useSyncStore selector with the new status value.
+    // Simulate a completed sync pass by bumping syncVersion.
+    mockSyncVersion = 1;
     (useSyncStore as unknown as jest.Mock).mockImplementation(
-      (selector: (s: { status: string }) => unknown) => selector({ status: 'idle' })
+      (selector: (s: { syncVersion: number }) => unknown) => selector({ syncVersion: 1 })
     );
     rerender(<ListDetailScreen {...baseProps} />);
 

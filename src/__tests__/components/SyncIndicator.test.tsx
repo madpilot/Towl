@@ -16,7 +16,7 @@ import SyncIndicator from '@/components/SyncIndicator';
 import { useSyncStore } from '@/store/syncStore';
 import { useNetworkStore } from '@/sync/connectivityMonitor';
 
-type SyncState = { status: 'idle' | 'syncing' | 'error'; pendingCount: number };
+type SyncState = { status: 'idle' | 'syncing' | 'error'; pendingCount: number; syncVersion: number };
 type NetworkState = { isOnline: boolean };
 
 function mockStores(sync: SyncState, network: NetworkState) {
@@ -30,32 +30,32 @@ function mockStores(sync: SyncState, network: NetworkState) {
 
 describe('SyncIndicator', () => {
   it('renders nothing when idle, no pending, and online', () => {
-    mockStores({ status: 'idle', pendingCount: 0 }, { isOnline: true });
+    mockStores({ status: 'idle', pendingCount: 0, syncVersion: 0 }, { isOnline: true });
     const { toJSON } = render(<SyncIndicator />);
     expect(toJSON()).toBeNull();
   });
 
   it('renders offline pill when offline', () => {
-    mockStores({ status: 'idle', pendingCount: 0 }, { isOnline: false });
+    mockStores({ status: 'idle', pendingCount: 0, syncVersion: 0 }, { isOnline: false });
     const { getByTestId } = render(<SyncIndicator />);
     expect(getByTestId('sync-offline')).toBeTruthy();
   });
 
   it('renders syncing indicator when status is syncing', () => {
-    mockStores({ status: 'syncing', pendingCount: 3 }, { isOnline: true });
+    mockStores({ status: 'syncing', pendingCount: 3, syncVersion: 0 }, { isOnline: true });
     const { getByTestId } = render(<SyncIndicator />);
     expect(getByTestId('sync-syncing')).toBeTruthy();
   });
 
   it('renders error pill when status is error', () => {
-    mockStores({ status: 'error', pendingCount: 2 }, { isOnline: true });
+    mockStores({ status: 'error', pendingCount: 2, syncVersion: 0 }, { isOnline: true });
     const { getByTestId, getByText } = render(<SyncIndicator />);
     expect(getByTestId('sync-error')).toBeTruthy();
     expect(getByText('2 pending')).toBeTruthy();
   });
 
   it('renders pending pill when idle with pending count', () => {
-    mockStores({ status: 'idle', pendingCount: 5 }, { isOnline: true });
+    mockStores({ status: 'idle', pendingCount: 5, syncVersion: 0 }, { isOnline: true });
     const { getByTestId, getByText } = render(<SyncIndicator />);
     expect(getByTestId('sync-pending')).toBeTruthy();
     expect(getByText('5 pending')).toBeTruthy();

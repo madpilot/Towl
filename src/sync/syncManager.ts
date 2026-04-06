@@ -24,6 +24,7 @@ export async function drain(): Promise<void> {
   const store = useSyncStore.getState();
   store.setStatus('syncing');
 
+  let anyRemoved = false;
   let failedDuringDrain = false;
 
   try {
@@ -38,14 +39,17 @@ export async function drain(): Promise<void> {
     for (const op of ops) {
       if (op.attempts >= MAX_SYNC_RETRIES) {
         await syncQueue.remove(op.id);
+        anyRemoved = true;
         continue;
       }
       try {
         await executeOp(op);
         await syncQueue.remove(op.id);
+        anyRemoved = true;
       } catch (err) {
         if (isNonRetryable(err)) {
           await syncQueue.remove(op.id);
+          anyRemoved = true;
         } else {
           await syncQueue.incrementAttempts(op.id);
           const delay = SYNC_BACKOFF_MS[Math.min(op.attempts, SYNC_BACKOFF_MS.length - 1)];
@@ -60,6 +64,7 @@ export async function drain(): Promise<void> {
     const remaining = (await syncQueue.getAll()).length;
     useSyncStore.getState().setPendingCount(remaining);
     useSyncStore.getState().setStatus(remaining > 0 ? 'error' : 'idle');
+    if (anyRemoved) useSyncStore.getState().bumpSyncVersion();
     // Re-drain if ops were concurrently enqueued while this pass was running.
     // Don't re-drain immediately after a failure — scheduleRetry handles backoff.
     if (remaining > 0 && !failedDuringDrain) void drain();
