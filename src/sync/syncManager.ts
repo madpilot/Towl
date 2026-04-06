@@ -128,6 +128,7 @@ async function dispatchPayload(payload: SyncPayload): Promise<void> {
       await api.updateItem(
         payload.itemServerId,
         payload.name,
+        payload.description,
         payload.iconKey,
         payload.category
       );

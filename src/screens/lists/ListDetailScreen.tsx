@@ -238,6 +238,7 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
           itemServerId: freshItem.serverId,
           itemLocalId: localId,
           name,
+          description: freshItem.description,
           iconKey,
           category,
         },
