@@ -46,15 +46,23 @@ function MainNavigator() {
   return (
     <MainStack.Navigator screenOptions={{ headerShown: false }}>
       {selectedHousehold === null ? (
+        // Onboarding: only the picker is available; selecting auto-transitions
         <MainStack.Screen
           name="HouseholdPicker"
           component={HouseholdPickerScreen}
         />
       ) : (
-        <MainStack.Screen
-          name="ListDetail"
-          component={ListDetailScreen}
-        />
+        // Authenticated: list is the root; picker is reachable from the nav bar
+        <>
+          <MainStack.Screen
+            name="ListDetail"
+            component={ListDetailScreen}
+          />
+          <MainStack.Screen
+            name="HouseholdPicker"
+            component={HouseholdPickerScreen}
+          />
+        </>
       )}
     </MainStack.Navigator>
   );

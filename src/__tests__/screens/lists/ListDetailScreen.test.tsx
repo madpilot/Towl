@@ -90,7 +90,8 @@ import * as historyDb from '@/db/history';
 import type { LocalItem } from '@/db/items';
 import type { LocalList } from '@/db/lists';
 
-const baseProps = { navigation: {} as never, route: {} as never };
+const mockNavigation = { navigate: jest.fn(), canGoBack: jest.fn(() => false), goBack: jest.fn() };
+const baseProps = { navigation: mockNavigation as never, route: {} as never };
 
 function makeList(overrides: Partial<LocalList> = {}): LocalList {
   return {

@@ -21,8 +21,8 @@ import { useHouseholdStore } from '@/store/householdStore';
 import CategorySection from '@/components/CategorySection';
 import AddItemBar from '@/components/AddItemBar';
 import TommyOwl from '@/components/TommyOwl';
-import ListsIcon from '@/components/icons/ListsIcon';
 import SettingsIcon from '@/components/icons/SettingsIcon';
+import HouseIcon from '@/components/icons/HouseIcon';
 import { Colors, Spacing, Radii, FontSize } from '@/theme';
 import { SECURE_STORE_KEYS } from '@/utils/constants';
 import type { LocalItem } from '@/db/items';
@@ -58,7 +58,7 @@ function groupByCategory(items: LocalItem[]): { category: string; items: LocalIt
 
 // ─── Screen ──────────────────────────────────────────────────────
 
-export default function ListDetailScreen({}: ListDetailScreenProps) {
+export default function ListDetailScreen({ navigation }: ListDetailScreenProps) {
   const [activeLocalId, setActiveLocalId] = useState<string | null>(null);
   const [activeServerId, setActiveServerId] = useState<number | null>(null);
   const [activeName, setActiveName] = useState('');
@@ -340,7 +340,7 @@ export default function ListDetailScreen({}: ListDetailScreenProps) {
       )}
 
       {/* Bottom navigation bar */}
-      <BottomNav />
+      <BottomNav onHouseholdPress={() => navigation.navigate('HouseholdPicker')} />
 
       {/* List picker modal */}
       <ListPickerModal
@@ -370,12 +370,16 @@ function SwipeableItemInline({ item, handlers }: SwipeableItemInlineProps) {
 
 // ─── Bottom navigation bar ────────────────────────────────────────
 
-function BottomNav() {
+type BottomNavProps = {
+  onHouseholdPress: () => void;
+};
+
+function BottomNav({ onHouseholdPress }: BottomNavProps) {
   return (
     <View style={navStyles.bar}>
-      <TouchableOpacity style={navStyles.navBtn} activeOpacity={0.7}>
-        <ListsIcon color={Colors.mint} size={24} />
-        <Text style={navStyles.navLabel}>Lists</Text>
+      <TouchableOpacity style={navStyles.navBtn} onPress={onHouseholdPress} activeOpacity={0.7}>
+        <HouseIcon color={Colors.mint} size={24} />
+        <Text style={navStyles.navLabel}>Household</Text>
       </TouchableOpacity>
 
       <View style={navStyles.owlWrap}>
