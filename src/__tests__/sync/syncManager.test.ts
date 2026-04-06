@@ -202,4 +202,25 @@ describe('drain()', () => {
     expect(syncQueue.remove).toHaveBeenCalledWith('op-1');
     expect(api.addItemByName).not.toHaveBeenCalled();
   });
+
+  it('resets draining flag after completion so a follow-up drain processes remaining ops', async () => {
+    // Simulates the case where ops were enqueued concurrently during a drain.
+    // After the first drain completes (with remaining ops in the queue), `draining`
+    // must be reset to false so the internally re-invoked drain (or any caller) can
+    // pick up the remaining ops immediately.
+    const op = makeAddOp();
+    const op2 = makeAddOp({ id: 'op-2' });
+    (syncQueue.getAll as jest.Mock)
+      .mockResolvedValueOnce([op])   // first drain: initial read
+      .mockResolvedValueOnce([op2])  // first drain: finally remaining (re-drain triggered)
+      .mockResolvedValueOnce([op2])  // second drain: initial read
+      .mockResolvedValue([]);         // second drain: finally remaining
+    (api.addItemByName as jest.Mock).mockResolvedValue({ id: 99 });
+
+    await drain();
+    // Verify draining flag was reset: a second explicit drain runs successfully.
+    await drain();
+
+    expect(api.addItemByName).toHaveBeenCalledTimes(2);
+  });
 });

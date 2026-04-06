@@ -183,15 +183,17 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
   }, [items]);
 
   const handleDelete = useCallback(async (localId: string) => {
-    const item = items.find((i) => i.localId === localId);
-    if (!item) return;
+    // Soft-delete first, then read fresh from DB — state.serverId may be stale
+    // if markItemSynced ran asynchronously since the item was added to state.
     await itemsDb.softDeleteItem(localId);
-    if (item.serverId !== null && activeServerId !== null && activeLocalId !== null) {
+    const freshItem = await itemsDb.getItem(localId);
+    if (freshItem?.serverId !== null && freshItem?.serverId !== undefined
+        && activeServerId !== null && activeLocalId !== null) {
       await syncManager.enqueue(
         {
           opType: 'REMOVE_ITEM',
           listServerId: activeServerId,
-          itemServerId: item.serverId,
+          itemServerId: freshItem.serverId,
           itemLocalId: localId,
         },
         activeLocalId
@@ -200,7 +202,7 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
       await itemsDb.hardDeleteItem(localId);
     }
     setItems((prev) => prev.filter((i) => i.localId !== localId));
-  }, [items, activeLocalId, activeServerId]);
+  }, [activeLocalId, activeServerId]);
 
   const handleSave = useCallback(async (localId: string, name: string, iconKey: string | null) => {
     const item = items.find((i) => i.localId === localId);

@@ -49,6 +49,15 @@ function rowToItem(row: ItemRow): LocalItem {
   };
 }
 
+export async function getItem(localId: string): Promise<LocalItem | null> {
+  const db = await getDb();
+  const row = await db.getFirstAsync<ItemRow>(
+    'SELECT * FROM local_items WHERE local_id = ?',
+    [localId]
+  );
+  return row ? rowToItem(row) : null;
+}
+
 export async function getItemsForList(listLocalId: string): Promise<LocalItem[]> {
   const db = await getDb();
   const rows = await db.getAllAsync<ItemRow>(

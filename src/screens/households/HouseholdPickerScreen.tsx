@@ -34,9 +34,11 @@ export default function HouseholdPickerScreen({ navigation }: HouseholdPickerScr
           setError('No households found on this server.');
           return;
         }
-        // During onboarding with a single household, auto-select and let the
-        // navigator transition automatically (no explicit navigation needed).
-        if (results.length === 1 && selectedHousehold === null) {
+        // During onboarding (no back stack) with a single household, auto-select
+        // and let the navigator transition to ListDetail automatically.
+        // When reached from the nav bar (canGoBack = true), always show the list
+        // so the user can explicitly confirm or switch their household.
+        if (results.length === 1 && !canGoBack) {
           selectHousehold(results[0]);
           return;
         }
