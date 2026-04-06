@@ -323,20 +323,13 @@ export function FadeIn({ visible, delay = 0, style, children }: FadeInProps) {
 
 type FieldCardProps = {
   label: string;
-  focused?: boolean;
   children: React.ReactNode;
   style?: ViewStyle;
 };
 
-export function FieldCard({ label, focused = false, children, style }: FieldCardProps) {
+export function FieldCard({ label, children, style }: FieldCardProps) {
   return (
-    <View
-      style={[
-        fieldStyles.card,
-        focused && fieldStyles.cardFocused,
-        style,
-      ]}
-    >
+    <View style={[fieldStyles.card, style]}>
       <Text style={fieldStyles.label}>{label}</Text>
       {children}
     </View>
@@ -351,14 +344,6 @@ const fieldStyles = StyleSheet.create({
     borderRadius: 18,
     paddingVertical: 16,
     paddingHorizontal: 16,
-  },
-  cardFocused: {
-    borderColor: Colors.mint,
-    shadowColor: Colors.mintBg,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 4,
-    elevation: 0,
   },
   label: {
     fontSize: 10.5,

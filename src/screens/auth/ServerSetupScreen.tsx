@@ -28,7 +28,6 @@ function isValidUrl(s: string): boolean {
 
 export default function ServerSetupScreen({ navigation }: ServerSetupScreenProps) {
   const [url, setUrl] = useState('');
-  const [focused, setFocused] = useState(false);
   const [v, setV] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -88,12 +87,10 @@ export default function ServerSetupScreen({ navigation }: ServerSetupScreenProps
           </FadeIn>
 
           <FadeIn visible={v} delay={150} style={{ marginTop: 24 }}>
-            <FieldCard label="Server URL" focused={focused}>
+            <FieldCard label="Server URL">
               <TextInput
                 value={url}
                 onChangeText={(v) => { setUrl(v); setError(''); }}
-                onFocus={() => setFocused(true)}
-                onBlur={() => setFocused(false)}
                 onSubmitEditing={handleConnect}
                 placeholder="https://kitchenowl.example.com"
                 placeholderTextColor={Colors.textFaded}

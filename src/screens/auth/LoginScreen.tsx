@@ -28,7 +28,6 @@ export default function LoginScreen({ route }: LoginScreenProps) {
   const { serverUrl } = route.params;
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [focusedField, setFocusedField] = useState<'username' | 'password' | null>(null);
   const [v, setV] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -94,12 +93,10 @@ export default function LoginScreen({ route }: LoginScreenProps) {
           </FadeIn>
 
           <FadeIn visible={v} delay={150} style={{ marginTop: 12, gap: 10 }}>
-            <FieldCard label="Username" focused={focusedField === 'username'}>
+            <FieldCard label="Username">
               <TextInput
                 value={username}
                 onChangeText={(v) => { setUsername(v); setError(''); }}
-                onFocus={() => setFocusedField('username')}
-                onBlur={() => setFocusedField(null)}
                 onSubmitEditing={() => passwordRef.current?.focus()}
                 placeholder="your_username"
                 placeholderTextColor={Colors.textFaded}
@@ -112,14 +109,12 @@ export default function LoginScreen({ route }: LoginScreenProps) {
             </FieldCard>
 
             <View style={{ marginTop: Spacing.sm }}>
-              <FieldCard label="Password" focused={focusedField === 'password'}>
+              <FieldCard label="Password">
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <TextInput
                     ref={passwordRef}
                     value={password}
                     onChangeText={(v) => { setPassword(v); setError(''); }}
-                    onFocus={() => setFocusedField('password')}
-                    onBlur={() => setFocusedField(null)}
                     onSubmitEditing={handleLogin}
                     placeholder="••••••••"
                     placeholderTextColor={Colors.textFaded}
