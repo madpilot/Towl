@@ -102,7 +102,10 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
           apiItem.name,
           apiItem.description,
           match.iconKey,
-          match.category
+          match.category,
+          apiItem.category?.id ?? null,
+          apiItem.category?.name ?? null,
+          apiItem.category?.ordering ?? null
         );
       }
       await loadItems(localId);
@@ -221,6 +224,13 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
     const freshItem = await itemsDb.getItem(localId);
     if (freshItem?.serverId !== null && freshItem?.serverId !== undefined
         && activeServerId !== null && activeLocalId !== null) {
+      const category = freshItem.serverCategoryId !== null
+        ? {
+            id: freshItem.serverCategoryId,
+            name: freshItem.serverCategoryName ?? '',
+            ordering: freshItem.serverCategoryOrdering ?? 0,
+          }
+        : null;
       await syncManager.enqueue(
         {
           opType: 'UPDATE_ITEM',
@@ -229,6 +239,7 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
           itemLocalId: localId,
           name,
           iconKey,
+          category,
         },
         activeLocalId
       );

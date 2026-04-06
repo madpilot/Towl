@@ -94,7 +94,13 @@ async function dispatchPayload(payload: SyncPayload): Promise<void> {
         payload.name,
         payload.description
       );
-      await itemsDb.markItemSynced(payload.itemLocalId, result.id);
+      await itemsDb.markItemSynced(
+        payload.itemLocalId,
+        result.id,
+        result.category?.id ?? null,
+        result.category?.name ?? null,
+        result.category?.ordering ?? null
+      );
       break;
     }
 
@@ -122,7 +128,8 @@ async function dispatchPayload(payload: SyncPayload): Promise<void> {
       await api.updateItem(
         payload.itemServerId,
         payload.name,
-        payload.iconKey
+        payload.iconKey,
+        payload.category
       );
       break;
     }

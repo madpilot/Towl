@@ -9,6 +9,9 @@ export type LocalItem = {
   description: string;
   iconKey: string | null;
   category: string;
+  serverCategoryId: number | null;
+  serverCategoryName: string | null;
+  serverCategoryOrdering: number | null;
   isChecked: boolean;
   isImportant: boolean;
   isDirty: boolean;
@@ -25,6 +28,9 @@ type ItemRow = {
   description: string;
   icon_key: string | null;
   category: string;
+  server_category_id: number | null;
+  server_category_name: string | null;
+  server_category_ordering: number | null;
   is_checked: number;
   is_important: number;
   is_dirty: number;
@@ -41,6 +47,9 @@ function rowToItem(row: ItemRow): LocalItem {
     description: row.description,
     iconKey: row.icon_key,
     category: row.category,
+    serverCategoryId: row.server_category_id ?? null,
+    serverCategoryName: row.server_category_name ?? null,
+    serverCategoryOrdering: row.server_category_ordering ?? null,
     isChecked: row.is_checked !== 0,
     isImportant: row.is_important !== 0,
     isDirty: row.is_dirty !== 0,
@@ -94,6 +103,9 @@ export async function addItemLocally(
     description,
     iconKey,
     category,
+    serverCategoryId: null,
+    serverCategoryName: null,
+    serverCategoryOrdering: null,
     isChecked: false,
     isImportant: false,
     isDirty: true,
@@ -108,7 +120,10 @@ export async function upsertItemFromServer(
   name: string,
   description: string,
   iconKey: string | null,
-  category: string
+  category: string,
+  serverCategoryId: number | null,
+  serverCategoryName: string | null,
+  serverCategoryOrdering: number | null
 ): Promise<LocalItem> {
   const db = await getDb();
 
@@ -122,9 +137,13 @@ export async function upsertItemFromServer(
     if (existing.is_dirty === 0) {
       await db.runAsync(
         `UPDATE local_items
-         SET name=?, description=?, icon_key=?, category=?, is_dirty=0, is_deleted=0
+         SET name=?, description=?, icon_key=?, category=?,
+             server_category_id=?, server_category_name=?, server_category_ordering=?,
+             is_dirty=0, is_deleted=0
          WHERE local_id=?`,
-        [name, description, iconKey, category, existing.local_id]
+        [name, description, iconKey, category,
+         serverCategoryId, serverCategoryName, serverCategoryOrdering,
+         existing.local_id]
       );
     }
     const updated = await db.getFirstAsync<ItemRow>(
@@ -139,9 +158,11 @@ export async function upsertItemFromServer(
   await db.runAsync(
     `INSERT INTO local_items
      (local_id, server_id, list_local_id, name, description, icon_key, category,
+      server_category_id, server_category_name, server_category_ordering,
       is_checked, is_dirty, is_deleted, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, 0, ?)`,
-    [localId, serverId, listLocalId, name, description, iconKey, category, Date.now()]
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, ?)`,
+    [localId, serverId, listLocalId, name, description, iconKey, category,
+     serverCategoryId, serverCategoryName, serverCategoryOrdering, Date.now()]
   );
   const row = await db.getFirstAsync<ItemRow>(
     'SELECT * FROM local_items WHERE local_id = ?',
@@ -151,11 +172,22 @@ export async function upsertItemFromServer(
   return rowToItem(row);
 }
 
-export async function markItemSynced(localId: string, serverId: number): Promise<void> {
+export async function markItemSynced(
+  localId: string,
+  serverId: number,
+  serverCategoryId: number | null = null,
+  serverCategoryName: string | null = null,
+  serverCategoryOrdering: number | null = null
+): Promise<void> {
   const db = await getDb();
   await db.runAsync(
-    `UPDATE local_items SET server_id = ?, is_dirty = 0 WHERE local_id = ?`,
-    [serverId, localId]
+    `UPDATE local_items
+     SET server_id = ?, is_dirty = 0,
+         server_category_id = COALESCE(?, server_category_id),
+         server_category_name = COALESCE(?, server_category_name),
+         server_category_ordering = COALESCE(?, server_category_ordering)
+     WHERE local_id = ?`,
+    [serverId, serverCategoryId, serverCategoryName, serverCategoryOrdering, localId]
   );
 }
 

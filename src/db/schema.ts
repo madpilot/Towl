@@ -88,4 +88,13 @@ async function migrate(database: SQLite.SQLiteDatabase): Promise<void> {
       UPDATE schema_version SET version = 2;
     `);
   }
+
+  if (currentVersion < 3) {
+    await database.execAsync(`
+      ALTER TABLE local_items ADD COLUMN server_category_id       INTEGER;
+      ALTER TABLE local_items ADD COLUMN server_category_name     TEXT;
+      ALTER TABLE local_items ADD COLUMN server_category_ordering INTEGER;
+      UPDATE schema_version SET version = 3;
+    `);
+  }
 }
