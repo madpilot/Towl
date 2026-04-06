@@ -1,28 +1,141 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  ActivityIndicator,
-  StyleSheet,
+  Animated,
   SafeAreaView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { getHouseholds } from '@/api/households';
 import { useHouseholdStore } from '@/store/householdStore';
-import HouseIcon from '@/components/icons/HouseIcon';
-import TommyOwl from '@/components/TommyOwl';
-import { Colors, Spacing, Radii, FontSize } from '@/theme';
+import { Colors, FontSize, Radii, Spacing } from '@/theme';
 import type { Household } from '@/api/households';
 import type { HouseholdPickerScreenProps } from '@/navigation/types';
+
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
+
+function SkeletonCards() {
+  const shimmer = useMemo(() => new Animated.Value(0), []);
+
+  useEffect(() => {
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmer, { toValue: 1, duration: 650, useNativeDriver: true }),
+        Animated.timing(shimmer, { toValue: 0, duration: 650, useNativeDriver: true }),
+      ])
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [shimmer]);
+
+  return (
+    <View style={{ gap: 10 }} testID="household-loading">
+      {[0, 1, 2].map((i) => (
+        <Animated.View
+          key={i}
+          style={{
+            height: 68,
+            borderRadius: Radii.lg,
+            backgroundColor: Colors.white,
+            borderWidth: 2,
+            borderColor: Colors.mintPale,
+            opacity: shimmer,
+          }}
+        />
+      ))}
+    </View>
+  );
+}
+
+// ─── Household row ────────────────────────────────────────────────────────────
+
+type HouseholdRowProps = {
+  household: Household;
+  selected: boolean;
+  onPress: () => void;
+};
+
+function HouseholdRow({ household, selected, onPress }: HouseholdRowProps) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.7}
+      style={[rowStyles.row, selected && rowStyles.rowSelected]}
+    >
+      <Text style={rowStyles.emoji}>🏠</Text>
+      <View style={{ flex: 1 }}>
+        <Text style={[rowStyles.name, selected && rowStyles.nameSelected]}>
+          {household.name}
+        </Text>
+      </View>
+      <View style={[rowStyles.radio, selected && rowStyles.radioSelected]}>
+        {selected && (
+          <Svg width={10} height={8} viewBox="0 0 10 8" fill="none">
+            <Path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </Svg>
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+const rowStyles = {
+  row: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 14,
+    backgroundColor: Colors.white,
+    borderWidth: 2,
+    borderColor: Colors.mintPale,
+    borderRadius: Radii.lg,
+    padding: 14,
+  },
+  rowSelected: {
+    borderColor: Colors.mint,
+    backgroundColor: `${Colors.mint}14`,
+  },
+  emoji: {
+    fontSize: 24,
+    lineHeight: 28,
+    flexShrink: 0,
+  },
+  name: {
+    fontSize: 15,
+    fontWeight: '800' as const,
+    color: '#333',
+  },
+  nameSelected: {
+    color: Colors.mint,
+  },
+  radio: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: Colors.mintPale,
+    backgroundColor: Colors.white,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    flexShrink: 0,
+  },
+  radioSelected: {
+    borderColor: Colors.mint,
+    backgroundColor: Colors.mint,
+  },
+};
+
+// ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function HouseholdPickerScreen({ navigation }: HouseholdPickerScreenProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [households, setHouseholds] = useState<Household[]>([]);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
 
-  const selectedHousehold = useHouseholdStore((s) => s.selectedHousehold);
   const selectHousehold = useHouseholdStore((s) => s.selectHousehold);
+  const selectedHousehold = useHouseholdStore((s) => s.selectedHousehold);
 
   const canGoBack = navigation.canGoBack();
 
@@ -43,6 +156,9 @@ export default function HouseholdPickerScreen({ navigation }: HouseholdPickerScr
           return;
         }
         setHouseholds(results);
+        if (selectedHousehold) {
+          setSelectedId(selectedHousehold.id);
+        }
       } catch {
         setError('Could not load households. Check your network and try again.');
       } finally {
@@ -54,6 +170,7 @@ export default function HouseholdPickerScreen({ navigation }: HouseholdPickerScr
   }, []);
 
   function handleSelect(household: Household) {
+    setSelectedId(household.id);
     selectHousehold(household);
     // In-app mode: go back to the list. In onboarding mode, the conditional
     // render in RootNavigator transitions to ListDetail automatically.
@@ -75,46 +192,28 @@ export default function HouseholdPickerScreen({ navigation }: HouseholdPickerScr
             <Text style={styles.backText}>‹ Back</Text>
           </TouchableOpacity>
         )}
-        <View style={styles.titleRow}>
-          <HouseIcon color={Colors.mint} size={28} />
-          <Text style={styles.title}>Households</Text>
-        </View>
+        <Text style={styles.title}>Households</Text>
       </View>
 
       {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={Colors.mint} testID="household-loading" />
+        <View style={styles.listContainer}>
+          <SkeletonCards />
         </View>
       ) : error ? (
         <View style={styles.center}>
-          <TommyOwl size={80} />
           <Text style={styles.error}>{error}</Text>
         </View>
       ) : (
-        <FlatList
-          data={households}
-          keyExtractor={(item) => String(item.id)}
-          contentContainerStyle={styles.list}
-          renderItem={({ item }) => {
-            const isSelected = selectedHousehold?.id === item.id;
-            return (
-              <TouchableOpacity
-                style={[styles.item, isSelected && styles.itemSelected]}
-                onPress={() => handleSelect(item)}
-                activeOpacity={0.7}
-              >
-                <HouseIcon
-                  color={isSelected ? Colors.white : Colors.mint}
-                  size={20}
-                />
-                <Text style={[styles.itemName, isSelected && styles.itemNameSelected]}>
-                  {item.name}
-                </Text>
-                {isSelected && <Text style={styles.checkmark}>✓</Text>}
-              </TouchableOpacity>
-            );
-          }}
-        />
+        <View style={styles.listContainer}>
+          {households.map((hh) => (
+            <HouseholdRow
+              key={hh.id}
+              household={hh}
+              selected={selectedId === hh.id}
+              onPress={() => handleSelect(hh)}
+            />
+          ))}
+        </View>
       )}
     </SafeAreaView>
   );
@@ -126,7 +225,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.mintBg,
   },
   header: {
-    paddingHorizontal: Spacing.xxl,
+    paddingHorizontal: Spacing.xl,
     paddingTop: Spacing.lg,
     paddingBottom: Spacing.md,
     gap: Spacing.sm,
@@ -139,11 +238,6 @@ const styles = StyleSheet.create({
     color: Colors.mint,
     fontWeight: '600',
   },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
   title: {
     fontSize: FontSize.title,
     fontWeight: '900',
@@ -154,7 +248,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.xl,
     paddingHorizontal: Spacing.xxl,
   },
   error: {
@@ -163,41 +256,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '600',
   },
-  list: {
+  listContainer: {
     paddingHorizontal: Spacing.xl,
     paddingTop: Spacing.sm,
-    paddingBottom: Spacing.xxl,
     gap: Spacing.sm,
-  },
-  item: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    paddingVertical: Spacing.lg - 2,
-    paddingHorizontal: Spacing.xl,
-    backgroundColor: Colors.white,
-    borderRadius: Radii.lg,
-    shadowColor: Colors.mint,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  itemSelected: {
-    backgroundColor: Colors.mint,
-  },
-  itemName: {
-    flex: 1,
-    fontSize: FontSize.body,
-    fontWeight: '700',
-    color: Colors.textDark,
-  },
-  itemNameSelected: {
-    color: Colors.white,
-  },
-  checkmark: {
-    fontSize: FontSize.body,
-    color: Colors.white,
-    fontWeight: '800',
   },
 });

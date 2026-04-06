@@ -13,6 +13,7 @@ import {
 } from "@/sync/connectivityMonitor";
 import { drain } from "@/sync/syncManager";
 
+import WelcomeScreen from "@/screens/auth/WelcomeScreen";
 import ServerSetupScreen from "@/screens/auth/ServerSetupScreen";
 import LoginScreen from "@/screens/auth/LoginScreen";
 import HouseholdPickerScreen from "@/screens/households/HouseholdPickerScreen";
@@ -25,7 +26,10 @@ const MainStack = createNativeStackNavigator<MainStackParamList>();
 
 function AuthNavigator() {
   return (
-    <AuthStack.Navigator screenOptions={{ headerShown: false }}>
+    <AuthStack.Navigator
+      screenOptions={{ headerShown: false, animation: 'slide_from_right' }}
+    >
+      <AuthStack.Screen name="Welcome" component={WelcomeScreen} />
       <AuthStack.Screen name="ServerSetup" component={ServerSetupScreen} />
       <AuthStack.Screen name="Login" component={LoginScreen} />
     </AuthStack.Navigator>
