@@ -54,13 +54,6 @@ jest.mock('@/screens/auth/LoginScreen', () => {
   return LoginScreen;
 });
 
-jest.mock('@/screens/lists/ListsScreen', () => {
-  const React = require('react');
-  const { Text } = require('react-native');
-  function ListsScreen() { return React.createElement(Text, null, 'Lists'); }
-  return ListsScreen;
-});
-
 jest.mock('@/screens/lists/ListDetailScreen', () => {
   const React = require('react');
   const { Text } = require('react-native');
@@ -126,7 +119,7 @@ describe('RootNavigator', () => {
   it('renders app navigator when authenticated', async () => {
     mockAuth('authenticated');
     const { getByText } = render(<RootNavigator />);
-    await waitFor(() => expect(getByText('Lists')).toBeTruthy());
+    await waitFor(() => expect(getByText('ListDetail')).toBeTruthy());
   });
 
   it('renders household picker when authenticated but no household selected', async () => {
