@@ -3,9 +3,12 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 // ─── Auth stack ──────────────────────────────────────────────────────────────
 
 export type AuthStackParamList = {
+  Welcome: undefined;
   ServerSetup: undefined;
   Login: { serverUrl: string };
 };
+
+export type WelcomeScreenProps = NativeStackScreenProps<AuthStackParamList, 'Welcome'>;
 
 export type ServerSetupScreenProps = NativeStackScreenProps<
   AuthStackParamList,
