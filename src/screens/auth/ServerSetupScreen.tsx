@@ -63,10 +63,10 @@ export default function ServerSetupScreen({ navigation }: ServerSetupScreenProps
     }
   }
 
-  const bubbleMsg = error
-    || (url.length > 0 ? "Looking good! Hit connect when you're ready." : "What's the address of your KitchenOwl server?");
-
   const urlValid = isValidUrl(url.trim());
+
+  const bubbleMsg = error
+    || (urlValid ? "Looking good! Hit connect when you're ready." : "What's the address of your KitchenOwl server?");
 
   return (
     <OnboardingLayout step={1}>
