@@ -24,6 +24,8 @@ export async function drain(): Promise<void> {
   const store = useSyncStore.getState();
   store.setStatus('syncing');
 
+  let failedDuringDrain = false;
+
   try {
     const ops = await syncQueue.getAll();
     store.setPendingCount(ops.length);
@@ -48,6 +50,7 @@ export async function drain(): Promise<void> {
           await syncQueue.incrementAttempts(op.id);
           const delay = SYNC_BACKOFF_MS[Math.min(op.attempts, SYNC_BACKOFF_MS.length - 1)];
           scheduleRetry(delay);
+          failedDuringDrain = true;
           break;
         }
       }
@@ -57,6 +60,9 @@ export async function drain(): Promise<void> {
     const remaining = (await syncQueue.getAll()).length;
     useSyncStore.getState().setPendingCount(remaining);
     useSyncStore.getState().setStatus(remaining > 0 ? 'error' : 'idle');
+    // Re-drain if ops were concurrently enqueued while this pass was running.
+    // Don't re-drain immediately after a failure — scheduleRetry handles backoff.
+    if (remaining > 0 && !failedDuringDrain) void drain();
   }
 }
 

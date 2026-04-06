@@ -48,13 +48,25 @@ describe('HouseholdPickerScreen', () => {
     expect(getByTestId('household-loading')).toBeTruthy();
   });
 
-  it('auto-selects when only one household and no selection yet', async () => {
+  it('auto-selects when only one household during onboarding (canGoBack = false)', async () => {
     const household = makeHousehold();
     (getHouseholds as jest.Mock).mockResolvedValue([household]);
 
     render(<HouseholdPickerScreen {...baseProps} />);
 
     await waitFor(() => expect(mockSelectHousehold).toHaveBeenCalledWith(household));
+  });
+
+  it('does not auto-select when only one household and reached from nav bar (canGoBack = true)', async () => {
+    mockNavigation.canGoBack.mockReturnValue(true);
+    mockStore(makeHousehold());
+    const household = makeHousehold();
+    (getHouseholds as jest.Mock).mockResolvedValue([household]);
+
+    const { getByText } = render(<HouseholdPickerScreen {...baseProps} />);
+
+    await waitFor(() => expect(getByText('Home')).toBeTruthy());
+    expect(mockSelectHousehold).not.toHaveBeenCalled();
   });
 
   it('renders list of households', async () => {
