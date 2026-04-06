@@ -43,6 +43,7 @@ export const UpdateItemPayloadSchema = z.object({
   itemServerId: z.number(),
   itemLocalId: z.string(),
   name: z.string(),
+  description: z.string(),
   iconKey: z.string().nullable(),
   category: ServerCategorySchema.nullable(),
 });

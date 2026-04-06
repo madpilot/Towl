@@ -84,14 +84,23 @@ export async function updateItemDescription(
 export async function updateItem(
   itemId: number,
   name: string,
+  description: string,
   iconKey: string | null,
   category: { id: number; name: string; ordering: number } | null
 ): Promise<void> {
   const client = getApiClient();
-  const body: Record<string, unknown> = { name };
-  if (iconKey !== null) body.icon = iconKey;
-  if (category !== null) body.category = category;
-  await client.post(`/item/${itemId}`, body);
+  await client.post(`/item/${itemId}`, {
+    id: itemId,
+    name,
+    description,
+    icon: iconKey,
+    category,
+    ordering: 0,
+    default: false,
+    default_key: null,
+    created_at: null,
+    created_by: null,
+  });
 }
 
 export async function createShoppingList(name: string, householdId: number): Promise<ApiShoppingList> {

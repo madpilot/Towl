@@ -180,6 +180,7 @@ describe('drain()', () => {
         itemServerId: 12,
         itemLocalId: 'item-local-1',
         name: 'Almond Milk',
+        description: '2 bunches',
         iconKey: 'milk_carton',
         category: { id: 9, name: '🥛 Dairy', ordering: 0 },
       },
@@ -191,7 +192,7 @@ describe('drain()', () => {
 
     await drain();
 
-    expect(api.updateItem).toHaveBeenCalledWith(12, 'Almond Milk', 'milk_carton', { id: 9, name: '🥛 Dairy', ordering: 0 });
+    expect(api.updateItem).toHaveBeenCalledWith(12, 'Almond Milk', '2 bunches', 'milk_carton', { id: 9, name: '🥛 Dairy', ordering: 0 });
     expect(syncQueue.remove).toHaveBeenCalledWith('op-upd');
   });
 
