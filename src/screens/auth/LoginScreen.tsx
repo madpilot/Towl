@@ -98,7 +98,7 @@ export default function LoginScreen({ route }: LoginScreenProps) {
                 value={username}
                 onChangeText={(v) => { setUsername(v); setError(''); }}
                 onSubmitEditing={() => passwordRef.current?.focus()}
-                placeholder="your_username"
+                placeholder="tommy"
                 placeholderTextColor={Colors.textFaded}
                 style={inputTextStyle}
                 autoCapitalize="none"
