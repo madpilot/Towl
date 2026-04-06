@@ -33,14 +33,10 @@ export default function LoginScreen({ route }: LoginScreenProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPw, setShowPw] = useState(false);
-  const usernameRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
 
   useEffect(() => {
-    const t = setTimeout(() => {
-      setV(true);
-      setTimeout(() => usernameRef.current?.focus(), 500);
-    }, 200);
+    const t = setTimeout(() => setV(true), 200);
     return () => clearTimeout(t);
   }, []);
 
@@ -100,7 +96,6 @@ export default function LoginScreen({ route }: LoginScreenProps) {
           <FadeIn visible={v} delay={150} style={{ marginTop: 12, gap: 10 }}>
             <FieldCard label="Username" focused={focusedField === 'username'}>
               <TextInput
-                ref={usernameRef}
                 value={username}
                 onChangeText={(v) => { setUsername(v); setError(''); }}
                 onFocus={() => setFocusedField('username')}

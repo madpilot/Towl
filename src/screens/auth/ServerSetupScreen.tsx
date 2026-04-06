@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -32,13 +32,8 @@ export default function ServerSetupScreen({ navigation }: ServerSetupScreenProps
   const [v, setV] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const inputRef = useRef<TextInput>(null);
-
   useEffect(() => {
-    const t = setTimeout(() => {
-      setV(true);
-      setTimeout(() => inputRef.current?.focus(), 500);
-    }, 200);
+    const t = setTimeout(() => setV(true), 200);
     return () => clearTimeout(t);
   }, []);
 
@@ -95,7 +90,6 @@ export default function ServerSetupScreen({ navigation }: ServerSetupScreenProps
           <FadeIn visible={v} delay={150} style={{ marginTop: 24 }}>
             <FieldCard label="Server URL" focused={focused}>
               <TextInput
-                ref={inputRef}
                 value={url}
                 onChangeText={(v) => { setUrl(v); setError(''); }}
                 onFocus={() => setFocused(true)}
