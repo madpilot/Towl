@@ -13,7 +13,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import * as itemsDb from '@/db/items';
 import * as listsDb from '@/db/lists';
-import * as syncQueue from '@/db/syncQueue';
+import * as syncManager from '@/sync/syncManager';
 import * as shoppingListsApi from '@/api/shoppinglists';
 import { recordItemUsed } from '@/db/history';
 import { matchItem } from '@/data/foodMatcher';
@@ -168,7 +168,7 @@ export default function ListDetailScreen({ route, navigation }: ListDetailScreen
     if (!item) return;
     await itemsDb.softDeleteItem(localId);
     if (item.serverId !== null && activeServerId !== null) {
-      await syncQueue.enqueue(
+      await syncManager.enqueue(
         {
           opType: 'REMOVE_ITEM',
           listServerId: activeServerId,
@@ -188,7 +188,7 @@ export default function ListDetailScreen({ route, navigation }: ListDetailScreen
     if (!item) return;
     await itemsDb.updateItemNameAndIcon(localId, name, iconKey);
     if (item.serverId !== null && activeServerId !== null) {
-      await syncQueue.enqueue(
+      await syncManager.enqueue(
         {
           opType: 'UPDATE_ITEM',
           listServerId: activeServerId,
@@ -217,7 +217,7 @@ export default function ListDetailScreen({ route, navigation }: ListDetailScreen
     );
     await recordItemUsed(name, match.iconKey, match.category);
     if (activeServerId !== null) {
-      await syncQueue.enqueue(
+      await syncManager.enqueue(
         {
           opType: 'ADD_ITEM',
           listServerId: activeServerId,

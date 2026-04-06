@@ -20,8 +20,9 @@ jest.mock('@/db/lists', () => ({
   getAllLists: jest.fn(),
 }));
 
-jest.mock('@/db/syncQueue', () => ({
-  enqueue: jest.fn(),
+jest.mock('@/sync/syncManager', () => ({
+  enqueue: jest.fn().mockResolvedValue(undefined),
+  drain: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock('@/db/history', () => ({
@@ -87,7 +88,7 @@ import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import ListDetailScreen from '@/screens/lists/ListDetailScreen';
 import * as itemsDb from '@/db/items';
 import * as listsDb from '@/db/lists';
-import * as syncQueue from '@/db/syncQueue';
+import * as syncManager from '@/sync/syncManager';
 import * as historyDb from '@/db/history';
 import type { LocalItem } from '@/db/items';
 
@@ -131,7 +132,7 @@ beforeEach(() => {
   (itemsDb.toggleItemImportant as jest.Mock).mockResolvedValue(undefined);
   (itemsDb.updateItemNameAndIcon as jest.Mock).mockResolvedValue(undefined);
   (listsDb.getAllLists as jest.Mock).mockResolvedValue([]);
-  (syncQueue.enqueue as jest.Mock).mockResolvedValue({});
+  (syncManager.enqueue as jest.Mock).mockResolvedValue(undefined);
   (historyDb.recordItemUsed as jest.Mock).mockResolvedValue(undefined);
 });
 
@@ -167,7 +168,7 @@ describe('ListDetailScreen', () => {
         'list-local-1', 'Bread', '', 'apple', 'Produce'
       );
       expect(historyDb.recordItemUsed).toHaveBeenCalled();
-      expect(syncQueue.enqueue).toHaveBeenCalledWith(
+      expect(syncManager.enqueue).toHaveBeenCalledWith(
         expect.objectContaining({ opType: 'ADD_ITEM', listServerId: 5 }),
         'list-local-1'
       );
@@ -189,6 +190,6 @@ describe('ListDetailScreen', () => {
     await act(async () => { fireEvent.press(getByTestId('add-item-submit')); });
 
     await waitFor(() => expect(itemsDb.addItemLocally).toHaveBeenCalled());
-    expect(syncQueue.enqueue).not.toHaveBeenCalled();
+    expect(syncManager.enqueue).not.toHaveBeenCalled();
   });
 });
