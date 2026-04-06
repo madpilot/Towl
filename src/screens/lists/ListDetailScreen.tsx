@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import * as shoppingListsApi from '@/api/shoppinglists';
 import { recordItemUsed } from '@/db/history';
 import { matchItem } from '@/data/foodMatcher';
 import { useHouseholdStore } from '@/store/householdStore';
+import { useSyncStore } from '@/store/syncStore';
 import CategorySection from '@/components/CategorySection';
 import AddItemBar from '@/components/AddItemBar';
 import TommyOwl from '@/components/TommyOwl';
@@ -76,6 +77,9 @@ export default function ListDetailScreen({ route, navigation }: ListDetailScreen
   const selectedHousehold = useHouseholdStore((s) => s.selectedHousehold);
   const householdId = selectedHousehold?.id ?? 0;
 
+  const syncVersion = useSyncStore((s) => s.syncVersion);
+  const syncVersionMountRef = useRef(true);
+
   // ── Data loading ───────────────────────────────────────────────
 
   const loadItems = useCallback(async (localId: string) => {
@@ -122,6 +126,15 @@ export default function ListDetailScreen({ route, navigation }: ListDetailScreen
       return () => { active = false; };
     }, [activeLocalId, activeServerId, loadItems, loadLists, syncItems])
   );
+
+  // Reload items from DB whenever a sync pass completes so isDirty clears.
+  // The first-mount guard prevents a redundant load on top of useFocusEffect.
+  useEffect(() => {
+    if (syncVersionMountRef.current) { syncVersionMountRef.current = false; return; }
+    // loadItems is async — setState is invoked asynchronously, not synchronously.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadItems(activeLocalId);
+  }, [syncVersion, activeLocalId, loadItems]);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
