@@ -5,6 +5,7 @@ export const SECURE_STORE_KEYS = {
   SERVER_URL: 'towl_server_url',
   USER_JSON: 'towl_user_json',
   SELECTED_HOUSEHOLD: 'towl_selected_household',
+  LAST_LIST_LOCAL_ID: 'towl_last_list_local_id',
 } as const;
 
 export const SYNC_BACKOFF_MS = [5_000, 15_000, 30_000, 60_000, 120_000];

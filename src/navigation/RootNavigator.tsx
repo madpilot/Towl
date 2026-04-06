@@ -16,9 +16,7 @@ import { drain } from "@/sync/syncManager";
 import ServerSetupScreen from "@/screens/auth/ServerSetupScreen";
 import LoginScreen from "@/screens/auth/LoginScreen";
 import HouseholdPickerScreen from "@/screens/households/HouseholdPickerScreen";
-import ListsScreen from "@/screens/lists/ListsScreen";
 import ListDetailScreen from "@/screens/lists/ListDetailScreen";
-import SyncIndicator from "@/components/SyncIndicator";
 
 import type { AuthStackParamList, MainStackParamList } from "./types";
 
@@ -34,15 +32,10 @@ function AuthNavigator() {
   );
 }
 
-function HeaderRight() {
-  return <SyncIndicator />;
-}
-
 function MainNavigator() {
   const selectedHousehold = useHouseholdStore((s) => s.selectedHousehold);
 
   useEffect(() => {
-    // Start network monitoring; drain queue immediately and on reconnect.
     startNetworkMonitoring(() => {
       void drain();
     });
@@ -51,26 +44,17 @@ function MainNavigator() {
   }, []);
 
   return (
-    <MainStack.Navigator screenOptions={{ headerRight: HeaderRight }}>
+    <MainStack.Navigator screenOptions={{ headerShown: false }}>
       {selectedHousehold === null ? (
         <MainStack.Screen
           name="HouseholdPicker"
           component={HouseholdPickerScreen}
-          options={{ title: "Select Household" }}
         />
       ) : (
-        <>
-          <MainStack.Screen
-            name="Lists"
-            component={ListsScreen}
-            options={{ title: "Shopping Lists" }}
-          />
-          <MainStack.Screen
-            name="ListDetail"
-            component={ListDetailScreen}
-            options={({ route }) => ({ title: route.params.listName })}
-          />
-        </>
+        <MainStack.Screen
+          name="ListDetail"
+          component={ListDetailScreen}
+        />
       )}
     </MainStack.Navigator>
   );

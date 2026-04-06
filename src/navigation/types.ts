@@ -21,14 +21,8 @@ export type LoginScreenProps = NativeStackScreenProps<
 
 export type MainStackParamList = {
   HouseholdPicker: undefined;
-  Lists: undefined;
-  ListDetail: {
-    listLocalId: string;
-    listName: string;
-    listServerId: number | null;
-  };
+  ListDetail: undefined;
 };
 
 export type HouseholdPickerScreenProps = NativeStackScreenProps<MainStackParamList, 'HouseholdPicker'>;
-export type ListsScreenProps = NativeStackScreenProps<MainStackParamList, 'Lists'>;
 export type ListDetailScreenProps = NativeStackScreenProps<MainStackParamList, 'ListDetail'>;
