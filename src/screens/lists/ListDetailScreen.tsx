@@ -111,6 +111,12 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
           apiItem.category?.ordering ?? null
         );
       }
+      // Server is source of truth: remove local items that no longer exist on
+      // the server (deleted via web or another device while we were offline).
+      await itemsDb.removeItemsDeletedOnServer(
+        localId,
+        apiList.items.map((i) => i.id)
+      );
       await loadItems(localId);
     } catch {
       // Offline — local data is fine
