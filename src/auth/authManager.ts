@@ -26,15 +26,16 @@ export async function initializeAuth(): Promise<void> {
     return;
   }
 
-  const [tokens, user] = await Promise.all([
-    tokenStore.getTokens(),
-    tokenStore.getUser(),
-  ]);
-
-  if (!tokens || !user) {
+  const tokens = await tokenStore.getTokens();
+  if (!tokens) {
     useAuthStore.getState().setUnauthenticated();
     return;
   }
+
+  // User data is best-effort — a schema mismatch from an older install returns null,
+  // but that's fine. The interceptor will get fresh user data on the first API call
+  // if needed, and the token chain handles re-authentication transparently.
+  const user = await tokenStore.getUser();
 
   useAuthStore.getState().setServerUrl(serverUrl);
   createApiClient(serverUrl, makeSessionExpiredCallback());

@@ -1,0 +1,98 @@
+jest.mock('expo-secure-store', () => ({
+  getItemAsync: jest.fn(),
+  setItemAsync: jest.fn(),
+  deleteItemAsync: jest.fn(),
+}));
+
+jest.mock('@/api/client', () => ({
+  createApiClient: jest.fn(),
+  resetApiClient: jest.fn(),
+}));
+
+jest.mock('@/api/auth', () => ({
+  logout: jest.fn(),
+  createLongLivedToken: jest.fn(),
+}));
+
+jest.mock('@/store/householdStore', () => ({
+  restoreSelectedHousehold: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock('@/store/authStore', () => {
+  const setAuthenticated = jest.fn();
+  const setUnauthenticated = jest.fn();
+  const setServerUrl = jest.fn();
+  return {
+    useAuthStore: {
+      getState: () => ({ setAuthenticated, setUnauthenticated, setServerUrl }),
+    },
+  };
+});
+
+jest.mock('@/auth/tokenStore', () => ({
+  getServerUrl: jest.fn(),
+  getTokens: jest.fn(),
+  getUser: jest.fn(),
+  saveServerUrl: jest.fn(),
+  saveTokens: jest.fn(),
+  saveUser: jest.fn(),
+  saveLlt: jest.fn(),
+  clearAll: jest.fn(),
+}));
+
+import { initializeAuth } from '@/auth/authManager';
+import * as tokenStore from '@/auth/tokenStore';
+import { useAuthStore } from '@/store/authStore';
+
+const { setAuthenticated, setUnauthenticated } = useAuthStore.getState();
+
+const STORED_TOKENS = { accessToken: 'acc', refreshToken: 'ref', llt: 'llt' };
+const STORED_USER = { id: 1, name: 'Alice', username: 'alice' };
+const SERVER_URL = 'http://kitchen.local';
+
+beforeEach(() => {
+  jest.clearAllMocks();
+});
+
+describe('initializeAuth', () => {
+  it('sets unauthenticated when no server URL is stored', async () => {
+    (tokenStore.getServerUrl as jest.Mock).mockResolvedValue(null);
+
+    await initializeAuth();
+
+    expect(setUnauthenticated).toHaveBeenCalled();
+    expect(setAuthenticated).not.toHaveBeenCalled();
+  });
+
+  it('sets unauthenticated when no tokens are stored', async () => {
+    (tokenStore.getServerUrl as jest.Mock).mockResolvedValue(SERVER_URL);
+    (tokenStore.getTokens as jest.Mock).mockResolvedValue(null);
+
+    await initializeAuth();
+
+    expect(setUnauthenticated).toHaveBeenCalled();
+    expect(setAuthenticated).not.toHaveBeenCalled();
+  });
+
+  it('sets authenticated when tokens and user are stored', async () => {
+    (tokenStore.getServerUrl as jest.Mock).mockResolvedValue(SERVER_URL);
+    (tokenStore.getTokens as jest.Mock).mockResolvedValue(STORED_TOKENS);
+    (tokenStore.getUser as jest.Mock).mockResolvedValue(STORED_USER);
+
+    await initializeAuth();
+
+    expect(setAuthenticated).toHaveBeenCalledWith(STORED_USER, SERVER_URL);
+    expect(setUnauthenticated).not.toHaveBeenCalled();
+  });
+
+  it('sets authenticated even when stored user is null (schema mismatch or missing)', async () => {
+    (tokenStore.getServerUrl as jest.Mock).mockResolvedValue(SERVER_URL);
+    (tokenStore.getTokens as jest.Mock).mockResolvedValue(STORED_TOKENS);
+    (tokenStore.getUser as jest.Mock).mockResolvedValue(null);
+
+    await initializeAuth();
+
+    expect(setAuthenticated).toHaveBeenCalledWith(null, SERVER_URL);
+    expect(setUnauthenticated).not.toHaveBeenCalled();
+  });
+});
