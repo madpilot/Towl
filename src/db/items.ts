@@ -231,3 +231,42 @@ export async function updateItemNameAndIcon(
     [name, iconKey, localId]
   );
 }
+
+/**
+ * Hard-deletes local items that were removed on the server.
+ *
+ * After a fresh server fetch we know the authoritative item list. Any local
+ * item that:
+ *   - has a serverId (was previously synced — not a pending local add), AND
+ *   - is NOT currently soft-deleted (isDeleted=1 items are pending REMOVE_ITEM
+ *     drain; leave them so the queue op can complete), AND
+ *   - whose serverId is absent from the server's current list
+ * is an orphan and must be removed.
+ *
+ * Items with serverId=null are never touched — they are queued ADD_ITEM ops
+ * that haven't reached the server yet.
+ */
+export async function removeItemsDeletedOnServer(
+  listLocalId: string,
+  serverIds: number[]
+): Promise<void> {
+  const db = await getDb();
+  if (serverIds.length === 0) {
+    // Server returned no items — delete every synced, non-pending-removal item.
+    await db.runAsync(
+      `DELETE FROM local_items
+       WHERE list_local_id = ? AND server_id IS NOT NULL AND is_deleted = 0`,
+      [listLocalId]
+    );
+  } else {
+    const placeholders = serverIds.map(() => '?').join(',');
+    await db.runAsync(
+      `DELETE FROM local_items
+       WHERE list_local_id = ?
+         AND server_id IS NOT NULL
+         AND is_deleted = 0
+         AND server_id NOT IN (${placeholders})`,
+      [listLocalId, ...serverIds]
+    );
+  }
+}

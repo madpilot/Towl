@@ -47,6 +47,61 @@ const baseRow = {
 };
 
 describe('items', () => {
+  describe('removeItemsDeletedOnServer', () => {
+    it('deletes synced clean items whose serverId is absent from the server list', async () => {
+      const { removeItemsDeletedOnServer } = getModule();
+      await removeItemsDeletedOnServer('list-1', [10, 20]);
+      expect(mockDb.runAsync).toHaveBeenCalledWith(
+        expect.stringContaining('server_id NOT IN'),
+        ['list-1', 10, 20]
+      );
+    });
+
+    it('deletes all synced non-pending-removal items when server list is empty', async () => {
+      const { removeItemsDeletedOnServer } = getModule();
+      await removeItemsDeletedOnServer('list-1', []);
+      expect(mockDb.runAsync).toHaveBeenCalledWith(
+        expect.stringContaining('server_id IS NOT NULL AND is_deleted = 0'),
+        ['list-1']
+      );
+      // Must NOT use NOT IN — empty IN clause is invalid SQL
+      expect(mockDb.runAsync).not.toHaveBeenCalledWith(
+        expect.stringContaining('NOT IN'),
+        expect.anything()
+      );
+    });
+
+    it('passes only the listLocalId and serverIds as parameters', async () => {
+      const { removeItemsDeletedOnServer } = getModule();
+      await removeItemsDeletedOnServer('list-99', [5, 6, 7]);
+      expect(mockDb.runAsync).toHaveBeenCalledWith(
+        expect.any(String),
+        ['list-99', 5, 6, 7]
+      );
+    });
+
+    it('targets only the given list (list_local_id filter is present)', async () => {
+      const { removeItemsDeletedOnServer } = getModule();
+      await removeItemsDeletedOnServer('list-A', [1]);
+      const [sql] = mockDb.runAsync.mock.calls[0] as [string, unknown[]];
+      expect(sql).toContain('list_local_id = ?');
+    });
+
+    it('excludes locally-added items by requiring server_id IS NOT NULL', async () => {
+      const { removeItemsDeletedOnServer } = getModule();
+      await removeItemsDeletedOnServer('list-1', [1]);
+      const [sql] = mockDb.runAsync.mock.calls[0] as [string, unknown[]];
+      expect(sql).toContain('server_id IS NOT NULL');
+    });
+
+    it('excludes pending-removal items by requiring is_deleted = 0', async () => {
+      const { removeItemsDeletedOnServer } = getModule();
+      await removeItemsDeletedOnServer('list-1', [1]);
+      const [sql] = mockDb.runAsync.mock.calls[0] as [string, unknown[]];
+      expect(sql).toContain('is_deleted = 0');
+    });
+  });
+
   describe('getItem', () => {
     it('returns null when item is not found', async () => {
       const { getItem } = getModule();

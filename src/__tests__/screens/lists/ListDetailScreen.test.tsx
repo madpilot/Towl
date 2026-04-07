@@ -17,6 +17,7 @@ jest.mock('@/db/items', () => ({
   softDeleteItem: jest.fn(),
   hardDeleteItem: jest.fn(),
   upsertItemFromServer: jest.fn(),
+  removeItemsDeletedOnServer: jest.fn(),
   toggleItemChecked: jest.fn(),
   toggleItemImportant: jest.fn(),
   updateItemNameAndIcon: jest.fn(),
@@ -96,6 +97,7 @@ import * as itemsDb from '@/db/items';
 import * as listsDb from '@/db/lists';
 import * as syncManager from '@/sync/syncManager';
 import * as historyDb from '@/db/history';
+import * as shoppingListsApi from '@/api/shoppinglists';
 import type { LocalItem } from '@/db/items';
 import type { LocalList } from '@/db/lists';
 
@@ -147,6 +149,7 @@ beforeEach(() => {
   (itemsDb.softDeleteItem as jest.Mock).mockResolvedValue(undefined);
   (itemsDb.hardDeleteItem as jest.Mock).mockResolvedValue(undefined);
   (itemsDb.upsertItemFromServer as jest.Mock).mockResolvedValue(makeItem());
+  (itemsDb.removeItemsDeletedOnServer as jest.Mock).mockResolvedValue(undefined);
   (itemsDb.toggleItemChecked as jest.Mock).mockResolvedValue(undefined);
   (itemsDb.toggleItemImportant as jest.Mock).mockResolvedValue(undefined);
   (itemsDb.updateItemNameAndIcon as jest.Mock).mockResolvedValue(undefined);
@@ -252,5 +255,22 @@ describe('ListDetailScreen', () => {
     // Render the screen and confirm it loads without error.
     const { getByText } = render(<ListDetailScreen {...baseProps} />);
     await waitFor(() => expect(getByText('Groceries')).toBeTruthy());
+  });
+
+  it('calls removeItemsDeletedOnServer after upserting server items', async () => {
+    const serverItem = { id: 99, name: 'Butter', description: '', icon: null, category: null };
+    // makeList() has serverId: 5, so the server list must use id: 5 to match.
+    (shoppingListsApi.getShoppingLists as jest.Mock).mockResolvedValue([
+      { id: 5, name: 'Groceries', items: [serverItem] },
+    ]);
+
+    render(<ListDetailScreen {...baseProps} />);
+
+    await waitFor(() =>
+      expect(itemsDb.removeItemsDeletedOnServer).toHaveBeenCalledWith(
+        'list-local-1',
+        [99]
+      )
+    );
   });
 });
