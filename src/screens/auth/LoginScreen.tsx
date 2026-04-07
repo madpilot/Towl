@@ -52,7 +52,7 @@ export default function LoginScreen({ route }: LoginScreenProps) {
     setLoading(true);
     try {
       const res = await authApi.login(serverUrl, username.trim(), password);
-      await onLoginSuccess(serverUrl, res.access_token, res.refresh_token, res.user);
+      await onLoginSuccess(serverUrl, res.access_token, res.refresh_token, res.user, username.trim(), password);
     } catch (err: unknown) {
       if (authApi.isAxiosAuthError(err) && err.response?.status === 401) {
         setError('Invalid username or password.');

@@ -20,6 +20,8 @@ import {
   getUser,
   saveServerUrl,
   getServerUrl,
+  saveCredentials,
+  getCredentials,
   clearAll,
 } from '@/auth/tokenStore';
 import { SECURE_STORE_KEYS } from '@/utils/constants';
@@ -88,15 +90,40 @@ describe('tokenStore', () => {
     });
   });
 
+  describe('saveCredentials / getCredentials', () => {
+    it('round-trips username and password', async () => {
+      await saveCredentials('alice', 's3cr3t');
+      const creds = await getCredentials();
+      expect(creds?.username).toBe('alice');
+      expect(creds?.password).toBe('s3cr3t');
+    });
+
+    it('returns null when nothing is stored', async () => {
+      expect(await getCredentials()).toBeNull();
+    });
+
+    it('returns null when only username is stored', async () => {
+      store[SECURE_STORE_KEYS.SAVED_USERNAME] = 'alice';
+      expect(await getCredentials()).toBeNull();
+    });
+
+    it('returns null when only password is stored', async () => {
+      store[SECURE_STORE_KEYS.SAVED_PASSWORD] = 's3cr3t';
+      expect(await getCredentials()).toBeNull();
+    });
+  });
+
   describe('clearAll', () => {
-    it('removes access token, refresh token, LLT and user', async () => {
+    it('removes access token, refresh token, LLT, user, and credentials', async () => {
       await saveTokens({ accessToken: 'a', refreshToken: 'r', llt: 'l' });
       await saveUser({ id: 1, name: 'Bob', username: 'bob' });
+      await saveCredentials('bob', 'p4ss');
 
       await clearAll();
 
       expect(await getTokens()).toBeNull();
       expect(await getUser()).toBeNull();
+      expect(await getCredentials()).toBeNull();
       // Server URL is intentionally NOT cleared (to persist across logouts)
     });
   });
