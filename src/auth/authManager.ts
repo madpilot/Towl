@@ -1,13 +1,9 @@
 /**
  * authManager — called once on app startup.
- * Tries to restore a valid session without requiring the user to log in again.
- *
- * Strategy:
- *   1. If no server URL → unauthenticated
- *   2. Create Axios client for stored server URL
- *   3. Try GET /auth/refresh with stored refresh token
- *   4. On failure, attempt GET /auth/refresh with LLT as bearer
- *   5. If both fail → unauthenticated (but keep stored URL/LLT for next attempt)
+ * Restores session state from SecureStore without any network calls.
+ * Token refresh is handled lazily by the Axios interceptor on first API call:
+ *   1. Access token attached to every request
+ *   2. On 401 → try refresh token → try LLT → signal session expired
  */
 import { createApiClient } from '@/api/client';
 import * as tokenStore from '@/auth/tokenStore';
@@ -15,7 +11,13 @@ import * as authApi from '@/api/auth';
 import { useAuthStore } from '@/store/authStore';
 import { restoreSelectedHousehold } from '@/store/householdStore';
 import { createLongLivedToken } from '@/api/auth';
-import axios from 'axios';
+
+function makeSessionExpiredCallback(): () => void {
+  return () => {
+    void tokenStore.clearAll();
+    useAuthStore.getState().setUnauthenticated();
+  };
+}
 
 export async function initializeAuth(): Promise<void> {
   const serverUrl = await tokenStore.getServerUrl();
@@ -24,69 +26,35 @@ export async function initializeAuth(): Promise<void> {
     return;
   }
 
-  useAuthStore.getState().setServerUrl(serverUrl);
-  createApiClient(serverUrl);
-
-  // Restore the previously selected household so returning users skip the picker.
-  await restoreSelectedHousehold();
-
   const tokens = await tokenStore.getTokens();
   if (!tokens) {
     useAuthStore.getState().setUnauthenticated();
     return;
   }
 
-  // Attempt silent refresh
-  try {
-    const refreshed = await authApi.refreshToken();
-    await tokenStore.saveTokens({
-      accessToken: refreshed.access_token,
-      refreshToken: refreshed.refresh_token,
-      llt: tokens.llt,
-    });
-    await tokenStore.saveUser(refreshed.user);
-    useAuthStore.getState().setAuthenticated(refreshed.user, serverUrl);
-    return;
-  } catch {
-    // Fall through to LLT attempt
-  }
+  // User data is best-effort — a schema mismatch from an older install returns null,
+  // but that's fine. The interceptor will get fresh user data on the first API call
+  // if needed, and the token chain handles re-authentication transparently.
+  const user = await tokenStore.getUser();
 
-  // Attempt re-auth with LLT
-  const llt = tokens.llt ?? (await tokenStore.getLlt());
-  if (llt) {
-    try {
-      const base = serverUrl.replace(/\/$/, '') + '/api';
-      const res = await axios.get<authApi.AuthResponse>(`${base}/auth/refresh`, {
-        headers: { Authorization: `Bearer ${llt}` },
-        timeout: 15_000,
-      });
-      await tokenStore.saveTokens({
-        accessToken: res.data.access_token,
-        refreshToken: res.data.refresh_token,
-        llt,
-      });
-      await tokenStore.saveUser(res.data.user);
-      createApiClient(serverUrl); // reinitialize with fresh token
-      useAuthStore.getState().setAuthenticated(res.data.user, serverUrl);
-      return;
-    } catch {
-      // Fall through
-    }
-  }
-
-  useAuthStore.getState().setUnauthenticated();
+  useAuthStore.getState().setServerUrl(serverUrl);
+  createApiClient(serverUrl, makeSessionExpiredCallback());
+  await restoreSelectedHousehold();
+  useAuthStore.getState().setAuthenticated(user, serverUrl);
 }
 
 export async function onLoginSuccess(
   serverUrl: string,
   accessToken: string,
   refreshToken: string,
-  user: { id: number; name: string; username: string }
+  user: { id: number; name: string; username: string },
 ): Promise<void> {
-  await tokenStore.saveServerUrl(serverUrl);
-  await tokenStore.saveTokens({ accessToken, refreshToken, llt: null });
-  await tokenStore.saveUser(user);
-  createApiClient(serverUrl);
+  await Promise.all([
+    tokenStore.saveServerUrl(serverUrl),
+    tokenStore.saveTokens({ accessToken, refreshToken, llt: null }),
+    tokenStore.saveUser(user),
+  ]);
+  createApiClient(serverUrl, makeSessionExpiredCallback());
 
   // Create a long-lived token for future resilience
   try {

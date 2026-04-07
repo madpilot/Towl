@@ -8,7 +8,7 @@ type AuthState = {
   user: StoredUser | null;
   serverUrl: string | null;
 
-  setAuthenticated: (user: StoredUser, serverUrl: string) => void;
+  setAuthenticated: (user: StoredUser | null, serverUrl: string) => void;
   setUnauthenticated: () => void;
   setServerUrl: (url: string) => void;
 }

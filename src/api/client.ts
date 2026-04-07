@@ -2,6 +2,7 @@ import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'ax
 import * as tokenStore from '@/auth/tokenStore';
 
 let axiosInstance: AxiosInstance | null = null;
+let sessionExpiredCallback: (() => void) | null = null;
 
 // Track requests that have already been retried to prevent infinite loops.
 const retriedRequests = new WeakSet<InternalAxiosRequestConfig>();
@@ -19,7 +20,9 @@ function notifyRefreshSubscribers(token: string | null): void {
   refreshSubscribers = [];
 }
 
-export function createApiClient(serverUrl: string): AxiosInstance {
+export function createApiClient(serverUrl: string, onSessionExpired?: () => void): AxiosInstance {
+  sessionExpiredCallback = onSessionExpired ?? null;
+
   const instance = axios.create({
     baseURL: serverUrl.replace(/\/$/, '') + '/api',
     timeout: 15_000,
@@ -66,6 +69,7 @@ export function createApiClient(serverUrl: string): AxiosInstance {
         return instance(config);
       } catch {
         notifyRefreshSubscribers(null);
+        sessionExpiredCallback?.();
         return Promise.reject(error);
       } finally {
         isRefreshing = false;
@@ -79,23 +83,44 @@ export function createApiClient(serverUrl: string): AxiosInstance {
 
 async function performRefresh(instance: AxiosInstance): Promise<string> {
   const tokens = await tokenStore.getTokens();
-  if (!tokens?.refreshToken) throw new Error('No refresh token available');
 
-  // Use raw axios (bypasses our interceptors) to avoid a retry loop.
+  // Step 1: try the refresh token.
+  if (tokens?.refreshToken) {
+    try {
+      const res = await axios.get<{ access_token: string; refresh_token: string }>(
+        `${instance.defaults.baseURL}/auth/refresh`,
+        {
+          headers: { Authorization: `Bearer ${tokens.refreshToken}` },
+          timeout: 15_000,
+        }
+      );
+      await tokenStore.saveTokens({
+        accessToken: res.data.access_token,
+        refreshToken: res.data.refresh_token,
+        llt: tokens.llt,
+      });
+      return res.data.access_token;
+    } catch {
+      // Fall through to LLT
+    }
+  }
+
+  // Step 2: try the long-lived token.
+  const llt = tokens?.llt ?? (await tokenStore.getLlt());
+  if (!llt) throw new Error('No valid token available for refresh');
+
   const res = await axios.get<{ access_token: string; refresh_token: string }>(
     `${instance.defaults.baseURL}/auth/refresh`,
     {
-      headers: { Authorization: `Bearer ${tokens.refreshToken}` },
+      headers: { Authorization: `Bearer ${llt}` },
       timeout: 15_000,
     }
   );
-
   await tokenStore.saveTokens({
     accessToken: res.data.access_token,
     refreshToken: res.data.refresh_token,
-    llt: tokens.llt,
+    llt,
   });
-
   return res.data.access_token;
 }
 
@@ -110,4 +135,5 @@ export function resetApiClient(): void {
   axiosInstance = null;
   isRefreshing = false;
   refreshSubscribers = [];
+  sessionExpiredCallback = null;
 }
