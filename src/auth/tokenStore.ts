@@ -66,29 +66,11 @@ export async function getServerUrl(): Promise<string | null> {
   return SecureStore.getItemAsync(SECURE_STORE_KEYS.SERVER_URL);
 }
 
-export async function saveCredentials(username: string, password: string): Promise<void> {
-  await Promise.all([
-    SecureStore.setItemAsync(SECURE_STORE_KEYS.SAVED_USERNAME, username),
-    SecureStore.setItemAsync(SECURE_STORE_KEYS.SAVED_PASSWORD, password),
-  ]);
-}
-
-export async function getCredentials(): Promise<{ username: string; password: string } | null> {
-  const [username, password] = await Promise.all([
-    SecureStore.getItemAsync(SECURE_STORE_KEYS.SAVED_USERNAME),
-    SecureStore.getItemAsync(SECURE_STORE_KEYS.SAVED_PASSWORD),
-  ]);
-  if (!username || !password) return null;
-  return { username, password };
-}
-
 export async function clearAll(): Promise<void> {
   await Promise.all([
     SecureStore.deleteItemAsync(SECURE_STORE_KEYS.ACCESS_TOKEN),
     SecureStore.deleteItemAsync(SECURE_STORE_KEYS.REFRESH_TOKEN),
     SecureStore.deleteItemAsync(SECURE_STORE_KEYS.LLT_TOKEN),
     SecureStore.deleteItemAsync(SECURE_STORE_KEYS.USER_JSON),
-    SecureStore.deleteItemAsync(SECURE_STORE_KEYS.SAVED_USERNAME),
-    SecureStore.deleteItemAsync(SECURE_STORE_KEYS.SAVED_PASSWORD),
   ]);
 }

@@ -94,8 +94,6 @@ describe('LoginScreen', () => {
         'acc',
         'ref',
         fakeRes.user,
-        'alice',
-        'secret',
       ),
     );
   });
