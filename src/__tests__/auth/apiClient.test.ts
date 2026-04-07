@@ -15,8 +15,6 @@ import MockAdapter from 'axios-mock-adapter';
 import { createApiClient, resetApiClient, getApiClient } from '@/api/client';
 import { SECURE_STORE_KEYS } from '@/utils/constants';
 
-// We need axios-mock-adapter for this test
-// It is installed below; if not present the test will fail informatively.
 let mock: MockAdapter;
 
 beforeAll(() => {
@@ -51,29 +49,68 @@ describe('API client', () => {
     expect(request.headers?.['Authorization']).toBe('Bearer my-token');
   });
 
-  it('silently refreshes token on 401 and retries', async () => {
+  it('silently refreshes with refresh token on 401 and retries', async () => {
     secureStore[SECURE_STORE_KEYS.ACCESS_TOKEN] = 'stale-token';
     secureStore[SECURE_STORE_KEYS.REFRESH_TOKEN] = 'good-refresh';
 
     const client = createApiClient('http://localhost:8080');
 
-    // First call → 401, then success after refresh
     mock
       .onGet('http://localhost:8080/api/shoppinglist')
       .replyOnce(401)
       .onGet('http://localhost:8080/api/shoppinglist')
       .replyOnce(200, [{ id: 1, name: 'Test' }]);
 
-    // The refresh endpoint (called via raw axios, not the instance)
-    mock.onGet('http://localhost:8080/api/auth/refresh').reply(200, {
+    mock.onGet('http://localhost:8080/api/auth/refresh').replyOnce(200, {
       access_token: 'new-token',
       refresh_token: 'new-refresh',
     });
 
     const res = await client.get('/shoppinglist');
     expect(res.data).toEqual([{ id: 1, name: 'Test' }]);
-
-    // New token should have been persisted
     expect(secureStore[SECURE_STORE_KEYS.ACCESS_TOKEN]).toBe('new-token');
+  });
+
+  it('falls back to LLT when refresh token fails, then retries', async () => {
+    secureStore[SECURE_STORE_KEYS.ACCESS_TOKEN] = 'stale-token';
+    secureStore[SECURE_STORE_KEYS.REFRESH_TOKEN] = 'expired-refresh';
+    secureStore[SECURE_STORE_KEYS.LLT_TOKEN] = 'good-llt';
+
+    const client = createApiClient('http://localhost:8080');
+
+    mock
+      .onGet('http://localhost:8080/api/shoppinglist')
+      .replyOnce(401)
+      .onGet('http://localhost:8080/api/shoppinglist')
+      .replyOnce(200, [{ id: 1, name: 'Test' }]);
+
+    // Refresh token attempt fails; LLT attempt succeeds
+    mock
+      .onGet('http://localhost:8080/api/auth/refresh')
+      .replyOnce(401)
+      .onGet('http://localhost:8080/api/auth/refresh')
+      .replyOnce(200, {
+        access_token: 'llt-new-token',
+        refresh_token: 'llt-new-refresh',
+      });
+
+    const res = await client.get('/shoppinglist');
+    expect(res.data).toEqual([{ id: 1, name: 'Test' }]);
+    expect(secureStore[SECURE_STORE_KEYS.ACCESS_TOKEN]).toBe('llt-new-token');
+  });
+
+  it('calls onSessionExpired when all token refresh attempts fail', async () => {
+    secureStore[SECURE_STORE_KEYS.ACCESS_TOKEN] = 'stale-token';
+    secureStore[SECURE_STORE_KEYS.REFRESH_TOKEN] = 'expired-refresh';
+    secureStore[SECURE_STORE_KEYS.LLT_TOKEN] = 'expired-llt';
+
+    const onSessionExpired = jest.fn();
+    const client = createApiClient('http://localhost:8080', onSessionExpired);
+
+    mock.onGet('http://localhost:8080/api/shoppinglist').reply(401);
+    mock.onGet('http://localhost:8080/api/auth/refresh').reply(401);
+
+    await expect(client.get('/shoppinglist')).rejects.toBeDefined();
+    expect(onSessionExpired).toHaveBeenCalledTimes(1);
   });
 });
