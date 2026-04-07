@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { getApiClient } from './client';
+import { ApiClientManager } from './client';
 
 export const HouseholdSchema = z.object({
   id: z.number(),
@@ -9,8 +9,11 @@ export const HouseholdSchema = z.object({
 
 export type Household = z.infer<typeof HouseholdSchema>;
 
-export async function getHouseholds(): Promise<Household[]> {
-  const client = getApiClient();
-  const res = await client.get<Household[]>('/household');
-  return res.data;
+export class HouseholdsApi {
+  constructor(private client: ApiClientManager) {}
+
+  async getHouseholds(): Promise<Household[]> {
+    const res = await this.client.get<unknown>('/household');
+    return z.array(HouseholdSchema).parse(res.data);
+  }
 }

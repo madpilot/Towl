@@ -12,7 +12,7 @@ jest.mock('expo-secure-store', () => ({
 
 import axios from 'axios';
 import MockAdapter from 'axios-mock-adapter';
-import { createApiClient, resetApiClient, getApiClient } from '@/api/client';
+import { ApiClientManager } from '@/api/client';
 import { SECURE_STORE_KEYS } from '@/utils/constants';
 
 let mock: MockAdapter;
@@ -23,7 +23,6 @@ beforeAll(() => {
 
 afterEach(() => {
   mock.reset();
-  resetApiClient();
   for (const k of Object.keys(secureStore)) delete secureStore[k];
 });
 
@@ -32,18 +31,14 @@ afterAll(() => {
 });
 
 describe('API client', () => {
-  it('throws if getApiClient called before createApiClient', () => {
-    expect(() => getApiClient()).toThrow('not initialized');
-  });
-
   it('attaches Authorization header when access token is present', async () => {
     secureStore[SECURE_STORE_KEYS.ACCESS_TOKEN] = 'my-token';
     secureStore[SECURE_STORE_KEYS.REFRESH_TOKEN] = 'ref-token';
 
-    const client = createApiClient('http://localhost:8080');
+    const manager = new ApiClientManager('http://localhost:8080');
     mock.onGet('http://localhost:8080/api/shoppinglist').reply(200, []);
 
-    await client.get('/shoppinglist');
+    await manager.get('/shoppinglist');
 
     const request = mock.history.get[0];
     expect(request.headers?.['Authorization']).toBe('Bearer my-token');
@@ -53,7 +48,7 @@ describe('API client', () => {
     secureStore[SECURE_STORE_KEYS.ACCESS_TOKEN] = 'stale-token';
     secureStore[SECURE_STORE_KEYS.REFRESH_TOKEN] = 'good-refresh';
 
-    const client = createApiClient('http://localhost:8080');
+    const manager = new ApiClientManager('http://localhost:8080');
 
     mock
       .onGet('http://localhost:8080/api/shoppinglist')
@@ -66,7 +61,7 @@ describe('API client', () => {
       refresh_token: 'new-refresh',
     });
 
-    const res = await client.get('/shoppinglist');
+    const res = await manager.get('/shoppinglist');
     expect(res.data).toEqual([{ id: 1, name: 'Test' }]);
     expect(secureStore[SECURE_STORE_KEYS.ACCESS_TOKEN]).toBe('new-token');
   });
@@ -76,7 +71,7 @@ describe('API client', () => {
     secureStore[SECURE_STORE_KEYS.REFRESH_TOKEN] = 'expired-refresh';
     secureStore[SECURE_STORE_KEYS.LLT_TOKEN] = 'good-llt';
 
-    const client = createApiClient('http://localhost:8080');
+    const manager = new ApiClientManager('http://localhost:8080');
 
     mock
       .onGet('http://localhost:8080/api/shoppinglist')
@@ -94,7 +89,7 @@ describe('API client', () => {
         refresh_token: 'llt-new-refresh',
       });
 
-    const res = await client.get('/shoppinglist');
+    const res = await manager.get('/shoppinglist');
     expect(res.data).toEqual([{ id: 1, name: 'Test' }]);
     expect(secureStore[SECURE_STORE_KEYS.ACCESS_TOKEN]).toBe('llt-new-token');
   });
@@ -105,12 +100,12 @@ describe('API client', () => {
     secureStore[SECURE_STORE_KEYS.LLT_TOKEN] = 'expired-llt';
 
     const onSessionExpired = jest.fn();
-    const client = createApiClient('http://localhost:8080', onSessionExpired);
+    const manager = new ApiClientManager('http://localhost:8080', onSessionExpired);
 
     mock.onGet('http://localhost:8080/api/shoppinglist').reply(401);
     mock.onGet('http://localhost:8080/api/auth/refresh').reply(401);
 
-    await expect(client.get('/shoppinglist')).rejects.toBeDefined();
+    await expect(manager.get('/shoppinglist')).rejects.toBeDefined();
     expect(onSessionExpired).toHaveBeenCalledTimes(1);
   });
 });

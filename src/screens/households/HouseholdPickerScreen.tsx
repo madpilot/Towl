@@ -8,8 +8,8 @@ import {
   View,
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
-import { getHouseholds } from '@/api/households';
 import { useHouseholdStore } from '@/store/householdStore';
+import { useAuthStore } from '@/store/authStore';
 import { Colors, FontSize, Radii, Spacing } from '@/theme';
 import type { Household } from '@/api/households';
 import type { HouseholdPickerScreenProps } from '@/navigation/types';
@@ -136,13 +136,14 @@ export default function HouseholdPickerScreen({ navigation }: HouseholdPickerScr
 
   const selectHousehold = useHouseholdStore((s) => s.selectHousehold);
   const selectedHousehold = useHouseholdStore((s) => s.selectedHousehold);
+  const householdsApi = useAuthStore((s) => s.householdsApi);
 
   const canGoBack = navigation.canGoBack();
 
   useEffect(() => {
     async function load() {
       try {
-        const results = await getHouseholds();
+        const results = await householdsApi?.getHouseholds() ?? [];
         if (results.length === 0) {
           setError('No households found on this server.');
           return;

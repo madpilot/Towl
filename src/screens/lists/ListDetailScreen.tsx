@@ -14,7 +14,7 @@ import * as SecureStore from 'expo-secure-store';
 import * as itemsDb from '@/db/items';
 import * as listsDb from '@/db/lists';
 import * as syncManager from '@/sync/syncManager';
-import * as shoppingListsApi from '@/api/shoppinglists';
+import { useAuthStore } from '@/store/authStore';
 import { recordItemUsed } from '@/db/history';
 import { matchItem } from '@/data/foodMatcher';
 import { useHouseholdStore } from '@/store/householdStore';
@@ -73,6 +73,7 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
 
   const selectedHousehold = useHouseholdStore((s) => s.selectedHousehold);
   const householdId = selectedHousehold?.id ?? 0;
+  const shoppingListsApi = useAuthStore((s) => s.shoppingListsApi);
 
 
   const syncVersion = useSyncStore((s) => s.syncVersion);
@@ -94,7 +95,7 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
   const syncItems = useCallback(async (localId: string, serverId: number | null) => {
     if (serverId === null) return;
     try {
-      const serverLists = await shoppingListsApi.getShoppingLists(householdId);
+      const serverLists = await shoppingListsApi?.getShoppingLists(householdId) ?? [];
       const apiList = serverLists.find((l) => l.id === serverId);
       if (!apiList) return;
       for (const apiItem of apiList.items) {
@@ -121,7 +122,7 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
     } catch {
       // Offline — local data is fine
     }
-  }, [householdId, loadItems]);
+  }, [householdId, loadItems, shoppingListsApi]);
 
   // Bootstrap: restore last list from SecureStore, fall back to first DB list
   useEffect(() => {

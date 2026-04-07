@@ -1,5 +1,8 @@
-jest.mock('@/api/households', () => ({
-  getHouseholds: jest.fn(),
+const mockGetHouseholds = jest.fn();
+jest.mock('@/store/authStore', () => ({
+  useAuthStore: jest.fn((sel: (s: { householdsApi: { getHouseholds: jest.Mock } }) => unknown) =>
+    sel({ householdsApi: { getHouseholds: mockGetHouseholds } })
+  ),
 }));
 
 jest.mock('@/store/householdStore', () => ({
@@ -16,7 +19,6 @@ jest.mock('@/components/TommyOwl', () => {
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import HouseholdPickerScreen from '@/screens/households/HouseholdPickerScreen';
-import { getHouseholds } from '@/api/households';
 import { useHouseholdStore } from '@/store/householdStore';
 import type { Household } from '@/api/households';
 
@@ -43,14 +45,14 @@ beforeEach(() => {
 
 describe('HouseholdPickerScreen', () => {
   it('shows loading indicator initially', () => {
-    (getHouseholds as jest.Mock).mockResolvedValue([]);
+    mockGetHouseholds.mockResolvedValue([]);
     const { getByTestId } = render(<HouseholdPickerScreen {...baseProps} />);
     expect(getByTestId('household-loading')).toBeTruthy();
   });
 
   it('auto-selects when only one household during onboarding (canGoBack = false)', async () => {
     const household = makeHousehold();
-    (getHouseholds as jest.Mock).mockResolvedValue([household]);
+    mockGetHouseholds.mockResolvedValue([household]);
 
     render(<HouseholdPickerScreen {...baseProps} />);
 
@@ -61,7 +63,7 @@ describe('HouseholdPickerScreen', () => {
     mockNavigation.canGoBack.mockReturnValue(true);
     mockStore(makeHousehold());
     const household = makeHousehold();
-    (getHouseholds as jest.Mock).mockResolvedValue([household]);
+    mockGetHouseholds.mockResolvedValue([household]);
 
     const { getByText } = render(<HouseholdPickerScreen {...baseProps} />);
 
@@ -70,7 +72,7 @@ describe('HouseholdPickerScreen', () => {
   });
 
   it('renders list of households', async () => {
-    (getHouseholds as jest.Mock).mockResolvedValue([
+    mockGetHouseholds.mockResolvedValue([
       makeHousehold({ id: 1, name: 'Home' }),
       makeHousehold({ id: 2, name: 'Office' }),
     ]);
@@ -84,7 +86,7 @@ describe('HouseholdPickerScreen', () => {
 
   it('calls selectHousehold when a household is tapped', async () => {
     const household = makeHousehold({ id: 2, name: 'Office' });
-    (getHouseholds as jest.Mock).mockResolvedValue([
+    mockGetHouseholds.mockResolvedValue([
       makeHousehold({ id: 1, name: 'Home' }),
       household,
     ]);
@@ -98,7 +100,7 @@ describe('HouseholdPickerScreen', () => {
 
   it('calls goBack after selecting when canGoBack is true', async () => {
     mockNavigation.canGoBack.mockReturnValue(true);
-    (getHouseholds as jest.Mock).mockResolvedValue([
+    mockGetHouseholds.mockResolvedValue([
       makeHousehold({ id: 1, name: 'Home' }),
       makeHousehold({ id: 2, name: 'Office' }),
     ]);
@@ -112,7 +114,7 @@ describe('HouseholdPickerScreen', () => {
 
   it('does not call goBack during onboarding (canGoBack false)', async () => {
     mockNavigation.canGoBack.mockReturnValue(false);
-    (getHouseholds as jest.Mock).mockResolvedValue([
+    mockGetHouseholds.mockResolvedValue([
       makeHousehold({ id: 1, name: 'Home' }),
       makeHousehold({ id: 2, name: 'Office' }),
     ]);
@@ -125,7 +127,7 @@ describe('HouseholdPickerScreen', () => {
   });
 
   it('shows error message when API fails', async () => {
-    (getHouseholds as jest.Mock).mockRejectedValue(new Error('Network error'));
+    mockGetHouseholds.mockRejectedValue(new Error('Network error'));
 
     const { getByText } = render(<HouseholdPickerScreen {...baseProps} />);
     await waitFor(() =>
@@ -136,7 +138,7 @@ describe('HouseholdPickerScreen', () => {
   it('shows back button when canGoBack is true', async () => {
     mockNavigation.canGoBack.mockReturnValue(true);
     mockStore(makeHousehold());
-    (getHouseholds as jest.Mock).mockResolvedValue([
+    mockGetHouseholds.mockResolvedValue([
       makeHousehold({ id: 1, name: 'Home' }),
       makeHousehold({ id: 2, name: 'Office' }),
     ]);

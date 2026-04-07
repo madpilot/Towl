@@ -5,13 +5,26 @@ jest.mock('expo-secure-store', () => ({
 }));
 
 jest.mock('@/api/client', () => ({
-  createApiClient: jest.fn(),
-  resetApiClient: jest.fn(),
+  ApiClientManager: jest.fn().mockImplementation(() => ({
+    axiosInstance: {},
+  })),
 }));
 
 jest.mock('@/api/auth', () => ({
-  logout: jest.fn(),
-  createLongLivedToken: jest.fn(),
+  AuthApi: jest.fn().mockImplementation(() => ({
+    createLongLivedToken: jest.fn().mockResolvedValue('llt-token'),
+    logout: jest.fn().mockResolvedValue(undefined),
+  })),
+  login: jest.fn(),
+  isAxiosAuthError: jest.fn(),
+}));
+
+jest.mock('@/api/households', () => ({
+  HouseholdsApi: jest.fn().mockImplementation(() => ({})),
+}));
+
+jest.mock('@/api/shoppinglists', () => ({
+  ShoppingListsApi: jest.fn().mockImplementation(() => ({})),
 }));
 
 jest.mock('@/store/householdStore', () => ({
@@ -22,26 +35,33 @@ jest.mock('@/store/authStore', () => {
   const setAuthenticated = jest.fn();
   const setUnauthenticated = jest.fn();
   const setServerUrl = jest.fn();
+  const setApis = jest.fn();
+  const clearApis = jest.fn();
   return {
     useAuthStore: {
-      getState: () => ({ setAuthenticated, setUnauthenticated, setServerUrl }),
+      getState: () => ({ setAuthenticated, setUnauthenticated, setServerUrl, setApis, clearApis }),
     },
   };
 });
 
 jest.mock('@/auth/tokenStore', () => ({
-  getServerUrl: jest.fn(),
-  getTokens: jest.fn(),
-  getUser: jest.fn(),
-  saveServerUrl: jest.fn(),
-  saveTokens: jest.fn(),
-  saveUser: jest.fn(),
-  saveLlt: jest.fn(),
-  clearAll: jest.fn(),
+  TokenStore: {
+    instance: {
+      getServerUrl: jest.fn(),
+      getTokens: jest.fn(),
+      getUser: jest.fn(),
+      saveServerUrl: jest.fn(),
+      saveTokens: jest.fn(),
+      saveUser: jest.fn(),
+      saveLlt: jest.fn(),
+      clearAll: jest.fn(),
+    },
+  },
 }));
 
 import { initializeAuth } from '@/auth/authManager';
-import * as tokenStore from '@/auth/tokenStore';
+import { TokenStore } from '@/auth/tokenStore';
+const mockTokenStore = TokenStore.instance;
 import { useAuthStore } from '@/store/authStore';
 
 const { setAuthenticated, setUnauthenticated } = useAuthStore.getState();
@@ -56,7 +76,7 @@ beforeEach(() => {
 
 describe('initializeAuth', () => {
   it('sets unauthenticated when no server URL is stored', async () => {
-    (tokenStore.getServerUrl as jest.Mock).mockResolvedValue(null);
+    (mockTokenStore.getServerUrl as jest.Mock).mockResolvedValue(null);
 
     await initializeAuth();
 
@@ -65,8 +85,8 @@ describe('initializeAuth', () => {
   });
 
   it('sets unauthenticated when no tokens are stored', async () => {
-    (tokenStore.getServerUrl as jest.Mock).mockResolvedValue(SERVER_URL);
-    (tokenStore.getTokens as jest.Mock).mockResolvedValue(null);
+    (mockTokenStore.getServerUrl as jest.Mock).mockResolvedValue(SERVER_URL);
+    (mockTokenStore.getTokens as jest.Mock).mockResolvedValue(null);
 
     await initializeAuth();
 
@@ -75,9 +95,9 @@ describe('initializeAuth', () => {
   });
 
   it('sets authenticated when tokens and user are stored', async () => {
-    (tokenStore.getServerUrl as jest.Mock).mockResolvedValue(SERVER_URL);
-    (tokenStore.getTokens as jest.Mock).mockResolvedValue(STORED_TOKENS);
-    (tokenStore.getUser as jest.Mock).mockResolvedValue(STORED_USER);
+    (mockTokenStore.getServerUrl as jest.Mock).mockResolvedValue(SERVER_URL);
+    (mockTokenStore.getTokens as jest.Mock).mockResolvedValue(STORED_TOKENS);
+    (mockTokenStore.getUser as jest.Mock).mockResolvedValue(STORED_USER);
 
     await initializeAuth();
 
@@ -86,9 +106,9 @@ describe('initializeAuth', () => {
   });
 
   it('sets authenticated even when stored user is null (schema mismatch or missing)', async () => {
-    (tokenStore.getServerUrl as jest.Mock).mockResolvedValue(SERVER_URL);
-    (tokenStore.getTokens as jest.Mock).mockResolvedValue(STORED_TOKENS);
-    (tokenStore.getUser as jest.Mock).mockResolvedValue(null);
+    (mockTokenStore.getServerUrl as jest.Mock).mockResolvedValue(SERVER_URL);
+    (mockTokenStore.getTokens as jest.Mock).mockResolvedValue(STORED_TOKENS);
+    (mockTokenStore.getUser as jest.Mock).mockResolvedValue(null);
 
     await initializeAuth();
 
