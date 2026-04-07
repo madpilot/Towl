@@ -17,14 +17,23 @@ export const useHouseholdStore = create<HouseholdState>((set) => ({
 
   setHouseholds: (households) => set({ households }),
 
-  selectHousehold: (household) => {
-    SecureStore.setItemAsync(
-      SECURE_STORE_KEYS.SELECTED_HOUSEHOLD,
-      JSON.stringify(household)
-    ).catch(() => {});
-    set({ selectedHousehold: household });
-  },
+  // State-only setter — does not persist. Use persistAndSelectHousehold from
+  // event handlers that need the SecureStore write to be awaited and surfaced.
+  selectHousehold: (household) => set({ selectedHousehold: household }),
 }));
+
+/**
+ * Persists the selected household to SecureStore, then updates the store.
+ * Call this from UI event handlers (e.g. HouseholdPickerScreen) so the write
+ * is awaited and any storage failure is visible to the caller.
+ */
+export async function persistAndSelectHousehold(household: Household): Promise<void> {
+  await SecureStore.setItemAsync(
+    SECURE_STORE_KEYS.SELECTED_HOUSEHOLD,
+    JSON.stringify(household)
+  );
+  useHouseholdStore.getState().selectHousehold(household);
+}
 
 export async function restoreSelectedHousehold(): Promise<void> {
   try {

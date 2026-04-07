@@ -1,8 +1,8 @@
-import { z } from "zod";
-import { ApiClientManager, isAxiosError, AxiosError } from "./client";
+import { z } from 'zod';
+import { ApiClientManager, isAxiosError, AxiosError } from './client';
 
 export type AxiosAuthError = AxiosError & {
-  response: NonNullable<AxiosError["response"]>;
+  response: NonNullable<AxiosError['response']>;
 };
 
 export function isAxiosAuthError(err: unknown): err is AxiosAuthError {
@@ -29,14 +29,14 @@ export async function login(
   password: string,
 ): Promise<AuthResponse> {
   const client = ApiClientManager.unauthenticated(serverUrl);
-  const res = await client.post<unknown>("/auth", { username, password, device: "Towl" });
+  const res = await client.post<unknown>('/auth', { username, password, device: 'Towl' });
   return AuthResponseSchema.parse(res.data);
 }
 
 export async function testConnection(serverUrl: string): Promise<boolean> {
   try {
     const client = ApiClientManager.unauthenticated(serverUrl);
-    await client.get("/auth", { timeout: 8_000 });
+    await client.get('/auth', { timeout: 8_000 });
     return true;
   } catch (err: unknown) {
     // A 405 or 4xx from /api/auth still means the server is reachable
@@ -51,20 +51,20 @@ export class AuthApi {
   constructor(private client: ApiClientManager) {}
 
   async refreshToken(): Promise<AuthResponse> {
-    const res = await this.client.get<unknown>("/auth/refresh");
+    const res = await this.client.get<unknown>('/auth/refresh');
     return AuthResponseSchema.parse(res.data);
   }
 
   async createLongLivedToken(): Promise<string> {
-    const res = await this.client.post<{ longlived_token: string }>("/auth/llt", {
-      device: "Towl",
+    const res = await this.client.post<{ longlived_token: string }>('/auth/llt', {
+      device: 'Towl',
     });
     return res.data.longlived_token;
   }
 
   async logout(): Promise<void> {
     try {
-      await this.client.delete("/auth");
+      await this.client.delete('/auth');
     } catch {
       // Ignore logout errors — we always clear local state
     }

@@ -64,7 +64,7 @@ export async function drain(): Promise<void> {
     draining = false;
     const remaining = (await syncQueue.getAll()).length;
     useSyncStore.getState().setPendingCount(remaining);
-    useSyncStore.getState().setStatus(remaining > 0 ? 'error' : 'idle');
+    useSyncStore.getState().setStatus(failedDuringDrain ? 'error' : remaining > 0 ? 'syncing' : 'idle');
     if (anyRemoved) useSyncStore.getState().bumpSyncVersion();
     // Re-drain if ops were concurrently enqueued while this pass was running.
     // Don't re-drain immediately after a failure — scheduleRetry handles backoff.
@@ -90,7 +90,7 @@ function scheduleRetry(ms: number): void {
 
 async function executeOp(op: SyncOp): Promise<void> {
   const api = useAuthStore.getState().shoppingListsApi;
-  if (!api) return;
+  if (!api) throw new Error('No shopping lists API available');
   await dispatchPayload(api, op.payload);
 }
 

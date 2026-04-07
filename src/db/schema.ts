@@ -1,12 +1,15 @@
 import * as SQLite from 'expo-sqlite';
 
-let db: SQLite.SQLiteDatabase | null = null;
+// Promise-cache: a single in-flight open+migrate is shared across all callers,
+// preventing duplicate opens if getDb() is called concurrently before the DB is ready.
+let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
-export async function getDb(): Promise<SQLite.SQLiteDatabase> {
-  if (db) return db;
-  db = await SQLite.openDatabaseAsync('towl.db');
-  await migrate(db);
-  return db;
+export function getDb(): Promise<SQLite.SQLiteDatabase> {
+  dbPromise ??= SQLite.openDatabaseAsync('towl.db').then(async (instance) => {
+    await migrate(instance);
+    return instance;
+  });
+  return dbPromise;
 }
 
 async function migrate(database: SQLite.SQLiteDatabase): Promise<void> {
@@ -27,6 +30,8 @@ async function migrate(database: SQLite.SQLiteDatabase): Promise<void> {
 
   if (currentVersion < 1) {
     await database.execAsync(`
+      BEGIN;
+
       CREATE TABLE IF NOT EXISTS local_lists (
         local_id     TEXT PRIMARY KEY,
         server_id    INTEGER,
@@ -79,22 +84,37 @@ async function migrate(database: SQLite.SQLiteDatabase): Promise<void> {
       CREATE INDEX IF NOT EXISTS idx_sync_queue_created ON sync_queue(created_at ASC);
 
       UPDATE schema_version SET version = 1;
+
+      COMMIT;
     `);
   }
 
   if (currentVersion < 2) {
     await database.execAsync(`
+      BEGIN;
       ALTER TABLE local_items ADD COLUMN is_important INTEGER NOT NULL DEFAULT 0;
       UPDATE schema_version SET version = 2;
+      COMMIT;
     `);
   }
 
   if (currentVersion < 3) {
     await database.execAsync(`
+      BEGIN;
       ALTER TABLE local_items ADD COLUMN server_category_id       INTEGER;
       ALTER TABLE local_items ADD COLUMN server_category_name     TEXT;
       ALTER TABLE local_items ADD COLUMN server_category_ordering INTEGER;
       UPDATE schema_version SET version = 3;
+      COMMIT;
+    `);
+  }
+
+  if (currentVersion < 4) {
+    await database.execAsync(`
+      BEGIN;
+      ALTER TABLE sync_queue DROP COLUMN op_type;
+      UPDATE schema_version SET version = 4;
+      COMMIT;
     `);
   }
 }

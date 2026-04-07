@@ -54,7 +54,7 @@ describe('syncQueue', () => {
 
       expect(mockDb.runAsync).toHaveBeenCalledWith(
         expect.stringContaining('INSERT INTO sync_queue'),
-        expect.arrayContaining(['test-uuid-1', 'ADD_ITEM', JSON.stringify(payload)])
+        expect.arrayContaining(['test-uuid-1', JSON.stringify(payload)])
       );
       expect(op.id).toBe('test-uuid-1');
       expect(op.payload).toEqual(payload);
@@ -100,7 +100,6 @@ describe('syncQueue', () => {
       mockDb.getAllAsync.mockResolvedValueOnce([
         {
           id: 'some-id',
-          op_type: 'ADD_ITEM',
           payload: JSON.stringify(payload),
           list_local_id: 'l1',
           created_at: 1000,
@@ -120,7 +119,6 @@ describe('syncQueue', () => {
       mockDb.getAllAsync.mockResolvedValueOnce([
         {
           id: 'bad-id',
-          op_type: 'UNKNOWN_OP',
           payload: JSON.stringify({ opType: 'UNKNOWN_OP', data: 'garbage' }),
           list_local_id: null,
           created_at: 1000,

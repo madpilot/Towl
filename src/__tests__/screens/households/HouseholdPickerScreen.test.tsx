@@ -7,6 +7,7 @@ jest.mock('@/store/authStore', () => ({
 
 jest.mock('@/store/householdStore', () => ({
   useHouseholdStore: jest.fn(),
+  persistAndSelectHousehold: jest.fn(),
 }));
 
 jest.mock('@/components/TommyOwl', () => {
@@ -19,10 +20,10 @@ jest.mock('@/components/TommyOwl', () => {
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import HouseholdPickerScreen from '@/screens/households/HouseholdPickerScreen';
-import { useHouseholdStore } from '@/store/householdStore';
+import { useHouseholdStore, persistAndSelectHousehold } from '@/store/householdStore';
 import type { Household } from '@/api/households';
 
-const mockSelectHousehold = jest.fn();
+const mockPersistAndSelectHousehold = persistAndSelectHousehold as unknown as jest.Mock;
 const mockNavigation = { navigate: jest.fn(), canGoBack: jest.fn(), goBack: jest.fn() };
 const baseProps = { navigation: mockNavigation as never, route: {} as never };
 
@@ -32,8 +33,8 @@ function makeHousehold(overrides: Partial<Household> = {}): Household {
 
 function mockStore(selectedHousehold: Household | null = null) {
   (useHouseholdStore as unknown as jest.Mock).mockImplementation(
-    (sel: (s: { selectedHousehold: Household | null; selectHousehold: jest.Mock }) => unknown) =>
-      sel({ selectedHousehold, selectHousehold: mockSelectHousehold })
+    (sel: (s: { selectedHousehold: Household | null }) => unknown) =>
+      sel({ selectedHousehold })
   );
 }
 
@@ -41,6 +42,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockStore(null);
   mockNavigation.canGoBack.mockReturnValue(false);
+  mockPersistAndSelectHousehold.mockResolvedValue(undefined);
 });
 
 describe('HouseholdPickerScreen', () => {
@@ -56,7 +58,7 @@ describe('HouseholdPickerScreen', () => {
 
     render(<HouseholdPickerScreen {...baseProps} />);
 
-    await waitFor(() => expect(mockSelectHousehold).toHaveBeenCalledWith(household));
+    await waitFor(() => expect(mockPersistAndSelectHousehold).toHaveBeenCalledWith(household));
   });
 
   it('does not auto-select when only one household and reached from nav bar (canGoBack = true)', async () => {
@@ -68,7 +70,7 @@ describe('HouseholdPickerScreen', () => {
     const { getByText } = render(<HouseholdPickerScreen {...baseProps} />);
 
     await waitFor(() => expect(getByText('Home')).toBeTruthy());
-    expect(mockSelectHousehold).not.toHaveBeenCalled();
+    expect(mockPersistAndSelectHousehold).not.toHaveBeenCalled();
   });
 
   it('renders list of households', async () => {
@@ -84,7 +86,7 @@ describe('HouseholdPickerScreen', () => {
     });
   });
 
-  it('calls selectHousehold when a household is tapped', async () => {
+  it('calls persistAndSelectHousehold when a household is tapped', async () => {
     const household = makeHousehold({ id: 2, name: 'Office' });
     mockGetHouseholds.mockResolvedValue([
       makeHousehold({ id: 1, name: 'Home' }),
@@ -95,7 +97,7 @@ describe('HouseholdPickerScreen', () => {
     await waitFor(() => expect(getByText('Office')).toBeTruthy());
 
     fireEvent.press(getByText('Office'));
-    expect(mockSelectHousehold).toHaveBeenCalledWith(household);
+    await waitFor(() => expect(mockPersistAndSelectHousehold).toHaveBeenCalledWith(household));
   });
 
   it('calls goBack after selecting when canGoBack is true', async () => {
@@ -109,7 +111,7 @@ describe('HouseholdPickerScreen', () => {
     await waitFor(() => expect(getByText('Office')).toBeTruthy());
 
     fireEvent.press(getByText('Office'));
-    expect(mockNavigation.goBack).toHaveBeenCalled();
+    await waitFor(() => expect(mockNavigation.goBack).toHaveBeenCalled());
   });
 
   it('does not call goBack during onboarding (canGoBack false)', async () => {

@@ -91,7 +91,6 @@ export type SyncOp = {
 
 type SyncQueueRow = {
   id: string;
-  op_type: string;
   payload: string;
   list_local_id: string | null;
   created_at: number;
@@ -116,9 +115,9 @@ export async function enqueue(payload: SyncPayload, listLocalId?: string): Promi
   const id = randomUUID();
   const now = Date.now();
   await db.runAsync(
-    `INSERT INTO sync_queue (id, op_type, payload, list_local_id, created_at, attempts)
-     VALUES (?, ?, ?, ?, ?, 0)`,
-    [id, payload.opType, JSON.stringify(payload), listLocalId ?? null, now]
+    `INSERT INTO sync_queue (id, payload, list_local_id, created_at, attempts)
+     VALUES (?, ?, ?, ?, 0)`,
+    [id, JSON.stringify(payload), listLocalId ?? null, now]
   );
   return { id, payload, listLocalId: listLocalId ?? null, createdAt: now, attempts: 0 };
 }

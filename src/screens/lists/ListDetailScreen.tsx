@@ -21,6 +21,7 @@ import { useHouseholdStore } from '@/store/householdStore';
 import { useSyncStore } from '@/store/syncStore';
 import CategorySection from '@/components/CategorySection';
 import AddItemBar from '@/components/AddItemBar';
+import SwipeableItem from '@/components/SwipeableItem';
 import TommyOwl from '@/components/TommyOwl';
 import SettingsIcon from '@/components/icons/SettingsIcon';
 import HouseIcon from '@/components/icons/HouseIcon';
@@ -28,6 +29,7 @@ import { Colors, Spacing, Radii, FontSize } from '@/theme';
 import { SECURE_STORE_KEYS } from '@/utils/constants';
 import type { LocalItem } from '@/db/items';
 import type { LocalList } from '@/db/lists';
+import type { SwipeableItemHandlers } from '@/components/SwipeableItem';
 import type { ListDetailScreenProps } from '@/navigation/types';
 
 // ─── Category ordering ───────────────────────────────────────────
@@ -74,7 +76,6 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
   const selectedHousehold = useHouseholdStore((s) => s.selectedHousehold);
   const householdId = selectedHousehold?.id ?? 0;
   const shoppingListsApi = useAuthStore((s) => s.shoppingListsApi);
-
 
   const syncVersion = useSyncStore((s) => s.syncVersion);
   const lastSyncVersionRef = useRef(syncVersion);
@@ -124,8 +125,16 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
     }
   }, [householdId, loadItems, shoppingListsApi]);
 
-  // Bootstrap: restore last list from SecureStore, fall back to first DB list
+  // Bootstrap: restore last list from SecureStore, fall back to first DB list.
+  // Runs only once on mount — initializedRef makes the intent explicit and guards
+  // against re-runs if React strict mode double-invokes effects in development.
+  // Empty deps intentional: loadLists/loadItems/syncItems are stable useCallbacks
+  // and householdId-driven changes go through the list-switch flow, not re-bootstrap.
+  const initializedRef = useRef(false);
   useEffect(() => {
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+
     let active = true;
     async function bootstrap() {
       const lists = await loadLists();
@@ -191,18 +200,20 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
   const handleToggleDone = useCallback(async (localId: string) => {
     const item = items.find((i) => i.localId === localId);
     if (!item) return;
-    await itemsDb.toggleItemChecked(localId, !item.isChecked);
+    const next = !item.isChecked;
+    await itemsDb.toggleItemChecked(localId, next);
     setItems((prev) =>
-      prev.map((i) => (i.localId === localId ? { ...i, isChecked: !i.isChecked } : i))
+      prev.map((i) => (i.localId === localId ? { ...i, isChecked: next } : i))
     );
   }, [items]);
 
   const handleToggleImportant = useCallback(async (localId: string) => {
     const item = items.find((i) => i.localId === localId);
     if (!item) return;
-    await itemsDb.toggleItemImportant(localId, !item.isImportant);
+    const next = !item.isImportant;
+    await itemsDb.toggleItemImportant(localId, next);
     setItems((prev) =>
-      prev.map((i) => (i.localId === localId ? { ...i, isImportant: !i.isImportant } : i))
+      prev.map((i) => (i.localId === localId ? { ...i, isImportant: next } : i))
     );
   }, [items]);
 
@@ -367,7 +378,7 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
                 <View style={styles.trolleyRule} />
               </View>
               {doneItems.map((item) => (
-                <View key={item.localId} style={styles.doneItemWrap}>
+                <View key={item.localId}>
                   <SwipeableItemInline item={item} handlers={sharedHandlers} />
                 </View>
               ))}
@@ -392,9 +403,6 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
 }
 
 // ─── SwipeableItemInline ──────────────────────────────────────────
-
-import SwipeableItem from '@/components/SwipeableItem';
-import type { SwipeableItemHandlers } from '@/components/SwipeableItem';
 
 type SwipeableItemInlineProps = {
   item: LocalItem;
@@ -557,7 +565,6 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: Colors.mintPale,
   },
-  doneItemWrap: {},
 });
 
 const navStyles = StyleSheet.create({

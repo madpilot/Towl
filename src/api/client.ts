@@ -103,13 +103,16 @@ export class ApiClientManager {
   }
 
   private async performRefresh(instance: AxiosInstance): Promise<string> {
+    const baseURL = instance.defaults.baseURL;
+    if (!baseURL) throw new Error('API client has no baseURL configured');
+
     const tokens = await TokenStore.instance.getTokens();
 
     // Step 1: try the refresh token.
     if (tokens?.refreshToken) {
       try {
         const res = await axios.get<{ access_token: string; refresh_token: string }>(
-          `${instance.defaults.baseURL}/auth/refresh`,
+          `${baseURL}/auth/refresh`,
           {
             headers: { Authorization: `Bearer ${tokens.refreshToken}` },
             timeout: 15_000,
@@ -131,7 +134,7 @@ export class ApiClientManager {
     if (!llt) throw new Error('No valid token available for refresh');
 
     const res = await axios.get<{ access_token: string; refresh_token: string }>(
-      `${instance.defaults.baseURL}/auth/refresh`,
+      `${baseURL}/auth/refresh`,
       {
         headers: { Authorization: `Bearer ${llt}` },
         timeout: 15_000,
