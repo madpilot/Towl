@@ -8,7 +8,7 @@ import {
   View,
 } from 'react-native';
 import { testConnection } from '@/api/auth';
-import * as tokenStore from '@/auth/tokenStore';
+import { TokenStore } from '@/auth/tokenStore';
 import {
   BubbleText,
   FadeIn,
@@ -54,7 +54,7 @@ export default function ServerSetupScreen({ navigation }: ServerSetupScreenProps
         setError('Could not reach the server. Check the URL and try again.');
         return;
       }
-      await tokenStore.saveServerUrl(trimmed);
+      await TokenStore.instance.saveServerUrl(trimmed);
       navigation.navigate('Login', { serverUrl: trimmed });
     } catch {
       setError('An unexpected error occurred. Please try again.');

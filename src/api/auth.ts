@@ -1,13 +1,12 @@
-import axios, { AxiosError } from "axios";
 import { z } from "zod";
-import { getApiClient } from "./client";
+import { ApiClientManager, isAxiosError, AxiosError } from "./client";
 
 export type AxiosAuthError = AxiosError & {
   response: NonNullable<AxiosError["response"]>;
 };
 
 export function isAxiosAuthError(err: unknown): err is AxiosAuthError {
-  return axios.isAxiosError(err) && err.response !== undefined;
+  return isAxiosError(err) && err.response !== undefined;
 }
 
 export const AuthResponseSchema = z.object({
@@ -22,52 +21,52 @@ export const AuthResponseSchema = z.object({
 
 export type AuthResponse = z.infer<typeof AuthResponseSchema>;
 
+// ─── Pre-auth functions (no authenticated client needed) ──────────────────────
+
 export async function login(
   serverUrl: string,
   username: string,
   password: string,
 ): Promise<AuthResponse> {
-  const base = serverUrl.replace(/\/$/, "") + "/api";
-  const res = await axios.post<unknown>(
-    `${base}/auth`,
-    { username, password, device: "Towl" },
-    { timeout: 15_000 },
-  );
+  const client = ApiClientManager.unauthenticated(serverUrl);
+  const res = await client.post<unknown>("/auth", { username, password, device: "Towl" });
   return AuthResponseSchema.parse(res.data);
-}
-
-export async function refreshToken(): Promise<AuthResponse> {
-  const client = getApiClient();
-  const res = await client.get<unknown>("/auth/refresh");
-  return AuthResponseSchema.parse(res.data);
-}
-
-export async function createLongLivedToken(): Promise<string> {
-  const client = getApiClient();
-  const res = await client.post<{ longlived_token: string }>("/auth/llt", {
-    device: "Towl",
-  });
-  return res.data.longlived_token;
-}
-
-export async function logout(): Promise<void> {
-  try {
-    const client = getApiClient();
-    await client.delete("/auth");
-  } catch {
-    // Ignore logout errors — we always clear local state
-  }
 }
 
 export async function testConnection(serverUrl: string): Promise<boolean> {
   try {
-    const base = serverUrl.replace(/\/$/, "");
-    // KitchenOwl exposes a health endpoint; if not, we just check that /api/auth returns something
-    await axios.get(`${base}/api/auth`, { timeout: 8_000 });
+    const client = ApiClientManager.unauthenticated(serverUrl);
+    await client.get("/auth", { timeout: 8_000 });
     return true;
   } catch (err: unknown) {
     // A 405 or 4xx from /api/auth still means the server is reachable
-    if (axios.isAxiosError(err) && err.response) return true;
+    if (isAxiosError(err) && err.response) return true;
     return false;
+  }
+}
+
+// ─── Authenticated API class ──────────────────────────────────────────────────
+
+export class AuthApi {
+  constructor(private client: ApiClientManager) {}
+
+  async refreshToken(): Promise<AuthResponse> {
+    const res = await this.client.get<unknown>("/auth/refresh");
+    return AuthResponseSchema.parse(res.data);
+  }
+
+  async createLongLivedToken(): Promise<string> {
+    const res = await this.client.post<{ longlived_token: string }>("/auth/llt", {
+      device: "Towl",
+    });
+    return res.data.longlived_token;
+  }
+
+  async logout(): Promise<void> {
+    try {
+      await this.client.delete("/auth");
+    } catch {
+      // Ignore logout errors — we always clear local state
+    }
   }
 }

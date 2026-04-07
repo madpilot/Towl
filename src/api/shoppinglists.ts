@@ -1,9 +1,7 @@
 import { z } from 'zod';
-import { getApiClient } from './client';
+import { ApiClientManager } from './client';
 
 // ─── Item schema ──────────────────────────────────────────────────────────────
-// Matches the flat item objects returned both inline in the list response
-// and from the individual /shoppinglist/{id}/items endpoint.
 
 export const ApiCategorySchema = z.object({
   id: z.number(),
@@ -32,8 +30,6 @@ export const ApiShoppingListItemSchema = z.object({
 export type ApiShoppingListItem = z.infer<typeof ApiShoppingListItemSchema>;
 
 // ─── Shopping list schema ─────────────────────────────────────────────────────
-// The household shopping list endpoint returns lists with embedded items and
-// recentItems already populated — no separate items call needed.
 
 export const ApiShoppingListSchema = z.object({
   id: z.number(),
@@ -44,72 +40,69 @@ export const ApiShoppingListSchema = z.object({
 });
 export type ApiShoppingList = z.infer<typeof ApiShoppingListSchema>;
 
-// ─── API functions ────────────────────────────────────────────────────────────
+// ─── Authenticated API class ──────────────────────────────────────────────────
 
-export async function getShoppingLists(householdId: number): Promise<ApiShoppingList[]> {
-  const client = getApiClient();
-  const res = await client.get<unknown>(`/household/${householdId}/shoppinglist`);
-  return z.array(ApiShoppingListSchema).parse(res.data);
-}
+export class ShoppingListsApi {
+  constructor(private client: ApiClientManager) {}
 
-export async function addItemByName(
-  listId: number,
-  name: string,
-  description?: string
-): Promise<ApiShoppingListItem> {
-  const client = getApiClient();
-  const res = await client.post<unknown>(
-    `/shoppinglist/${listId}/add-item-by-name`,
-    { name, description: description ?? '' }
-  );
-  return ApiShoppingListItemSchema.parse(res.data);
-}
+  async getShoppingLists(householdId: number): Promise<ApiShoppingList[]> {
+    const res = await this.client.get<unknown>(`/household/${householdId}/shoppinglist`);
+    return z.array(ApiShoppingListSchema).parse(res.data);
+  }
 
-export async function removeItem(listId: number, itemId: number): Promise<void> {
-  const client = getApiClient();
-  await client.delete(`/shoppinglist/${listId}/item`, {
-    data: { item_id: itemId },
-  });
-}
+  async addItemByName(
+    listId: number,
+    name: string,
+    description?: string
+  ): Promise<ApiShoppingListItem> {
+    const res = await this.client.post<unknown>(
+      `/shoppinglist/${listId}/add-item-by-name`,
+      { name, description: description ?? '' }
+    );
+    return ApiShoppingListItemSchema.parse(res.data);
+  }
 
-export async function updateItemDescription(
-  listId: number,
-  itemId: number,
-  description: string
-): Promise<void> {
-  const client = getApiClient();
-  await client.post(`/shoppinglist/${listId}/item/${itemId}`, { description });
-}
+  async removeItem(listId: number, itemId: number): Promise<void> {
+    await this.client.delete(`/shoppinglist/${listId}/item`, {
+      data: { item_id: itemId },
+    });
+  }
 
-export async function updateItem(
-  itemId: number,
-  name: string,
-  description: string,
-  iconKey: string | null,
-  category: { id: number; name: string; ordering: number } | null
-): Promise<void> {
-  const client = getApiClient();
-  await client.post(`/item/${itemId}`, {
-    id: itemId,
-    name,
-    description,
-    icon: iconKey,
-    category,
-    ordering: 0,
-    default: false,
-    default_key: null,
-    created_at: null,
-    created_by: null,
-  });
-}
+  async updateItemDescription(
+    listId: number,
+    itemId: number,
+    description: string
+  ): Promise<void> {
+    await this.client.post(`/shoppinglist/${listId}/item/${itemId}`, { description });
+  }
 
-export async function createShoppingList(name: string, householdId: number): Promise<ApiShoppingList> {
-  const client = getApiClient();
-  const res = await client.post<unknown>(`/household/${householdId}/shoppinglist`, { name });
-  return ApiShoppingListSchema.parse(res.data);
-}
+  async updateItem(
+    itemId: number,
+    name: string,
+    description: string,
+    iconKey: string | null,
+    category: { id: number; name: string; ordering: number } | null
+  ): Promise<void> {
+    await this.client.post(`/item/${itemId}`, {
+      id: itemId,
+      name,
+      description,
+      icon: iconKey,
+      category,
+      ordering: 0,
+      default: false,
+      default_key: null,
+      created_at: null,
+      created_by: null,
+    });
+  }
 
-export async function deleteShoppingList(listId: number): Promise<void> {
-  const client = getApiClient();
-  await client.delete(`/shoppinglist/${listId}`);
+  async createShoppingList(name: string, householdId: number): Promise<ApiShoppingList> {
+    const res = await this.client.post<unknown>(`/household/${householdId}/shoppinglist`, { name });
+    return ApiShoppingListSchema.parse(res.data);
+  }
+
+  async deleteShoppingList(listId: number): Promise<void> {
+    await this.client.delete(`/shoppinglist/${listId}`);
+  }
 }

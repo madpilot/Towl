@@ -19,14 +19,14 @@ jest.mock('@/api/auth', () => ({
 }));
 
 jest.mock('@/auth/tokenStore', () => ({
-  saveServerUrl: jest.fn(),
+  TokenStore: { instance: { saveServerUrl: jest.fn() } },
 }));
 
 import React from 'react';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import ServerSetupScreen from '@/screens/auth/ServerSetupScreen';
 import * as authApi from '@/api/auth';
-import * as tokenStore from '@/auth/tokenStore';
+import { TokenStore } from '@/auth/tokenStore';
 
 const mockNavigate = jest.fn();
 const baseProps = {
@@ -91,7 +91,7 @@ describe('ServerSetupScreen', () => {
 
   it('saves URL and navigates to Login on success', async () => {
     (authApi.testConnection as jest.Mock).mockResolvedValue(true);
-    (tokenStore.saveServerUrl as jest.Mock).mockResolvedValue(undefined);
+    (TokenStore.instance.saveServerUrl as jest.Mock).mockResolvedValue(undefined);
 
     const { getByTestId, getByPlaceholderText } = render(
       <ServerSetupScreen {...baseProps} />,
@@ -109,6 +109,6 @@ describe('ServerSetupScreen', () => {
         serverUrl: 'https://kitchen.local',
       }),
     );
-    expect(tokenStore.saveServerUrl).toHaveBeenCalledWith('https://kitchen.local');
+    expect(TokenStore.instance.saveServerUrl).toHaveBeenCalledWith('https://kitchen.local');
   });
 });

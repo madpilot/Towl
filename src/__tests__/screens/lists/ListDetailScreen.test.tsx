@@ -36,8 +36,11 @@ jest.mock('@/db/history', () => ({
   recordItemUsed: jest.fn(),
 }));
 
-jest.mock('@/api/shoppinglists', () => ({
-  getShoppingLists: jest.fn(),
+const mockGetShoppingLists = jest.fn();
+jest.mock('@/store/authStore', () => ({
+  useAuthStore: jest.fn((sel: (s: { shoppingListsApi: { getShoppingLists: jest.Mock } }) => unknown) =>
+    sel({ shoppingListsApi: { getShoppingLists: mockGetShoppingLists } })
+  ),
 }));
 
 jest.mock('@/data/foodMatcher', () => ({
@@ -97,7 +100,6 @@ import * as itemsDb from '@/db/items';
 import * as listsDb from '@/db/lists';
 import * as syncManager from '@/sync/syncManager';
 import * as historyDb from '@/db/history';
-import * as shoppingListsApi from '@/api/shoppinglists';
 import type { LocalItem } from '@/db/items';
 import type { LocalList } from '@/db/lists';
 
@@ -260,7 +262,7 @@ describe('ListDetailScreen', () => {
   it('calls removeItemsDeletedOnServer after upserting server items', async () => {
     const serverItem = { id: 99, name: 'Butter', description: '', icon: null, category: null };
     // makeList() has serverId: 5, so the server list must use id: 5 to match.
-    (shoppingListsApi.getShoppingLists as jest.Mock).mockResolvedValue([
+    mockGetShoppingLists.mockResolvedValue([
       { id: 5, name: 'Groceries', items: [serverItem] },
     ]);
 

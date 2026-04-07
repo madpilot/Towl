@@ -5,28 +5,45 @@
  *   1. Access token attached to every request
  *   2. On 401 → try refresh token → try LLT → signal session expired
  */
-import { createApiClient } from '@/api/client';
-import * as tokenStore from '@/auth/tokenStore';
-import * as authApi from '@/api/auth';
+import { ApiClientManager } from '@/api/client';
+import { AuthApi } from '@/api/auth';
+import { HouseholdsApi } from '@/api/households';
+import { ShoppingListsApi } from '@/api/shoppinglists';
+import { TokenStore } from '@/auth/tokenStore';
 import { useAuthStore } from '@/store/authStore';
 import { restoreSelectedHousehold } from '@/store/householdStore';
-import { createLongLivedToken } from '@/api/auth';
+
+// Holds the AuthApi for the current session — only needed within this module.
+let authApi: AuthApi | null = null;
 
 function makeSessionExpiredCallback(): () => void {
   return () => {
-    void tokenStore.clearAll();
+    void TokenStore.instance.clearAll();
     useAuthStore.getState().setUnauthenticated();
+    useAuthStore.getState().clearApis();
+    authApi = null;
   };
 }
 
+function createApis(serverUrl: string): AuthApi {
+  const manager = new ApiClientManager(serverUrl, makeSessionExpiredCallback());
+  const api = new AuthApi(manager);
+  authApi = api;
+  useAuthStore.getState().setApis(
+    new HouseholdsApi(manager),
+    new ShoppingListsApi(manager),
+  );
+  return api;
+}
+
 export async function initializeAuth(): Promise<void> {
-  const serverUrl = await tokenStore.getServerUrl();
+  const serverUrl = await TokenStore.instance.getServerUrl();
   if (!serverUrl) {
     useAuthStore.getState().setUnauthenticated();
     return;
   }
 
-  const tokens = await tokenStore.getTokens();
+  const tokens = await TokenStore.instance.getTokens();
   if (!tokens) {
     useAuthStore.getState().setUnauthenticated();
     return;
@@ -35,10 +52,10 @@ export async function initializeAuth(): Promise<void> {
   // User data is best-effort — a schema mismatch from an older install returns null,
   // but that's fine. The interceptor will get fresh user data on the first API call
   // if needed, and the token chain handles re-authentication transparently.
-  const user = await tokenStore.getUser();
+  const user = await TokenStore.instance.getUser();
 
   useAuthStore.getState().setServerUrl(serverUrl);
-  createApiClient(serverUrl, makeSessionExpiredCallback());
+  createApis(serverUrl);
   await restoreSelectedHousehold();
   useAuthStore.getState().setAuthenticated(user, serverUrl);
 }
@@ -50,17 +67,17 @@ export async function onLoginSuccess(
   user: { id: number; name: string; username: string },
 ): Promise<void> {
   await Promise.all([
-    tokenStore.saveServerUrl(serverUrl),
-    tokenStore.saveTokens({ accessToken, refreshToken, llt: null }),
-    tokenStore.saveUser(user),
+    TokenStore.instance.saveServerUrl(serverUrl),
+    TokenStore.instance.saveTokens({ accessToken, refreshToken, llt: null }),
+    TokenStore.instance.saveUser(user),
   ]);
-  createApiClient(serverUrl, makeSessionExpiredCallback());
+  const api = createApis(serverUrl);
 
   // Create a long-lived token for future resilience
   try {
-    const llt = await createLongLivedToken();
-    await tokenStore.saveLlt(llt);
-    await tokenStore.saveTokens({ accessToken, refreshToken, llt });
+    const llt = await api.createLongLivedToken();
+    await TokenStore.instance.saveLlt(llt);
+    await TokenStore.instance.saveTokens({ accessToken, refreshToken, llt });
   } catch {
     // Non-fatal: LLT creation failure just means one fewer fallback
   }
@@ -69,7 +86,9 @@ export async function onLoginSuccess(
 }
 
 export async function logout(): Promise<void> {
-  await authApi.logout();
-  await tokenStore.clearAll();
+  await authApi?.logout();
+  authApi = null;
+  await TokenStore.instance.clearAll();
   useAuthStore.getState().setUnauthenticated();
+  useAuthStore.getState().clearApis();
 }

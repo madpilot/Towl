@@ -2,11 +2,12 @@ import * as syncQueue from '@/db/syncQueue';
 import type { SyncOp, SyncPayload } from '@/db/syncQueue';
 import * as itemsDb from '@/db/items';
 import * as listsDb from '@/db/lists';
-import * as api from '@/api/shoppinglists';
+import type { ShoppingListsApi } from '@/api/shoppinglists';
 import { useSyncStore } from '@/store/syncStore';
+import { useAuthStore } from '@/store/authStore';
 import { useNetworkStore } from './connectivityMonitor';
 import { MAX_SYNC_RETRIES, SYNC_BACKOFF_MS } from '@/utils/constants';
-import axios from 'axios';
+import { isAxiosError } from '@/api/client';
 
 let draining = false;
 let retryTimer: ReturnType<typeof setTimeout> | null = null;
@@ -72,7 +73,7 @@ export async function drain(): Promise<void> {
 }
 
 function isNonRetryable(err: unknown): boolean {
-  if (axios.isAxiosError(err) && err.response) {
+  if (isAxiosError(err) && err.response) {
     const { status } = err.response;
     return status >= 400 && status < 500;
   }
@@ -88,10 +89,12 @@ function scheduleRetry(ms: number): void {
 }
 
 async function executeOp(op: SyncOp): Promise<void> {
-  await dispatchPayload(op.payload);
+  const api = useAuthStore.getState().shoppingListsApi;
+  if (!api) return;
+  await dispatchPayload(api, op.payload);
 }
 
-async function dispatchPayload(payload: SyncPayload): Promise<void> {
+async function dispatchPayload(api: ShoppingListsApi, payload: SyncPayload): Promise<void> {
   switch (payload.opType) {
     case 'ADD_ITEM': {
       const result = await api.addItemByName(
@@ -113,7 +116,7 @@ async function dispatchPayload(payload: SyncPayload): Promise<void> {
       try {
         await api.removeItem(payload.listServerId, payload.itemServerId);
       } catch (err) {
-        if (axios.isAxiosError(err) && err.response?.status === 404) break;
+        if (isAxiosError(err) && err.response?.status === 404) break;
         throw err;
       }
       await itemsDb.hardDeleteItem(payload.itemLocalId);
@@ -151,7 +154,7 @@ async function dispatchPayload(payload: SyncPayload): Promise<void> {
         try {
           await api.deleteShoppingList(payload.listServerId);
         } catch (err) {
-          if (axios.isAxiosError(err) && err.response?.status === 404) break;
+          if (isAxiosError(err) && err.response?.status === 404) break;
           throw err;
         }
       }

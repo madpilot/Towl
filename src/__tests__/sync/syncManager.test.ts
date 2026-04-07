@@ -18,15 +18,6 @@ jest.mock('@/db/lists', () => ({
   hardDeleteList: jest.fn(),
 }));
 
-jest.mock('@/api/shoppinglists', () => ({
-  addItemByName: jest.fn(),
-  removeItem: jest.fn(),
-  createShoppingList: jest.fn(),
-  deleteShoppingList: jest.fn(),
-  updateItemDescription: jest.fn(),
-  updateItem: jest.fn(),
-}));
-
 jest.mock('@/sync/connectivityMonitor', () => ({
   useNetworkStore: {
     getState: jest.fn(() => ({ isOnline: true })),
@@ -46,10 +37,23 @@ jest.mock('@/store/syncStore', () => ({
   },
 }));
 
+const mockApi = {
+  addItemByName: jest.fn(),
+  removeItem: jest.fn(),
+  createShoppingList: jest.fn(),
+  deleteShoppingList: jest.fn(),
+  updateItemDescription: jest.fn(),
+  updateItem: jest.fn(),
+};
+jest.mock('@/store/authStore', () => ({
+  useAuthStore: {
+    getState: jest.fn(() => ({ shoppingListsApi: mockApi })),
+  },
+}));
+
 import * as syncQueue from '@/db/syncQueue';
 import * as itemsDb from '@/db/items';
 import * as listsDb from '@/db/lists';
-import * as api from '@/api/shoppinglists';
 import { useNetworkStore } from '@/sync/connectivityMonitor';
 import { drain } from '@/sync/syncManager';
 
@@ -101,14 +105,14 @@ describe('drain()', () => {
     (syncQueue.getAll as jest.Mock)
       .mockResolvedValueOnce([op])
       .mockResolvedValue([]);
-    (api.addItemByName as jest.Mock).mockResolvedValue({
+    mockApi.addItemByName.mockResolvedValue({
       id: 99, name: 'Milk', description: '',
       category: { id: 9, name: '🥛 Dairy', ordering: 0, default_key: 'dairy' },
     });
 
     await drain();
 
-    expect(api.addItemByName).toHaveBeenCalledWith(5, 'Milk', '');
+    expect(mockApi.addItemByName).toHaveBeenCalledWith(5, 'Milk', '');
     expect(itemsDb.markItemSynced).toHaveBeenCalledWith('item-local-1', 99, 9, '🥛 Dairy', 0);
     expect(syncQueue.remove).toHaveBeenCalledWith('op-1');
   });
@@ -129,11 +133,11 @@ describe('drain()', () => {
     (syncQueue.getAll as jest.Mock)
       .mockResolvedValueOnce([op])
       .mockResolvedValue([]);
-    (api.createShoppingList as jest.Mock).mockResolvedValue({ id: 42 });
+    mockApi.createShoppingList.mockResolvedValue({ id: 42 });
 
     await drain();
 
-    expect(api.createShoppingList).toHaveBeenCalledWith('Groceries', 1);
+    expect(mockApi.createShoppingList).toHaveBeenCalledWith('Groceries', 1);
     expect(listsDb.markListSynced).toHaveBeenCalledWith('list-local-1', 42);
     expect(syncQueue.remove).toHaveBeenCalledWith('op-2');
   });
@@ -143,7 +147,7 @@ describe('drain()', () => {
     (syncQueue.getAll as jest.Mock)
       .mockResolvedValueOnce([op])
       .mockResolvedValue([op]);
-    (api.addItemByName as jest.Mock).mockRejectedValue(new Error('Network error'));
+    mockApi.addItemByName.mockRejectedValue(new Error('Network error'));
 
     await drain();
 
@@ -157,12 +161,11 @@ describe('drain()', () => {
       .mockResolvedValueOnce([op])
       .mockResolvedValue([]);
 
-    // Construct an axios-like error with isAxiosError flag
     const axiosErr = Object.assign(new Error('Unprocessable'), {
       isAxiosError: true,
       response: { status: 422 },
     });
-    (api.addItemByName as jest.Mock).mockRejectedValue(axiosErr);
+    mockApi.addItemByName.mockRejectedValue(axiosErr);
 
     await drain();
 
@@ -190,11 +193,11 @@ describe('drain()', () => {
     (syncQueue.getAll as jest.Mock)
       .mockResolvedValueOnce([op])
       .mockResolvedValue([]);
-    (api.updateItem as jest.Mock).mockResolvedValue(undefined);
+    mockApi.updateItem.mockResolvedValue(undefined);
 
     await drain();
 
-    expect(api.updateItem).toHaveBeenCalledWith(12, 'Almond Milk', '2 bunches', 'milk_carton', { id: 9, name: '🥛 Dairy', ordering: 0 });
+    expect(mockApi.updateItem).toHaveBeenCalledWith(12, 'Almond Milk', '2 bunches', 'milk_carton', { id: 9, name: '🥛 Dairy', ordering: 0 });
     expect(syncQueue.remove).toHaveBeenCalledWith('op-upd');
   });
 
@@ -207,7 +210,7 @@ describe('drain()', () => {
     await drain();
 
     expect(syncQueue.remove).toHaveBeenCalledWith('op-1');
-    expect(api.addItemByName).not.toHaveBeenCalled();
+    expect(mockApi.addItemByName).not.toHaveBeenCalled();
   });
 
   describe('syncVersion', () => {
@@ -216,7 +219,7 @@ describe('drain()', () => {
       (syncQueue.getAll as jest.Mock)
         .mockResolvedValueOnce([op])
         .mockResolvedValue([]);
-      (api.addItemByName as jest.Mock).mockResolvedValue({ id: 99, name: 'Milk', description: '' });
+      mockApi.addItemByName.mockResolvedValue({ id: 99, name: 'Milk', description: '' });
 
       await drain();
 
@@ -243,7 +246,7 @@ describe('drain()', () => {
         isAxiosError: true,
         response: { status: 400 },
       });
-      (api.addItemByName as jest.Mock).mockRejectedValue(axiosErr);
+      mockApi.addItemByName.mockRejectedValue(axiosErr);
 
       await drain();
 
@@ -263,7 +266,7 @@ describe('drain()', () => {
       (syncQueue.getAll as jest.Mock)
         .mockResolvedValueOnce([op])
         .mockResolvedValue([op]);
-      (api.addItemByName as jest.Mock).mockRejectedValue(new Error('Network error'));
+      mockApi.addItemByName.mockRejectedValue(new Error('Network error'));
 
       await drain();
 
@@ -273,23 +276,18 @@ describe('drain()', () => {
   });
 
   it('resets draining flag after completion so a follow-up drain processes remaining ops', async () => {
-    // Simulates the case where ops were enqueued concurrently during a drain.
-    // After the first drain completes (with remaining ops in the queue), `draining`
-    // must be reset to false so the internally re-invoked drain (or any caller) can
-    // pick up the remaining ops immediately.
     const op = makeAddOp();
     const op2 = makeAddOp({ id: 'op-2' });
     (syncQueue.getAll as jest.Mock)
-      .mockResolvedValueOnce([op])   // first drain: initial read
-      .mockResolvedValueOnce([op2])  // first drain: finally remaining (re-drain triggered)
-      .mockResolvedValueOnce([op2])  // second drain: initial read
-      .mockResolvedValue([]);         // second drain: finally remaining
-    (api.addItemByName as jest.Mock).mockResolvedValue({ id: 99 });
+      .mockResolvedValueOnce([op])
+      .mockResolvedValueOnce([op2])
+      .mockResolvedValueOnce([op2])
+      .mockResolvedValue([]);
+    mockApi.addItemByName.mockResolvedValue({ id: 99 });
 
     await drain();
-    // Verify draining flag was reset: a second explicit drain runs successfully.
     await drain();
 
-    expect(api.addItemByName).toHaveBeenCalledTimes(2);
+    expect(mockApi.addItemByName).toHaveBeenCalledTimes(2);
   });
 });
