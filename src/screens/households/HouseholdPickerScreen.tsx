@@ -8,7 +8,7 @@ import {
   View,
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
-import { useHouseholdStore } from '@/store/householdStore';
+import { useHouseholdStore, persistAndSelectHousehold } from '@/store/householdStore';
 import { useAuthStore } from '@/store/authStore';
 import { Colors, FontSize, Radii, Spacing } from '@/theme';
 import type { Household } from '@/api/households';
@@ -134,7 +134,6 @@ export default function HouseholdPickerScreen({ navigation }: HouseholdPickerScr
   const [households, setHouseholds] = useState<Household[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
-  const selectHousehold = useHouseholdStore((s) => s.selectHousehold);
   const selectedHousehold = useHouseholdStore((s) => s.selectedHousehold);
   const householdsApi = useAuthStore((s) => s.householdsApi);
 
@@ -153,7 +152,7 @@ export default function HouseholdPickerScreen({ navigation }: HouseholdPickerScr
         // When reached from the nav bar (canGoBack = true), always show the list
         // so the user can explicitly confirm or switch their household.
         if (results.length === 1 && !canGoBack) {
-          selectHousehold(results[0]);
+          await persistAndSelectHousehold(results[0]);
           return;
         }
         setHouseholds(results);
@@ -170,9 +169,9 @@ export default function HouseholdPickerScreen({ navigation }: HouseholdPickerScr
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function handleSelect(household: Household) {
+  async function handleSelect(household: Household) {
     setSelectedId(household.id);
-    selectHousehold(household);
+    await persistAndSelectHousehold(household);
     // In-app mode: go back to the list. In onboarding mode, the conditional
     // render in RootNavigator transitions to ListDetail automatically.
     if (canGoBack) {
