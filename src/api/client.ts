@@ -7,7 +7,7 @@ export function isAxiosError(err: unknown): err is AxiosError {
 }
 
 export class ApiClientManager {
-  readonly axiosInstance: AxiosInstance;
+  private readonly axiosInstance: AxiosInstance;
   private sessionExpiredCallback: (() => void) | null;
   private retriedRequests = new WeakSet<InternalAxiosRequestConfig>();
   private isRefreshing = false;
