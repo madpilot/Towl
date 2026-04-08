@@ -159,6 +159,33 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Re-bootstrap when the selected household changes (user switched household).
+  const prevHouseholdIdRef = useRef(householdId);
+  useEffect(() => {
+    if (prevHouseholdIdRef.current === householdId) return;
+    prevHouseholdIdRef.current = householdId;
+    if (!householdId) return;
+
+    setActiveLocalId(null);
+    setActiveServerId(null);
+    setActiveName('');
+    setItems([]);
+    setLoading(true);
+
+    async function rebootstrap() {
+      const lists = await loadLists();
+      if (lists.length === 0) { setLoading(false); return; }
+      const initial = lists[0];
+      setActiveLocalId(initial.localId);
+      setActiveServerId(initial.serverId);
+      setActiveName(initial.name);
+      await loadItems(initial.localId);
+      setLoading(false);
+      void syncItems(initial.localId, initial.serverId);
+    }
+    void rebootstrap();
+  }, [householdId, loadLists, loadItems, syncItems]);
+
   // Reload items from DB whenever a sync pass completes so isDirty clears.
   // Only fires when syncVersion actually increments — guards against re-running
   // when activeLocalId or loadItems reference changes without a new sync pass.
