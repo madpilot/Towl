@@ -5,12 +5,12 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Modal,
   SafeAreaView,
   ActivityIndicator,
   Alert,
   StyleSheet,
 } from 'react-native';
+import Sheet from '@/components/Sheet';
 import { logout } from '@/auth/authManager';
 import { useAuthStore } from '@/store/authStore';
 import BottomNav from '@/components/BottomNav';
@@ -160,65 +160,6 @@ const rowStyles = StyleSheet.create({
 function Sep() {
   return <View style={{ height: 1, backgroundColor: Colors.mintBg, marginLeft: Spacing.xl }} />;
 }
-
-// ─── Sheet modal ──────────────────────────────────────────────────────────────
-
-type SheetProps = {
-  visible: boolean;
-  title: string;
-  onClose: () => void;
-  children: React.ReactNode;
-};
-
-function Sheet({ visible, title, onClose, children }: SheetProps) {
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableOpacity style={sheetStyles.backdrop} activeOpacity={1} onPress={onClose} />
-      <View style={sheetStyles.sheet}>
-        <View style={sheetStyles.header}>
-          <Text style={sheetStyles.title}>{title}</Text>
-          <TouchableOpacity onPress={onClose} hitSlop={8}>
-            <Text style={sheetStyles.close}>✕</Text>
-          </TouchableOpacity>
-        </View>
-        {children}
-      </View>
-    </Modal>
-  );
-}
-
-const sheetStyles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(20,50,43,0.45)',
-  },
-  sheet: {
-    backgroundColor: Colors.white,
-    borderTopLeftRadius: Radii.xl,
-    borderTopRightRadius: Radii.xl,
-    paddingBottom: 32,
-    maxHeight: '82%',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: Spacing.xl,
-    paddingBottom: Spacing.md,
-    borderBottomWidth: 1.5,
-    borderBottomColor: Colors.mintBg,
-  },
-  title: {
-    flex: 1,
-    fontSize: FontSize.heading,
-    fontWeight: '800',
-    color: Colors.textDark,
-  },
-  close: {
-    fontSize: 16,
-    color: Colors.mintLight,
-    fontWeight: '700',
-  },
-});
 
 // ─── Field ────────────────────────────────────────────────────────────────────
 

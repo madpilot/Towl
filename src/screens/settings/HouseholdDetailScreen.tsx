@@ -5,13 +5,13 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Modal,
   SafeAreaView,
   ActivityIndicator,
   Alert,
   StyleSheet,
 } from 'react-native';
 import { useAuthStore } from '@/store/authStore';
+import Sheet from '@/components/Sheet';
 import BottomNav from '@/components/BottomNav';
 import { Colors, Spacing, Radii, FontSize } from '@/theme';
 import type { ApiShoppingList } from '@/api/shoppinglists';
@@ -95,31 +95,6 @@ const btnStyles = StyleSheet.create({
   label: { fontSize: FontSize.body, fontWeight: '800', color: Colors.white },
   secondaryBtn: { margin: Spacing.xl, marginBottom: 0, padding: Spacing.md + 1, borderRadius: Radii.md, borderWidth: 1.5, borderColor: Colors.mintPale, alignItems: 'center' },
   secondaryLabel: { fontSize: FontSize.body, fontWeight: '800', color: Colors.mint },
-});
-
-type SheetProps = { visible: boolean; title: string; onClose: () => void; children: React.ReactNode };
-
-function Sheet({ visible, title, onClose, children }: SheetProps) {
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableOpacity style={sheetStyles.backdrop} activeOpacity={1} onPress={onClose} />
-      <View style={sheetStyles.sheet}>
-        <View style={sheetStyles.header}>
-          <Text style={sheetStyles.title}>{title}</Text>
-          <TouchableOpacity onPress={onClose} hitSlop={8}><Text style={sheetStyles.close}>✕</Text></TouchableOpacity>
-        </View>
-        {children}
-      </View>
-    </Modal>
-  );
-}
-
-const sheetStyles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(20,50,43,0.45)' },
-  sheet: { backgroundColor: Colors.white, borderTopLeftRadius: Radii.xl, borderTopRightRadius: Radii.xl, paddingBottom: 32, maxHeight: '82%' },
-  header: { flexDirection: 'row', alignItems: 'center', padding: Spacing.xl, paddingBottom: Spacing.md, borderBottomWidth: 1.5, borderBottomColor: Colors.mintBg },
-  title: { flex: 1, fontSize: FontSize.heading, fontWeight: '800', color: Colors.textDark },
-  close: { fontSize: 16, color: Colors.mintLight, fontWeight: '700' },
 });
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
