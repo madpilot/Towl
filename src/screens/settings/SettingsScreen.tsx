@@ -454,10 +454,13 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
             ))
           )}
           <Sep />
-          <Row
-            label="New household"
+          <TouchableOpacity
+            style={styles.addRow}
             onPress={() => { setNewHHName(''); setModal('newHousehold'); }}
-          />
+            activeOpacity={0.7}
+          >
+            <Text style={styles.addLabel}>+ New household</Text>
+          </TouchableOpacity>
         </Card>
 
         {/* Log out */}
@@ -599,5 +602,14 @@ const styles = StyleSheet.create({
     color: Colors.mintPale,
     textAlign: 'center',
     marginTop: Spacing.xl,
+  },
+  addRow: {
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.md + 2,
+  },
+  addLabel: {
+    fontSize: FontSize.body,
+    fontWeight: '700',
+    color: Colors.mint,
   },
 });
