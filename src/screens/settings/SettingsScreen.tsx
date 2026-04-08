@@ -422,6 +422,12 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
           />
           <Sep />
           <Row
+            label="Email"
+            sub={user?.email}
+            showChevron={false}
+          />
+          <Sep />
+          <Row
             label="Change password"
             onPress={() => { setPwCurrent(''); setPwNew(''); setPwConfirm(''); setModal('changePassword'); }}
           />
