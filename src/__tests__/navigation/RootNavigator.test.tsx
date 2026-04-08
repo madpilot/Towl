@@ -76,6 +76,20 @@ jest.mock('@/screens/households/HouseholdPickerScreen', () => {
   return HouseholdPickerScreen;
 });
 
+jest.mock('@/screens/settings/SettingsScreen', () => {
+  const React = require('react');
+  const { Text } = require('react-native');
+  function SettingsScreen() { return React.createElement(Text, null, 'Settings'); }
+  return SettingsScreen;
+});
+
+jest.mock('@/screens/settings/HouseholdDetailScreen', () => {
+  const React = require('react');
+  const { Text } = require('react-native');
+  function HouseholdDetailScreen() { return React.createElement(Text, null, 'HouseholdDetail'); }
+  return HouseholdDetailScreen;
+});
+
 import React from 'react';
 import { render, waitFor } from '@testing-library/react-native';
 import RootNavigator from '@/navigation/RootNavigator';

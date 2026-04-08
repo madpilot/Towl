@@ -22,9 +22,7 @@ import { useSyncStore } from '@/store/syncStore';
 import CategorySection from '@/components/CategorySection';
 import AddItemBar from '@/components/AddItemBar';
 import SwipeableItem from '@/components/SwipeableItem';
-import TommyOwl from '@/components/TommyOwl';
-import SettingsIcon from '@/components/icons/SettingsIcon';
-import HouseIcon from '@/components/icons/HouseIcon';
+import BottomNav from '@/components/BottomNav';
 import { Colors, Spacing, Radii, FontSize } from '@/theme';
 import { SECURE_STORE_KEYS } from '@/utils/constants';
 import type { LocalItem } from '@/db/items';
@@ -61,7 +59,7 @@ function groupByCategory(items: LocalItem[]): { category: string; items: LocalIt
 
 // ─── Screen ──────────────────────────────────────────────────────
 
-export default function ListDetailScreen({ navigation }: ListDetailScreenProps) {
+export default function ListDetailScreen(_props: ListDetailScreenProps) {
   const [activeLocalId, setActiveLocalId] = useState<string | null>(null);
   const [activeServerId, setActiveServerId] = useState<number | null>(null);
   const [activeName, setActiveName] = useState('');
@@ -388,7 +386,7 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
       )}
 
       {/* Bottom navigation bar */}
-      <BottomNav onHouseholdPress={() => navigation.navigate('HouseholdPicker')} />
+      <BottomNav active="lists" />
 
       {/* List picker modal */}
       <ListPickerModal
@@ -411,32 +409,6 @@ type SwipeableItemInlineProps = {
 
 function SwipeableItemInline({ item, handlers }: SwipeableItemInlineProps) {
   return <SwipeableItem item={item} {...handlers} />;
-}
-
-// ─── Bottom navigation bar ────────────────────────────────────────
-
-type BottomNavProps = {
-  onHouseholdPress: () => void;
-};
-
-function BottomNav({ onHouseholdPress }: BottomNavProps) {
-  return (
-    <View style={navStyles.bar}>
-      <TouchableOpacity style={navStyles.navBtn} onPress={onHouseholdPress} activeOpacity={0.7}>
-        <HouseIcon color={Colors.mint} size={24} />
-        <Text style={navStyles.navLabel}>Household</Text>
-      </TouchableOpacity>
-
-      <View style={navStyles.owlWrap}>
-        <TommyOwl size={64} />
-      </View>
-
-      <TouchableOpacity style={navStyles.navBtn} activeOpacity={0.7}>
-        <SettingsIcon color={Colors.mintLight} size={24} />
-        <Text style={[navStyles.navLabel, navStyles.navLabelFaded]}>Settings</Text>
-      </TouchableOpacity>
-    </View>
-  );
 }
 
 // ─── List picker modal ────────────────────────────────────────────
@@ -564,48 +536,6 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 1,
     backgroundColor: Colors.mintPale,
-  },
-});
-
-const navStyles = StyleSheet.create({
-  bar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: Colors.white,
-    borderTopLeftRadius: Radii.xl + 4,
-    borderTopRightRadius: Radii.xl + 4,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    paddingTop: Spacing.md,
-    paddingBottom: Spacing.xl,
-    paddingHorizontal: Spacing.xxl * 2,
-    shadowColor: Colors.mint,
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.10,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  navBtn: {
-    alignItems: 'center',
-    gap: Spacing.xs,
-    minWidth: 48,
-  },
-  navLabel: {
-    fontSize: FontSize.tiny,
-    fontWeight: '800',
-    color: Colors.mint,
-  },
-  navLabelFaded: {
-    color: Colors.mintLight,
-  },
-  owlWrap: {
-    position: 'absolute',
-    top: -44,
-    left: '50%',
-    transform: [{ translateX: -32 }],
   },
 });
 

@@ -105,4 +105,9 @@ export class ShoppingListsApi {
   async deleteShoppingList(listId: number): Promise<void> {
     await this.client.delete(`/shoppinglist/${listId}`);
   }
+
+  // Endpoint unknown — stub until confirmed
+  async renameShoppingList(_listId: number, _name: string): Promise<void> {
+    throw new Error('renameShoppingList: KitchenOwl API endpoint not yet confirmed');
+  }
 }

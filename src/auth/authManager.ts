@@ -30,6 +30,7 @@ function createApis(serverUrl: string): AuthApi {
   const api = new AuthApi(manager);
   authApi = api;
   useAuthStore.getState().setApis(
+    api,
     new HouseholdsApi(manager),
     new ShoppingListsApi(manager),
   );
