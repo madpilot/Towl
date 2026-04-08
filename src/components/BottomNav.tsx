@@ -85,7 +85,8 @@ const styles = StyleSheet.create({
   owlWrap: {
     position: 'absolute',
     top: -66,
-    left: '50%',
-    transform: [{ translateX: -48 }],
+    left: 0,
+    right: 0,
+    alignItems: 'center',
   },
 });
