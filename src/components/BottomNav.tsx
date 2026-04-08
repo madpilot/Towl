@@ -21,7 +21,7 @@ export default function BottomNav({ active }: BottomNavProps) {
     <View style={styles.bar}>
       <TouchableOpacity
         style={styles.navBtn}
-        onPress={() => navigation.navigate('ListDetail')}
+        onPress={() => navigation.reset({ index: 0, routes: [{ name: 'ListDetail' }] })}
         activeOpacity={0.7}
       >
         <ListsIcon color={active === 'lists' ? Colors.mint : Colors.mintLight} size={24} />
@@ -34,7 +34,7 @@ export default function BottomNav({ active }: BottomNavProps) {
 
       <TouchableOpacity
         style={styles.navBtn}
-        onPress={() => navigation.navigate('Settings')}
+        onPress={() => navigation.reset({ index: 0, routes: [{ name: 'Settings' }] })}
         activeOpacity={0.7}
       >
         <SettingsIcon color={active === 'settings' ? Colors.mint : Colors.mintLight} size={24} />
