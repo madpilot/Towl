@@ -63,6 +63,7 @@ function MainNavigator() {
           <MainStack.Screen
             name="ListDetail"
             component={ListDetailScreen}
+            options={{ animation: 'none' }}
           />
           <MainStack.Screen
             name="HouseholdPicker"
@@ -71,6 +72,7 @@ function MainNavigator() {
           <MainStack.Screen
             name="Settings"
             component={SettingsScreen}
+            options={{ animation: 'none' }}
           />
           <MainStack.Screen
             name="HouseholdDetail"
