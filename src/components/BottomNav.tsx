@@ -40,7 +40,7 @@ export default function BottomNav({ active }: BottomNavProps) {
       </TouchableOpacity>
 
       <View style={styles.owlWrap}>
-        <TommyOwl size={64} />
+        <TommyOwl size={96} />
       </View>
     </View>
   );
@@ -84,8 +84,8 @@ const styles = StyleSheet.create({
   },
   owlWrap: {
     position: 'absolute',
-    top: -44,
+    top: -66,
     left: '50%',
-    transform: [{ translateX: -32 }],
+    transform: [{ translateX: -48 }],
   },
 });
