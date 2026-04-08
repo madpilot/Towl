@@ -50,7 +50,7 @@ export default function BottomNav({ active }: BottomNavProps) {
         {showHousehold && (
           <NavBtn
             icon={<HouseIcon color={Colors.mint} size={24} />}
-            label="Switch"
+            label="Households"
             isActive={false}
             onPress={() => navigation.navigate('HouseholdPicker')}
           />

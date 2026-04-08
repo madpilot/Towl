@@ -17,6 +17,7 @@ import Sheet from '@/components/Sheet';
 import { logout } from '@/auth/authManager';
 import { useAuthStore } from '@/store/authStore';
 import BottomNav from '@/components/BottomNav';
+import { useHouseholdStore } from '@/store/householdStore';
 import TommyOwl from '@/components/TommyOwl';
 import { Colors, Spacing, Radii, FontSize } from '@/theme';
 import { SECURE_STORE_KEYS } from '@/utils/constants';
@@ -319,6 +320,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
   const user = useAuthStore((s) => s.user);
   const authApi = useAuthStore((s) => s.authApi);
   const householdsApi = useAuthStore((s) => s.householdsApi);
+  const setStoreHouseholds = useHouseholdStore((s) => s.setHouseholds);
 
   const [households, setHouseholds] = useState<Household[]>([]);
   const [loadingHouseholds, setLoadingHouseholds] = useState(true);
@@ -413,12 +415,13 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
       setLoadingHouseholds(true);
       const data = await householdsApi.getHouseholds();
       setHouseholds(data);
+      setStoreHouseholds(data);
     } catch {
       Alert.alert('Error', 'Could not load households.');
     } finally {
       setLoadingHouseholds(false);
     }
-  }, [householdsApi]);
+  }, [householdsApi, setStoreHouseholds]);
 
   useEffect(() => { void loadHouseholds(); }, [loadHouseholds]);
 

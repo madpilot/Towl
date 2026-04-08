@@ -135,6 +135,7 @@ export default function HouseholdPickerScreen({ navigation }: HouseholdPickerScr
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
   const selectedHousehold = useHouseholdStore((s) => s.selectedHousehold);
+  const setStoreHouseholds = useHouseholdStore((s) => s.setHouseholds);
   const householdsApi = useAuthStore((s) => s.householdsApi);
 
   const canGoBack = navigation.canGoBack();
@@ -156,6 +157,7 @@ export default function HouseholdPickerScreen({ navigation }: HouseholdPickerScr
           return;
         }
         setHouseholds(results);
+        setStoreHouseholds(results);
         if (selectedHousehold) {
           setSelectedId(selectedHousehold.id);
         }
