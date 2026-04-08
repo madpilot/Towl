@@ -24,7 +24,7 @@ export default function BottomNav({ active }: BottomNavProps) {
         onPress={() => navigation.reset({ index: 0, routes: [{ name: 'ListDetail' }] })}
         activeOpacity={0.7}
       >
-        <ListsIcon color={active === 'lists' ? Colors.mint : Colors.mintLight} size={24} />
+        <ListsIcon color={active === 'lists' ? Colors.mintLight : Colors.mint} size={24} />
         <Text style={[styles.navLabel, active !== 'lists' && styles.navLabelFaded]}>Lists</Text>
       </TouchableOpacity>
 
@@ -37,7 +37,7 @@ export default function BottomNav({ active }: BottomNavProps) {
         onPress={() => navigation.reset({ index: 0, routes: [{ name: 'Settings' }] })}
         activeOpacity={0.7}
       >
-        <SettingsIcon color={active === 'settings' ? Colors.mint : Colors.mintLight} size={24} />
+        <SettingsIcon color={active === 'settings' ? Colors.mintLight : Colors.mint} size={24} />
         <Text style={[styles.navLabel, active !== 'settings' && styles.navLabelFaded]}>Settings</Text>
       </TouchableOpacity>
     </View>
@@ -73,10 +73,10 @@ const styles = StyleSheet.create({
   navLabel: {
     fontSize: FontSize.tiny,
     fontWeight: '800',
-    color: Colors.mint,
+    color: Colors.mintLight,
   },
   navLabelFaded: {
-    color: Colors.mintLight,
+    color: Colors.mint,
   },
   owlWrap: {
     position: 'absolute',
