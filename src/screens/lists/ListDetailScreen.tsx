@@ -23,6 +23,7 @@ import CategorySection from '@/components/CategorySection';
 import AddItemBar from '@/components/AddItemBar';
 import SwipeableItem from '@/components/SwipeableItem';
 import BottomNav from '@/components/BottomNav';
+import TommyOwl from '@/components/TommyOwl';
 import { Colors, Spacing, Radii, FontSize } from '@/theme';
 import { SECURE_STORE_KEYS } from '@/utils/constants';
 import type { LocalItem } from '@/db/items';
@@ -336,6 +337,7 @@ export default function ListDetailScreen(_props: ListDetailScreenProps) {
           <Text style={styles.listName} numberOfLines={1}>{activeName}</Text>
           <Text style={styles.chevron}>▾</Text>
         </TouchableOpacity>
+        <TommyOwl size={40} />
       </View>
 
       {/* Add item bar */}
@@ -475,15 +477,17 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: Spacing.xxl,
     paddingTop: Spacing.lg,
     paddingBottom: Spacing.sm,
   },
   listPicker: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
-    alignSelf: 'flex-start',
   },
   listName: {
     fontSize: FontSize.title,
