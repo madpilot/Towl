@@ -291,6 +291,7 @@ const btnStyles = StyleSheet.create({
 
 type ModalKind =
   | 'editName'
+  | 'editEmail'
   | 'changePassword'
   | 'sessions'
   | 'newHousehold'
@@ -309,6 +310,10 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
   // Edit name
   const [editName, setEditName] = useState('');
   const [savingName, setSavingName] = useState(false);
+
+  // Edit email
+  const [editEmail, setEditEmail] = useState('');
+  const [savingEmail, setSavingEmail] = useState(false);
 
   // Change password
   const [pwCurrent, setPwCurrent] = useState('');
@@ -346,6 +351,20 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
       Alert.alert('Error', msg);
     } finally {
       setSavingName(false);
+    }
+  }
+
+  async function handleSaveEmail() {
+    if (!authApi) return;
+    setSavingEmail(true);
+    try {
+      await authApi.updateEmail(editEmail.trim());
+      setModal(null);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Failed to update email.';
+      Alert.alert('Not yet available', msg);
+    } finally {
+      setSavingEmail(false);
     }
   }
 
@@ -424,7 +443,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
           <Row
             label="Email"
             sub={user?.email}
-            showChevron={false}
+            onPress={() => { setEditEmail(user?.email ?? ''); setModal('editEmail'); }}
           />
           <Sep />
           <Row
@@ -489,6 +508,14 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
       <Sheet visible={modal === 'editName'} title="Your name" onClose={() => setModal(null)}>
         <Field label="Full name" value={editName} onChangeText={setEditName} placeholder="Your name" />
         <PrimaryBtn label="Save changes" onPress={handleSaveName} loading={savingName} />
+        <SecondaryBtn label="Cancel" onPress={() => setModal(null)} />
+        <View style={{ height: Spacing.xl }} />
+      </Sheet>
+
+      {/* Edit email modal */}
+      <Sheet visible={modal === 'editEmail'} title="Email address" onClose={() => setModal(null)}>
+        <Field label="Email" value={editEmail} onChangeText={setEditEmail} placeholder="you@example.com" />
+        <PrimaryBtn label="Save changes" onPress={handleSaveEmail} loading={savingEmail} />
         <SecondaryBtn label="Cancel" onPress={() => setModal(null)} />
         <View style={{ height: Spacing.xl }} />
       </Sheet>

@@ -78,6 +78,11 @@ export class AuthApi {
   }
 
   // Endpoint unknown — stub until KitchenOwl endpoint is confirmed
+  async updateEmail(_email: string): Promise<void> {
+    throw new Error('updateEmail: KitchenOwl API endpoint not yet confirmed');
+  }
+
+  // Endpoint unknown — stub until KitchenOwl endpoint is confirmed
   async changePassword(_oldPassword: string, _newPassword: string): Promise<void> {
     throw new Error('changePassword: KitchenOwl API endpoint not yet confirmed');
   }
