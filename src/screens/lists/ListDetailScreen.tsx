@@ -22,8 +22,7 @@ import { useSyncStore } from '@/store/syncStore';
 import CategorySection from '@/components/CategorySection';
 import AddItemBar from '@/components/AddItemBar';
 import SwipeableItem from '@/components/SwipeableItem';
-import TommyOwl from '@/components/TommyOwl';
-import SettingsIcon from '@/components/icons/SettingsIcon';
+import BottomNav from '@/components/BottomNav';
 import HouseIcon from '@/components/icons/HouseIcon';
 import { Colors, Spacing, Radii, FontSize } from '@/theme';
 import { SECURE_STORE_KEYS } from '@/utils/constants';
@@ -159,6 +158,33 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
     return () => { active = false; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Re-bootstrap when the selected household changes (user switched household).
+  const prevHouseholdIdRef = useRef(householdId);
+  useEffect(() => {
+    if (prevHouseholdIdRef.current === householdId) return;
+    prevHouseholdIdRef.current = householdId;
+    if (!householdId) return;
+
+    setActiveLocalId(null);
+    setActiveServerId(null);
+    setActiveName('');
+    setItems([]);
+    setLoading(true);
+
+    async function rebootstrap() {
+      const lists = await loadLists();
+      if (lists.length === 0) { setLoading(false); return; }
+      const initial = lists[0];
+      setActiveLocalId(initial.localId);
+      setActiveServerId(initial.serverId);
+      setActiveName(initial.name);
+      await loadItems(initial.localId);
+      setLoading(false);
+      void syncItems(initial.localId, initial.serverId);
+    }
+    void rebootstrap();
+  }, [householdId, loadLists, loadItems, syncItems]);
 
   // Reload items from DB whenever a sync pass completes so isDirty clears.
   // Only fires when syncVersion actually increments — guards against re-running
@@ -338,6 +364,9 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
           <Text style={styles.listName} numberOfLines={1}>{activeName}</Text>
           <Text style={styles.chevron}>▾</Text>
         </TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.navigate('HouseholdPicker')} activeOpacity={0.7} hitSlop={8}>
+          <HouseIcon color={Colors.mint} size={28} />
+        </TouchableOpacity>
       </View>
 
       {/* Add item bar */}
@@ -388,7 +417,7 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
       )}
 
       {/* Bottom navigation bar */}
-      <BottomNav onHouseholdPress={() => navigation.navigate('HouseholdPicker')} />
+      <BottomNav active="lists" />
 
       {/* List picker modal */}
       <ListPickerModal
@@ -411,32 +440,6 @@ type SwipeableItemInlineProps = {
 
 function SwipeableItemInline({ item, handlers }: SwipeableItemInlineProps) {
   return <SwipeableItem item={item} {...handlers} />;
-}
-
-// ─── Bottom navigation bar ────────────────────────────────────────
-
-type BottomNavProps = {
-  onHouseholdPress: () => void;
-};
-
-function BottomNav({ onHouseholdPress }: BottomNavProps) {
-  return (
-    <View style={navStyles.bar}>
-      <TouchableOpacity style={navStyles.navBtn} onPress={onHouseholdPress} activeOpacity={0.7}>
-        <HouseIcon color={Colors.mint} size={24} />
-        <Text style={navStyles.navLabel}>Household</Text>
-      </TouchableOpacity>
-
-      <View style={navStyles.owlWrap}>
-        <TommyOwl size={64} />
-      </View>
-
-      <TouchableOpacity style={navStyles.navBtn} activeOpacity={0.7}>
-        <SettingsIcon color={Colors.mintLight} size={24} />
-        <Text style={[navStyles.navLabel, navStyles.navLabelFaded]}>Settings</Text>
-      </TouchableOpacity>
-    </View>
-  );
 }
 
 // ─── List picker modal ────────────────────────────────────────────
@@ -503,15 +506,17 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: Spacing.xxl,
     paddingTop: Spacing.lg,
     paddingBottom: Spacing.sm,
   },
   listPicker: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
-    alignSelf: 'flex-start',
   },
   listName: {
     fontSize: FontSize.title,
@@ -564,48 +569,6 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 1,
     backgroundColor: Colors.mintPale,
-  },
-});
-
-const navStyles = StyleSheet.create({
-  bar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: Colors.white,
-    borderTopLeftRadius: Radii.xl + 4,
-    borderTopRightRadius: Radii.xl + 4,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    paddingTop: Spacing.md,
-    paddingBottom: Spacing.xl,
-    paddingHorizontal: Spacing.xxl * 2,
-    shadowColor: Colors.mint,
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.10,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  navBtn: {
-    alignItems: 'center',
-    gap: Spacing.xs,
-    minWidth: 48,
-  },
-  navLabel: {
-    fontSize: FontSize.tiny,
-    fontWeight: '800',
-    color: Colors.mint,
-  },
-  navLabelFaded: {
-    color: Colors.mintLight,
-  },
-  owlWrap: {
-    position: 'absolute',
-    top: -44,
-    left: '50%',
-    transform: [{ translateX: -32 }],
   },
 });
 

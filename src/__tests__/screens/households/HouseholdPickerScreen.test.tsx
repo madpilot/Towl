@@ -17,6 +17,7 @@ jest.mock('@/components/TommyOwl', () => {
   return TommyOwl;
 });
 
+
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import HouseholdPickerScreen from '@/screens/households/HouseholdPickerScreen';
@@ -33,8 +34,8 @@ function makeHousehold(overrides: Partial<Household> = {}): Household {
 
 function mockStore(selectedHousehold: Household | null = null) {
   (useHouseholdStore as unknown as jest.Mock).mockImplementation(
-    (sel: (s: { selectedHousehold: Household | null }) => unknown) =>
-      sel({ selectedHousehold })
+    (sel: (s: { selectedHousehold: Household | null; setHouseholds: jest.Mock }) => unknown) =>
+      sel({ selectedHousehold, setHouseholds: jest.fn() })
   );
 }
 

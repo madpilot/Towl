@@ -75,6 +75,13 @@ jest.mock('@/components/TommyOwl', () => {
   return TommyOwl;
 });
 
+jest.mock('@/components/BottomNav', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  function BottomNav() { return React.createElement(View, { testID: 'bottom-nav' }); }
+  return BottomNav;
+});
+
 jest.mock('@/components/AddItemBar', () => {
   const React = require('react');
   const { TextInput, TouchableOpacity, View } = require('react-native');

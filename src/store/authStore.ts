@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { StoredUser } from '@/auth/tokenStore';
+import type { AuthApi } from '@/api/auth';
 import type { HouseholdsApi } from '@/api/households';
 import type { ShoppingListsApi } from '@/api/shoppinglists';
 
@@ -9,13 +10,14 @@ type AuthState = {
   status: AuthStatus;
   user: StoredUser | null;
   serverUrl: string | null;
+  authApi: AuthApi | null;
   householdsApi: HouseholdsApi | null;
   shoppingListsApi: ShoppingListsApi | null;
 
   setAuthenticated: (user: StoredUser | null, serverUrl: string) => void;
   setUnauthenticated: () => void;
   setServerUrl: (url: string) => void;
-  setApis: (householdsApi: HouseholdsApi, shoppingListsApi: ShoppingListsApi) => void;
+  setApis: (authApi: AuthApi, householdsApi: HouseholdsApi, shoppingListsApi: ShoppingListsApi) => void;
   clearApis: () => void;
 }
 
@@ -23,6 +25,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   status: 'unknown',
   user: null,
   serverUrl: null,
+  authApi: null,
   householdsApi: null,
   shoppingListsApi: null,
 
@@ -34,9 +37,9 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   setServerUrl: (url) => set({ serverUrl: url }),
 
-  setApis: (householdsApi, shoppingListsApi) =>
-    set({ householdsApi, shoppingListsApi }),
+  setApis: (authApi, householdsApi, shoppingListsApi) =>
+    set({ authApi, householdsApi, shoppingListsApi }),
 
   clearApis: () =>
-    set({ householdsApi: null, shoppingListsApi: null }),
+    set({ authApi: null, householdsApi: null, shoppingListsApi: null }),
 }));

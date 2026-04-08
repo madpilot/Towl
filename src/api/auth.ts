@@ -16,6 +16,7 @@ export const AuthResponseSchema = z.object({
     id: z.number(),
     name: z.string(),
     username: z.string(),
+    email: z.string().optional(),
   }),
 });
 
@@ -69,4 +70,42 @@ export class AuthApi {
       // Ignore logout errors — we always clear local state
     }
   }
+
+  // ── Profile ───────────────────────────────────────────────────────────────
+  // Endpoint: POST /user  (shape unconfirmed — update once verified)
+  async updateProfile(name: string): Promise<void> {
+    await this.client.post('/user', { name });
+  }
+
+  // Endpoint unknown — stub until KitchenOwl endpoint is confirmed
+  async updateEmail(_email: string): Promise<void> {
+    throw new Error('updateEmail: KitchenOwl API endpoint not yet confirmed');
+  }
+
+  // Endpoint unknown — stub until KitchenOwl endpoint is confirmed
+  async changePassword(_oldPassword: string, _newPassword: string): Promise<void> {
+    throw new Error('changePassword: KitchenOwl API endpoint not yet confirmed');
+  }
+
+  // ── Sessions ──────────────────────────────────────────────────────────────
+  // Endpoints unknown — stubs until confirmed
+  async getSessions(): Promise<Session[]> {
+    throw new Error('getSessions: KitchenOwl API endpoint not yet confirmed');
+  }
+
+  async revokeSession(_sessionId: number): Promise<void> {
+    throw new Error('revokeSession: KitchenOwl API endpoint not yet confirmed');
+  }
+
+  async revokeAllOtherSessions(): Promise<void> {
+    throw new Error('revokeAllOtherSessions: KitchenOwl API endpoint not yet confirmed');
+  }
 }
+
+export type Session = {
+  id: number;
+  device: string;
+  location: string;
+  lastSeen: string;
+  current: boolean;
+};

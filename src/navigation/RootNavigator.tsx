@@ -18,6 +18,8 @@ import ServerSetupScreen from "@/screens/auth/ServerSetupScreen";
 import LoginScreen from "@/screens/auth/LoginScreen";
 import HouseholdPickerScreen from "@/screens/households/HouseholdPickerScreen";
 import ListDetailScreen from "@/screens/lists/ListDetailScreen";
+import SettingsScreen from "@/screens/settings/SettingsScreen";
+import HouseholdDetailScreen from "@/screens/settings/HouseholdDetailScreen";
 
 import type { AuthStackParamList, MainStackParamList } from "./types";
 
@@ -61,10 +63,21 @@ function MainNavigator() {
           <MainStack.Screen
             name="ListDetail"
             component={ListDetailScreen}
+            options={{ animation: 'none' }}
           />
           <MainStack.Screen
             name="HouseholdPicker"
             component={HouseholdPickerScreen}
+            options={{ animation: 'slide_from_bottom' }}
+          />
+          <MainStack.Screen
+            name="Settings"
+            component={SettingsScreen}
+            options={{ animation: 'none' }}
+          />
+          <MainStack.Screen
+            name="HouseholdDetail"
+            component={HouseholdDetailScreen}
           />
         </>
       )}

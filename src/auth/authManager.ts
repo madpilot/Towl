@@ -30,6 +30,7 @@ function createApis(serverUrl: string): AuthApi {
   const api = new AuthApi(manager);
   authApi = api;
   useAuthStore.getState().setApis(
+    api,
     new HouseholdsApi(manager),
     new ShoppingListsApi(manager),
   );
@@ -64,7 +65,7 @@ export async function onLoginSuccess(
   serverUrl: string,
   accessToken: string,
   refreshToken: string,
-  user: { id: number; name: string; username: string },
+  user: { id: number; name: string; username: string; email?: string },
 ): Promise<void> {
   await Promise.all([
     TokenStore.instance.saveServerUrl(serverUrl),
