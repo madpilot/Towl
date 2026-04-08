@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
+  Image,
   ScrollView,
   TouchableOpacity,
   TextInput,
@@ -10,26 +11,37 @@ import {
   Alert,
   StyleSheet,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import * as SecureStore from 'expo-secure-store';
 import Sheet from '@/components/Sheet';
 import { logout } from '@/auth/authManager';
 import { useAuthStore } from '@/store/authStore';
 import BottomNav from '@/components/BottomNav';
 import TommyOwl from '@/components/TommyOwl';
 import { Colors, Spacing, Radii, FontSize } from '@/theme';
+import { SECURE_STORE_KEYS } from '@/utils/constants';
 import type { Household } from '@/api/households';
 import type { SettingsScreenProps } from '@/navigation/types';
 
 // ─── Avatar ──────────────────────────────────────────────────────────────────
 
-function Avatar({ name, size = 52 }: { name: string; size?: number }) {
+function Avatar({ name, size = 52, uri }: { name: string; size?: number; uri?: string | null }) {
   const initials = name
     .split(' ')
     .map((w) => w[0] ?? '')
     .join('')
     .slice(0, 2)
     .toUpperCase();
+  const containerStyle = [avatarStyles.circle, { width: size, height: size, borderRadius: size / 2 }];
+  if (uri) {
+    return (
+      <View style={containerStyle}>
+        <Image source={{ uri }} style={[avatarStyles.image, { borderRadius: size / 2 }]} />
+      </View>
+    );
+  }
   return (
-    <View style={[avatarStyles.circle, { width: size, height: size, borderRadius: size / 2 }]}>
+    <View style={containerStyle}>
       <Text style={[avatarStyles.text, { fontSize: size * 0.33 }]}>{initials}</Text>
     </View>
   );
@@ -42,6 +54,11 @@ const avatarStyles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: Colors.mintPale,
+    overflow: 'hidden',
+  },
+  image: {
+    width: '100%',
+    height: '100%',
   },
   text: {
     color: Colors.white,
@@ -325,6 +342,71 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
   const [newHHName, setNewHHName] = useState('');
   const [creatingHH, setCreatingHH] = useState(false);
 
+  // Avatar
+  const [avatarUri, setAvatarUri] = useState<string | null>(null);
+
+  useEffect(() => {
+    SecureStore.getItemAsync(SECURE_STORE_KEYS.AVATAR_URI)
+      .then((uri) => { if (uri) setAvatarUri(uri); })
+      .catch(() => {});
+  }, []);
+
+  function handleAvatarPress() {
+    Alert.alert('Profile photo', undefined, [
+      {
+        text: 'Take photo',
+        onPress: async () => {
+          const perm = await ImagePicker.requestCameraPermissionsAsync();
+          if (!perm.granted) {
+            Alert.alert('Permission required', 'Camera access is needed to take a photo.');
+            return;
+          }
+          const result = await ImagePicker.launchCameraAsync({
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.7,
+          });
+          if (!result.canceled && result.assets[0]) {
+            const uri = result.assets[0].uri;
+            setAvatarUri(uri);
+            await SecureStore.setItemAsync(SECURE_STORE_KEYS.AVATAR_URI, uri);
+          }
+        },
+      },
+      {
+        text: 'Choose from library',
+        onPress: async () => {
+          const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+          if (!perm.granted) {
+            Alert.alert('Permission required', 'Photo library access is needed to choose a photo.');
+            return;
+          }
+          const result = await ImagePicker.launchImageLibraryAsync({
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.7,
+          });
+          if (!result.canceled && result.assets[0]) {
+            const uri = result.assets[0].uri;
+            setAvatarUri(uri);
+            await SecureStore.setItemAsync(SECURE_STORE_KEYS.AVATAR_URI, uri);
+          }
+        },
+      },
+      ...(avatarUri
+        ? [{
+            text: 'Delete photo',
+            style: 'destructive' as const,
+            onPress: async () => {
+              setAvatarUri(null);
+              await SecureStore.deleteItemAsync(SECURE_STORE_KEYS.AVATAR_URI);
+            },
+          }]
+        : []),
+      { text: 'Cancel', style: 'cancel' as const },
+    ]);
+  }
+
   const loadHouseholds = useCallback(async () => {
     if (!householdsApi) return;
     try {
@@ -422,7 +504,9 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
         {/* Profile hero */}
         <View style={styles.hero}>
-          <Avatar name={displayName} size={52} />
+          <TouchableOpacity onPress={handleAvatarPress} activeOpacity={0.8}>
+            <Avatar name={displayName} size={52} uri={avatarUri} />
+          </TouchableOpacity>
           <View>
             <Text style={styles.heroName}>{displayName}</Text>
             {displayUsername ? (

@@ -32,7 +32,14 @@
     "plugins": [
       "expo-font",
       "expo-secure-store",
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Towl to access your photos to set a profile picture.",
+          "cameraPermission": "Allow Towl to use the camera to take a profile picture."
+        }
+      ]
     ]
   }
 }
