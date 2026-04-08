@@ -2,57 +2,46 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NavigationProp } from '@react-navigation/native';
+import TommyOwl from '@/components/TommyOwl';
 import ListsIcon from '@/components/icons/ListsIcon';
-import HouseIcon from '@/components/icons/HouseIcon';
 import SettingsIcon from '@/components/icons/SettingsIcon';
 import { Colors, Spacing, FontSize, Radii } from '@/theme';
 import type { MainStackParamList } from '@/navigation/types';
 
-type ActiveTab = 'lists' | 'households' | 'settings';
+type ActiveTab = 'lists' | 'settings';
 
 type BottomNavProps = {
   active: ActiveTab;
 };
-
-type NavBtnProps = {
-  icon: React.ReactNode;
-  label: string;
-  isActive: boolean;
-  onPress: () => void;
-};
-
-function NavBtn({ icon, label, isActive, onPress }: NavBtnProps) {
-  return (
-    <TouchableOpacity style={styles.navBtn} onPress={onPress} activeOpacity={0.7}>
-      {icon}
-      <Text style={[styles.navLabel, !isActive && styles.navLabelFaded]}>{label}</Text>
-    </TouchableOpacity>
-  );
-}
 
 export default function BottomNav({ active }: BottomNavProps) {
   const navigation = useNavigation<NavigationProp<MainStackParamList>>();
 
   return (
     <View style={styles.bar}>
-      <NavBtn
-        icon={<HouseIcon color={active === 'households' ? Colors.mintLight : Colors.mint} size={24} />}
-        label="Households"
-        isActive={active === 'households'}
-        onPress={() => navigation.reset({ index: 0, routes: [{ name: 'HouseholdPicker' }] })}
-      />
-      <NavBtn
-        icon={<ListsIcon color={active === 'lists' ? Colors.mintLight : Colors.mint} size={24} />}
-        label="Lists"
-        isActive={active === 'lists'}
+      <TouchableOpacity
+        style={styles.navBtn}
         onPress={() => navigation.reset({ index: 0, routes: [{ name: 'ListDetail' }] })}
-      />
-      <NavBtn
-        icon={<SettingsIcon color={active === 'settings' ? Colors.mintLight : Colors.mint} size={24} />}
-        label="Settings"
-        isActive={active === 'settings'}
+        activeOpacity={0.7}
+      >
+        <ListsIcon color={active === 'lists' ? Colors.mintLight : Colors.mint} size={24} />
+        <Text style={[styles.navLabel, active !== 'lists' && styles.navLabelFaded]}>Lists</Text>
+      </TouchableOpacity>
+
+      <View style={styles.owlGap} />
+
+      <TouchableOpacity
+        style={styles.navBtn}
         onPress={() => navigation.reset({ index: 0, routes: [{ name: 'Settings' }] })}
-      />
+        activeOpacity={0.7}
+      >
+        <SettingsIcon color={active === 'settings' ? Colors.mintLight : Colors.mint} size={24} />
+        <Text style={[styles.navLabel, active !== 'settings' && styles.navLabelFaded]}>Settings</Text>
+      </TouchableOpacity>
+
+      <View style={styles.owlWrap}>
+        <TommyOwl size={64} />
+      </View>
     </View>
   );
 }
@@ -68,10 +57,9 @@ const styles = StyleSheet.create({
     borderTopRightRadius: Radii.xl + 4,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-around',
     paddingTop: Spacing.md,
     paddingBottom: Spacing.xl,
-    paddingHorizontal: Spacing.xxl,
+    paddingHorizontal: Spacing.xxl * 2,
     shadowColor: Colors.mint,
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.10,
@@ -83,6 +71,9 @@ const styles = StyleSheet.create({
     gap: Spacing.xs,
     minWidth: 48,
   },
+  owlGap: {
+    flex: 1,
+  },
   navLabel: {
     fontSize: FontSize.tiny,
     fontWeight: '800',
@@ -90,5 +81,11 @@ const styles = StyleSheet.create({
   },
   navLabelFaded: {
     color: Colors.mint,
+  },
+  owlWrap: {
+    position: 'absolute',
+    top: -44,
+    left: '50%',
+    transform: [{ translateX: -32 }],
   },
 });

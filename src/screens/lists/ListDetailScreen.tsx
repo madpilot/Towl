@@ -23,7 +23,7 @@ import CategorySection from '@/components/CategorySection';
 import AddItemBar from '@/components/AddItemBar';
 import SwipeableItem from '@/components/SwipeableItem';
 import BottomNav from '@/components/BottomNav';
-import TommyOwl from '@/components/TommyOwl';
+import HouseIcon from '@/components/icons/HouseIcon';
 import { Colors, Spacing, Radii, FontSize } from '@/theme';
 import { SECURE_STORE_KEYS } from '@/utils/constants';
 import type { LocalItem } from '@/db/items';
@@ -60,7 +60,7 @@ function groupByCategory(items: LocalItem[]): { category: string; items: LocalIt
 
 // ─── Screen ──────────────────────────────────────────────────────
 
-export default function ListDetailScreen(_props: ListDetailScreenProps) {
+export default function ListDetailScreen({ navigation }: ListDetailScreenProps) {
   const [activeLocalId, setActiveLocalId] = useState<string | null>(null);
   const [activeServerId, setActiveServerId] = useState<number | null>(null);
   const [activeName, setActiveName] = useState('');
@@ -337,7 +337,9 @@ export default function ListDetailScreen(_props: ListDetailScreenProps) {
           <Text style={styles.listName} numberOfLines={1}>{activeName}</Text>
           <Text style={styles.chevron}>▾</Text>
         </TouchableOpacity>
-        <TommyOwl size={40} />
+        <TouchableOpacity onPress={() => navigation.navigate('HouseholdPicker')} activeOpacity={0.7} hitSlop={8}>
+          <HouseIcon color={Colors.mint} size={28} />
+        </TouchableOpacity>
       </View>
 
       {/* Add item bar */}
