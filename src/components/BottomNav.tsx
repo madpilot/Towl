@@ -8,7 +8,7 @@ import SettingsIcon from '@/components/icons/SettingsIcon';
 import { Colors, Spacing, FontSize, Radii } from '@/theme';
 import type { MainStackParamList } from '@/navigation/types';
 
-type ActiveTab = 'lists' | 'settings';
+type ActiveTab = 'lists' | 'households' | 'settings';
 
 type BottomNavProps = {
   active: ActiveTab;
@@ -36,9 +36,9 @@ export default function BottomNav({ active }: BottomNavProps) {
   return (
     <View style={styles.bar}>
       <NavBtn
-        icon={<HouseIcon color={Colors.mint} size={24} />}
+        icon={<HouseIcon color={active === 'households' ? Colors.mintLight : Colors.mint} size={24} />}
         label="Households"
-        isActive={false}
+        isActive={active === 'households'}
         onPress={() => navigation.reset({ index: 0, routes: [{ name: 'HouseholdPicker' }] })}
       />
       <NavBtn

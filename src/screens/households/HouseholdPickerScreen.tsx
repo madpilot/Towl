@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   SafeAreaView,
@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useHouseholdStore, persistAndSelectHousehold } from '@/store/householdStore';
+import BottomNav from '@/components/BottomNav';
 import { useAuthStore } from '@/store/authStore';
 import { Colors, FontSize, Radii, Spacing } from '@/theme';
 import type { Household } from '@/api/households';
@@ -139,6 +140,9 @@ export default function HouseholdPickerScreen({ navigation }: HouseholdPickerScr
   const householdsApi = useAuthStore((s) => s.householdsApi);
 
   const canGoBack = navigation.canGoBack();
+  // True when arrived via the nav bar reset (already authenticated, no back stack).
+  // Used to return to ListDetail after switching household.
+  const wasAlreadyAuthenticated = useRef(selectedHousehold !== null);
 
   useEffect(() => {
     async function load() {
@@ -174,11 +178,14 @@ export default function HouseholdPickerScreen({ navigation }: HouseholdPickerScr
   async function handleSelect(household: Household) {
     setSelectedId(household.id);
     await persistAndSelectHousehold(household);
-    // In-app mode: go back to the list. In onboarding mode, the conditional
-    // render in RootNavigator transitions to ListDetail automatically.
     if (canGoBack) {
+      // Pushed onto stack (legacy path) — pop back
       navigation.goBack();
+    } else if (wasAlreadyAuthenticated.current) {
+      // Arrived via nav bar reset — return to list
+      navigation.reset({ index: 0, routes: [{ name: 'ListDetail' }] });
     }
+    // else: onboarding — RootNavigator transitions automatically
   }
 
   return (
@@ -217,6 +224,7 @@ export default function HouseholdPickerScreen({ navigation }: HouseholdPickerScr
           ))}
         </View>
       )}
+      {wasAlreadyAuthenticated.current && <BottomNav active="households" />}
     </SafeAreaView>
   );
 }

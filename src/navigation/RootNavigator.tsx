@@ -68,6 +68,7 @@ function MainNavigator() {
           <MainStack.Screen
             name="HouseholdPicker"
             component={HouseholdPickerScreen}
+            options={{ animation: 'none' }}
           />
           <MainStack.Screen
             name="Settings"
