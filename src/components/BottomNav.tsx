@@ -39,7 +39,7 @@ export default function BottomNav({ active }: BottomNavProps) {
         icon={<HouseIcon color={Colors.mint} size={24} />}
         label="Households"
         isActive={false}
-        onPress={() => navigation.navigate('HouseholdPicker')}
+        onPress={() => navigation.reset({ index: 0, routes: [{ name: 'HouseholdPicker' }] })}
       />
       <NavBtn
         icon={<ListsIcon color={active === 'lists' ? Colors.mintLight : Colors.mint} size={24} />}
