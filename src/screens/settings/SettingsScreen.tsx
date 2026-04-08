@@ -499,7 +499,6 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
           />
         </Card>
 
-        <Text style={styles.footer}>Towl · KitchenOwl sync</Text>
       </ScrollView>
 
       <BottomNav active="settings" />
@@ -629,12 +628,6 @@ const styles = StyleSheet.create({
     fontSize: FontSize.body,
     color: Colors.textFaded,
     lineHeight: 22,
-  },
-  footer: {
-    fontSize: FontSize.tiny,
-    color: Colors.mintPale,
-    textAlign: 'center',
-    marginTop: Spacing.xl,
   },
   addRow: {
     paddingHorizontal: Spacing.xl,
