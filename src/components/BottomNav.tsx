@@ -36,16 +36,16 @@ export default function BottomNav({ active }: BottomNavProps) {
   return (
     <View style={styles.bar}>
       <NavBtn
-        icon={<ListsIcon color={active === 'lists' ? Colors.mintLight : Colors.mint} size={24} />}
-        label="Lists"
-        isActive={active === 'lists'}
-        onPress={() => navigation.reset({ index: 0, routes: [{ name: 'ListDetail' }] })}
-      />
-      <NavBtn
         icon={<HouseIcon color={Colors.mint} size={24} />}
         label="Households"
         isActive={false}
         onPress={() => navigation.navigate('HouseholdPicker')}
+      />
+      <NavBtn
+        icon={<ListsIcon color={active === 'lists' ? Colors.mintLight : Colors.mint} size={24} />}
+        label="Lists"
+        isActive={active === 'lists'}
+        onPress={() => navigation.reset({ index: 0, routes: [{ name: 'ListDetail' }] })}
       />
       <NavBtn
         icon={<SettingsIcon color={active === 'settings' ? Colors.mintLight : Colors.mint} size={24} />}

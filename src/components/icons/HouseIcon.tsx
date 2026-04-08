@@ -8,7 +8,7 @@ type HouseIconProps = {
 
 export default function HouseIcon({ color, size = 24 }: HouseIconProps) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" pointerEvents="none">
       {/* Roof */}
       <Path
         d="M3 10.5L12 3l9 7.5"
