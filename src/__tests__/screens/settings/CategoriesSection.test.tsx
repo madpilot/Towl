@@ -1,36 +1,97 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react-native';
+import { render, screen, fireEvent, act } from '@testing-library/react-native';
+
+jest.mock('@/store/householdDetailStore');
+jest.mock('@/components/Sheet', () => {
+  const { View } = require('react-native');
+  function Sheet({ visible, children }: { visible: boolean; children: React.ReactNode }) {
+    return visible ? <View>{children}</View> : null;
+  }
+  return Sheet;
+});
+
 import { CategoriesSection } from '@/screens/settings/CategoriesSection';
+import { useHouseholdDetailStore } from '@/store/householdDetailStore';
 import type { HouseholdCategory } from '@/api/households';
 
-const categories: HouseholdCategory[] = [
+const mockCreateCategory = jest.fn();
+const mockUpdateCategory = jest.fn();
+const mockDeleteCategory = jest.fn();
+
+const sampleCategories: HouseholdCategory[] = [
   { id: 1, name: 'Produce', ordering: 0 },
   { id: 2, name: 'Dairy', ordering: 1 },
 ];
 
+function mockStore(overrides: Record<string, unknown> = {}) {
+  (useHouseholdDetailStore as unknown as jest.Mock).mockImplementation((sel: (s: unknown) => unknown) =>
+    sel({
+      categories: [],
+      createCategory: mockCreateCategory,
+      updateCategory: mockUpdateCategory,
+      deleteCategory: mockDeleteCategory,
+      ...overrides,
+    })
+  );
+}
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockStore();
+});
+
 describe('CategoriesSection', () => {
   it('shows empty state when there are no categories', () => {
-    render(<CategoriesSection categories={[]} onEdit={jest.fn()} onNew={jest.fn()} />);
+    render(<CategoriesSection />);
     expect(screen.getByText('No categories yet.')).toBeTruthy();
   });
 
   it('renders category names', () => {
-    render(<CategoriesSection categories={categories} onEdit={jest.fn()} onNew={jest.fn()} />);
+    mockStore({ categories: sampleCategories });
+    render(<CategoriesSection />);
     expect(screen.getByText('Produce')).toBeTruthy();
     expect(screen.getByText('Dairy')).toBeTruthy();
   });
 
-  it('calls onEdit with the correct category when a row is pressed', () => {
-    const onEdit = jest.fn();
-    render(<CategoriesSection categories={categories} onEdit={onEdit} onNew={jest.fn()} />);
-    fireEvent.press(screen.getByText('Produce'));
-    expect(onEdit).toHaveBeenCalledWith(categories[0]);
+  it('opens new-category sheet when the add row is pressed', () => {
+    render(<CategoriesSection />);
+    fireEvent.press(screen.getByText('+ Add category'));
+    expect(screen.getByText('Add category')).toBeTruthy();
   });
 
-  it('calls onNew when the add row is pressed', () => {
-    const onNew = jest.fn();
-    render(<CategoriesSection categories={[]} onEdit={jest.fn()} onNew={onNew} />);
+  it('calls createCategory when new category is submitted', async () => {
+    mockCreateCategory.mockResolvedValue(undefined);
+    render(<CategoriesSection />);
     fireEvent.press(screen.getByText('+ Add category'));
-    expect(onNew).toHaveBeenCalledTimes(1);
+    fireEvent.changeText(screen.getByPlaceholderText('e.g. Frozen'), 'Bakery');
+    await act(async () => { fireEvent.press(screen.getByText('Add category')); });
+    expect(mockCreateCategory).toHaveBeenCalledWith('Bakery');
+  });
+
+  it('opens edit sheet when a category row is pressed', () => {
+    mockStore({ categories: sampleCategories });
+    render(<CategoriesSection />);
+    fireEvent.press(screen.getByText('Produce'));
+    expect(screen.getByText('Save changes')).toBeTruthy();
+    expect(screen.getByText('Delete category')).toBeTruthy();
+  });
+
+  it('calls updateCategory when save changes is pressed', async () => {
+    mockUpdateCategory.mockResolvedValue(undefined);
+    mockStore({ categories: sampleCategories });
+    render(<CategoriesSection />);
+    fireEvent.press(screen.getByText('Produce'));
+    fireEvent.changeText(screen.getByDisplayValue('Produce'), 'Fresh Produce');
+    await act(async () => { fireEvent.press(screen.getByText('Save changes')); });
+    expect(mockUpdateCategory).toHaveBeenCalledWith(1, 'Fresh Produce');
+  });
+
+  it('calls deleteCategory when delete is pressed', async () => {
+    mockDeleteCategory.mockResolvedValue(undefined);
+    mockStore({ categories: sampleCategories });
+    render(<CategoriesSection />);
+    fireEvent.press(screen.getByText('Produce'));
+    await act(async () => { fireEvent.press(screen.getByText('Delete category')); });
+    expect(mockDeleteCategory).toHaveBeenCalledWith(1);
   });
 });

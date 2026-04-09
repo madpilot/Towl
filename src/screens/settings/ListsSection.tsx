@@ -1,16 +1,61 @@
-import React from 'react';
-import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
-import { SectionLabel, Card, Sep, Row } from '@/components/settings/SettingsUI';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, Alert, StyleSheet } from 'react-native';
+import Sheet from '@/components/Sheet';
+import { SectionLabel, Card, Sep, Row, Field, PrimaryBtn, SecondaryBtn } from '@/components/settings';
+import { useHouseholdDetailStore } from '@/store/householdDetailStore';
 import { Colors, Spacing, FontSize } from '@/theme';
-import type { ApiShoppingList } from '@/api/shoppinglists';
 
-type Props = {
-  lists: ApiShoppingList[];
-  onEdit: (list: ApiShoppingList) => void;
-  onNew: () => void;
-};
+export function ListsSection() {
+  const lists = useHouseholdDetailStore((s) => s.lists);
+  const createList = useHouseholdDetailStore((s) => s.createList);
+  const renameList = useHouseholdDetailStore((s) => s.renameList);
+  const deleteList = useHouseholdDetailStore((s) => s.deleteList);
 
-export function ListsSection({ lists, onEdit, onNew }: Props) {
+  const [modal, setModal] = useState<'new' | 'edit' | null>(null);
+  const [listName, setListName] = useState('');
+  const [editingListId, setEditingListId] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  async function handleCreate() {
+    if (!listName.trim()) return;
+    setSaving(true);
+    try {
+      await createList(listName.trim());
+      setListName('');
+      setModal(null);
+    } catch (e: unknown) {
+      Alert.alert('Error', e instanceof Error ? e.message : 'Failed to create list.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleRename() {
+    if (!listName.trim() || editingListId === null) return;
+    setSaving(true);
+    try {
+      await renameList(editingListId, listName.trim());
+      setModal(null);
+    } catch (e: unknown) {
+      Alert.alert('Not yet available', e instanceof Error ? e.message : 'Failed to rename list.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (editingListId === null) return;
+    setSaving(true);
+    try {
+      await deleteList(editingListId);
+      setModal(null);
+    } catch (e: unknown) {
+      Alert.alert('Error', e instanceof Error ? e.message : 'Failed to delete list.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <>
       <SectionLabel label="Shopping Lists" />
@@ -25,17 +70,36 @@ export function ListsSection({ lists, onEdit, onNew }: Props) {
               <Row
                 label={list.name}
                 sub={`${list.items.length} item${list.items.length !== 1 ? 's' : ''}`}
-                onPress={() => onEdit(list)}
+                onPress={() => { setEditingListId(list.id); setListName(list.name); setModal('edit'); }}
               />
               {i < lists.length - 1 && <Sep />}
             </View>
           ))
         )}
         <Sep />
-        <TouchableOpacity style={styles.addRow} onPress={onNew} activeOpacity={0.7}>
+        <TouchableOpacity
+          style={styles.addRow}
+          onPress={() => { setListName(''); setModal('new'); }}
+          activeOpacity={0.7}
+        >
           <Text style={styles.addLabel}>+ New list</Text>
         </TouchableOpacity>
       </Card>
+
+      <Sheet visible={modal === 'new'} title="New list" onClose={() => setModal(null)}>
+        <Field label="List name" value={listName} onChangeText={setListName} placeholder="e.g. Weekend Shop" />
+        <PrimaryBtn label="Create list" onPress={handleCreate} loading={saving} />
+        <SecondaryBtn label="Cancel" onPress={() => setModal(null)} />
+        <View style={{ height: Spacing.xl }} />
+      </Sheet>
+
+      <Sheet visible={modal === 'edit'} title="Edit list" onClose={() => setModal(null)}>
+        <Field label="List name" value={listName} onChangeText={setListName} placeholder="e.g. Weekend Shop" />
+        <PrimaryBtn label="Save changes" onPress={handleRename} loading={saving} />
+        <PrimaryBtn label="Delete list" onPress={handleDelete} loading={saving} danger />
+        <SecondaryBtn label="Cancel" onPress={() => setModal(null)} />
+        <View style={{ height: Spacing.xl }} />
+      </Sheet>
     </>
   );
 }

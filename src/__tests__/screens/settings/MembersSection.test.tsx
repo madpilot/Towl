@@ -1,37 +1,78 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react-native';
-import { MembersSection } from '@/screens/settings/MembersSection';
-import type { HouseholdMember } from '@/api/households';
+import { render, screen, fireEvent, act } from '@testing-library/react-native';
 
-const members: HouseholdMember[] = [
-  { id: 1, name: 'Alice' },
-  { id: 2, name: 'Bob' },
-];
+jest.mock('@/store/householdDetailStore');
+jest.mock('@/components/Sheet', () => {
+  const { View } = require('react-native');
+  function Sheet({ visible, children }: { visible: boolean; children: React.ReactNode }) {
+    return visible ? <View>{children}</View> : null;
+  }
+  return Sheet;
+});
+
+import { MembersSection } from '@/screens/settings/MembersSection';
+import { useHouseholdDetailStore } from '@/store/householdDetailStore';
+
+const mockInviteMember = jest.fn();
+const mockRemoveMember = jest.fn();
+
+function mockStore(overrides: Record<string, unknown> = {}) {
+  (useHouseholdDetailStore as unknown as jest.Mock).mockImplementation((sel: (s: unknown) => unknown) =>
+    sel({
+      members: [],
+      inviteMember: mockInviteMember,
+      removeMember: mockRemoveMember,
+      ...overrides,
+    })
+  );
+}
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockStore();
+});
 
 describe('MembersSection', () => {
   it('shows empty state when there are no members', () => {
-    render(<MembersSection members={[]} onInvite={jest.fn()} onRemove={jest.fn()} />);
+    render(<MembersSection />);
     expect(screen.getByText('Members not yet available')).toBeTruthy();
   });
 
   it('renders member names', () => {
-    render(<MembersSection members={members} onInvite={jest.fn()} onRemove={jest.fn()} />);
+    mockStore({ members: [{ id: 1, name: 'Alice' }, { id: 2, name: 'Bob' }] });
+    render(<MembersSection />);
     expect(screen.getByText('Alice')).toBeTruthy();
     expect(screen.getByText('Bob')).toBeTruthy();
   });
 
-  it('calls onInvite when invite button is pressed', () => {
-    const onInvite = jest.fn();
-    render(<MembersSection members={[]} onInvite={onInvite} onRemove={jest.fn()} />);
+  it('opens invite sheet when invite button is pressed', () => {
+    render(<MembersSection />);
     fireEvent.press(screen.getByText('+ Invite member'));
-    expect(onInvite).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Send invite')).toBeTruthy();
   });
 
-  it('calls onRemove with the correct member when ✕ is pressed', () => {
-    const onRemove = jest.fn();
-    render(<MembersSection members={members} onInvite={jest.fn()} onRemove={onRemove} />);
-    const removeBtns = screen.getAllByText('✕');
-    fireEvent.press(removeBtns[0]);
-    expect(onRemove).toHaveBeenCalledWith(members[0]);
+  it('calls inviteMember when invite is confirmed', async () => {
+    mockInviteMember.mockResolvedValue(undefined);
+    render(<MembersSection />);
+    fireEvent.press(screen.getByText('+ Invite member'));
+    fireEvent.changeText(screen.getByPlaceholderText('username'), 'alice');
+    await act(async () => { fireEvent.press(screen.getByText('Send invite')); });
+    expect(mockInviteMember).toHaveBeenCalledWith('alice');
+  });
+
+  it('opens remove sheet when ✕ is pressed', () => {
+    mockStore({ members: [{ id: 1, name: 'Alice' }] });
+    render(<MembersSection />);
+    fireEvent.press(screen.getByText('✕'));
+    expect(screen.getByText('Remove member')).toBeTruthy();
+  });
+
+  it('calls removeMember when removal is confirmed', async () => {
+    mockRemoveMember.mockResolvedValue(undefined);
+    mockStore({ members: [{ id: 1, name: 'Alice' }] });
+    render(<MembersSection />);
+    fireEvent.press(screen.getByText('✕'));
+    await act(async () => { fireEvent.press(screen.getByText('Remove member')); });
+    expect(mockRemoveMember).toHaveBeenCalledWith(1);
   });
 });

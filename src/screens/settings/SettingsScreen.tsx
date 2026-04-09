@@ -26,7 +26,7 @@ import {
   Field,
   PrimaryBtn,
   SecondaryBtn,
-} from '@/components/settings/SettingsUI';
+} from '@/components/settings';
 import { Colors, Spacing, Radii, FontSize } from '@/theme';
 import { SECURE_STORE_KEYS } from '@/utils/constants';
 import type { Household } from '@/api/households';

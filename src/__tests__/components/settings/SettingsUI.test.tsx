@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react-native';
-import { SectionLabel, Card, Sep, Row, Field, PrimaryBtn, SecondaryBtn } from '@/components/settings/SettingsUI';
+import { SectionLabel, Card, Sep, Row, Field, PrimaryBtn, SecondaryBtn } from '@/components/settings';
 
 describe('SectionLabel', () => {
   it('renders label text in uppercase', () => {
