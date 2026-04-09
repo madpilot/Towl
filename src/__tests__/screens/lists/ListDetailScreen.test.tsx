@@ -18,7 +18,11 @@ jest.mock('@/db/items', () => ({
   hardDeleteItem: jest.fn(),
   upsertItemFromServer: jest.fn(),
   removeItemsDeletedOnServer: jest.fn(),
-  toggleItemChecked: jest.fn(),
+  checkItem: jest.fn(),
+  uncheckItem: jest.fn(),
+  markItemCheckSynced: jest.fn(),
+  clearCheckedItems: jest.fn(),
+  clearExpiredCheckedItems: jest.fn(),
   toggleItemImportant: jest.fn(),
   updateItemNameAndIcon: jest.fn(),
 }));
@@ -30,6 +34,7 @@ jest.mock('@/db/lists', () => ({
 jest.mock('@/sync/syncManager', () => ({
   enqueue: jest.fn().mockResolvedValue(undefined),
   drain: jest.fn().mockResolvedValue(undefined),
+  removePendingCheckItem: jest.fn().mockResolvedValue(false),
 }));
 
 jest.mock('@/db/history', () => ({
@@ -143,6 +148,7 @@ function makeItem(overrides: Partial<LocalItem> = {}): LocalItem {
     isDirty: false,
     isDeleted: false,
     createdAt: Date.now(),
+    checkedAt: null,
     ...overrides,
   };
 }
@@ -159,7 +165,10 @@ beforeEach(() => {
   (itemsDb.hardDeleteItem as jest.Mock).mockResolvedValue(undefined);
   (itemsDb.upsertItemFromServer as jest.Mock).mockResolvedValue(makeItem());
   (itemsDb.removeItemsDeletedOnServer as jest.Mock).mockResolvedValue(undefined);
-  (itemsDb.toggleItemChecked as jest.Mock).mockResolvedValue(undefined);
+  (itemsDb.checkItem as jest.Mock).mockResolvedValue(undefined);
+  (itemsDb.uncheckItem as jest.Mock).mockResolvedValue(undefined);
+  (itemsDb.clearCheckedItems as jest.Mock).mockResolvedValue(undefined);
+  (itemsDb.clearExpiredCheckedItems as jest.Mock).mockResolvedValue(undefined);
   (itemsDb.toggleItemImportant as jest.Mock).mockResolvedValue(undefined);
   (itemsDb.updateItemNameAndIcon as jest.Mock).mockResolvedValue(undefined);
   (listsDb.getAllLists as jest.Mock).mockResolvedValue([makeList()]);

@@ -159,4 +159,73 @@ describe('syncQueue', () => {
       expect(mockDb.runAsync).toHaveBeenCalledWith('DELETE FROM sync_queue');
     });
   });
+
+  describe('CHECK_ITEM payload', () => {
+    it('enqueues a CHECK_ITEM op successfully', async () => {
+      const { enqueue } = getModule();
+      const op = await enqueue({
+        opType: 'CHECK_ITEM',
+        listServerId: 1,
+        itemServerId: 99,
+        itemLocalId: 'local-item-1',
+      });
+      expect(op.payload.opType).toBe('CHECK_ITEM');
+      expect(op.payload).toMatchObject({
+        listServerId: 1,
+        itemServerId: 99,
+        itemLocalId: 'local-item-1',
+      });
+    });
+
+    it('deserialises CHECK_ITEM payload from the queue', async () => {
+      const { getAll } = getModule();
+      const payload = {
+        opType: 'CHECK_ITEM',
+        listServerId: 5,
+        itemServerId: 42,
+        itemLocalId: 'item-abc',
+      };
+      mockDb.getAllAsync.mockResolvedValueOnce([
+        { id: 'q-id', payload: JSON.stringify(payload), list_local_id: 'l1', created_at: 1000, attempts: 0 },
+      ]);
+
+      const ops = await getAll();
+      expect(ops[0].payload.opType).toBe('CHECK_ITEM');
+    });
+  });
+
+  describe('removePendingCheckItem', () => {
+    it('returns false and removes nothing when no CHECK_ITEM op exists for the item', async () => {
+      const { removePendingCheckItem } = getModule();
+      mockDb.getAllAsync.mockResolvedValueOnce([]);
+
+      const found = await removePendingCheckItem('item-xyz');
+      expect(found).toBe(false);
+      expect(mockDb.runAsync).not.toHaveBeenCalled();
+    });
+
+    it('removes matching CHECK_ITEM op and returns true', async () => {
+      const { removePendingCheckItem } = getModule();
+      const payload = { opType: 'CHECK_ITEM', listServerId: 1, itemServerId: 2, itemLocalId: 'item-abc' };
+      mockDb.getAllAsync.mockResolvedValueOnce([
+        { id: 'op-1', payload: JSON.stringify(payload), list_local_id: null, created_at: 1000, attempts: 0 },
+      ]);
+
+      const found = await removePendingCheckItem('item-abc');
+      expect(found).toBe(true);
+      expect(mockDb.runAsync).toHaveBeenCalledWith('DELETE FROM sync_queue WHERE id = ?', ['op-1']);
+    });
+
+    it('does not remove ops for different items', async () => {
+      const { removePendingCheckItem } = getModule();
+      const payload = { opType: 'CHECK_ITEM', listServerId: 1, itemServerId: 2, itemLocalId: 'item-other' };
+      mockDb.getAllAsync.mockResolvedValueOnce([
+        { id: 'op-2', payload: JSON.stringify(payload), list_local_id: null, created_at: 1000, attempts: 0 },
+      ]);
+
+      const found = await removePendingCheckItem('item-abc');
+      expect(found).toBe(false);
+      expect(mockDb.runAsync).not.toHaveBeenCalled();
+    });
+  });
 });

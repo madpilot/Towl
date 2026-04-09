@@ -44,6 +44,7 @@ const baseRow = {
   is_dirty: 0,
   is_deleted: 0,
   created_at: 1000,
+  checked_at: null,
 };
 
 describe('items', () => {
@@ -61,8 +62,13 @@ describe('items', () => {
       const { removeItemsDeletedOnServer } = getModule();
       await removeItemsDeletedOnServer('list-1', []);
       expect(mockDb.runAsync).toHaveBeenCalledWith(
-        expect.stringContaining('server_id IS NOT NULL AND is_deleted = 0'),
+        expect.stringContaining('server_id IS NOT NULL'),
         ['list-1']
+      );
+      // Trolley items (is_checked = 1) must be preserved
+      expect(mockDb.runAsync).toHaveBeenCalledWith(
+        expect.stringContaining('is_checked = 0'),
+        expect.anything()
       );
       // Must NOT use NOT IN — empty IN clause is invalid SQL
       expect(mockDb.runAsync).not.toHaveBeenCalledWith(
@@ -130,6 +136,78 @@ describe('items', () => {
       const result = await getItem('item-1');
       expect(result?.isDeleted).toBe(true);
       expect(result?.serverId).toBe(55);
+    });
+  });
+
+  describe('checkItem', () => {
+    it('sets is_checked=1, is_dirty=1, and checked_at on the row', async () => {
+      const { checkItem } = getModule();
+      await checkItem('item-1', 9000);
+      expect(mockDb.runAsync).toHaveBeenCalledWith(
+        expect.stringContaining('is_checked = 1'),
+        [9000, 'item-1']
+      );
+      const [sql] = mockDb.runAsync.mock.calls[0] as [string, unknown[]];
+      expect(sql).toContain('is_dirty = 1');
+      expect(sql).toContain('checked_at = ?');
+    });
+  });
+
+  describe('uncheckItem', () => {
+    it('clears is_checked and checked_at, sets is_dirty when needsReAdd=true', async () => {
+      const { uncheckItem } = getModule();
+      await uncheckItem('item-1', true);
+      expect(mockDb.runAsync).toHaveBeenCalledWith(
+        expect.stringContaining('is_checked = 0'),
+        [1, 'item-1']
+      );
+      const [sql] = mockDb.runAsync.mock.calls[0] as [string, unknown[]];
+      expect(sql).toContain('checked_at = NULL');
+    });
+
+    it('sets is_dirty=0 when needsReAdd=false (op still pending)', async () => {
+      const { uncheckItem } = getModule();
+      await uncheckItem('item-1', false);
+      expect(mockDb.runAsync).toHaveBeenCalledWith(
+        expect.any(String),
+        [0, 'item-1']
+      );
+    });
+  });
+
+  describe('clearCheckedItems', () => {
+    it('hard-deletes all checked items for the list', async () => {
+      const { clearCheckedItems } = getModule();
+      await clearCheckedItems('list-1');
+      expect(mockDb.runAsync).toHaveBeenCalledWith(
+        expect.stringContaining('is_checked = 1'),
+        ['list-1']
+      );
+      const [sql] = mockDb.runAsync.mock.calls[0] as [string, unknown[]];
+      expect(sql).toContain('DELETE FROM local_items');
+    });
+  });
+
+  describe('clearExpiredCheckedItems', () => {
+    it('deletes checked items with checked_at older than the cutoff', async () => {
+      const { clearExpiredCheckedItems } = getModule();
+      await clearExpiredCheckedItems('list-1', 5000);
+      expect(mockDb.runAsync).toHaveBeenCalledWith(
+        expect.stringContaining('checked_at < ?'),
+        ['list-1', 5000]
+      );
+      const [sql] = mockDb.runAsync.mock.calls[0] as [string, unknown[]];
+      expect(sql).toContain('checked_at IS NOT NULL');
+      expect(sql).toContain('is_checked = 1');
+    });
+  });
+
+  describe('removeItemsDeletedOnServer', () => {
+    it('preserves trolley items (is_checked = 1) when removing server-deleted items', async () => {
+      const { removeItemsDeletedOnServer } = getModule();
+      await removeItemsDeletedOnServer('list-1', [10]);
+      const [sql] = mockDb.runAsync.mock.calls[0] as [string, unknown[]];
+      expect(sql).toContain('is_checked = 0');
     });
   });
 });

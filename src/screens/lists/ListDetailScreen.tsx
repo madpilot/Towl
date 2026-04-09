@@ -82,6 +82,8 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
   // ── Data loading ───────────────────────────────────────────────
 
   const loadItems = useCallback(async (localId: string) => {
+    // Auto-expire checked items that have been in the trolley for over 4 hours.
+    await itemsDb.clearExpiredCheckedItems(localId, Date.now() - 4 * 60 * 60 * 1000);
     const rows = await itemsDb.getItemsForList(localId);
     setItems(rows);
   }, []);
@@ -226,12 +228,76 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
   const handleToggleDone = useCallback(async (localId: string) => {
     const item = items.find((i) => i.localId === localId);
     if (!item) return;
-    const next = !item.isChecked;
-    await itemsDb.toggleItemChecked(localId, next);
-    setItems((prev) =>
-      prev.map((i) => (i.localId === localId ? { ...i, isChecked: next } : i))
-    );
-  }, [items]);
+
+    if (!item.isChecked) {
+      // ── Checking off: move item into trolley, remove from server list ──────
+      const checkedAt = Date.now();
+      await itemsDb.checkItem(localId, checkedAt);
+
+      // Read fresh — serverId may have been updated by a concurrent sync pass.
+      const freshItem = await itemsDb.getItem(localId);
+      if (
+        freshItem?.serverId !== null && freshItem?.serverId !== undefined
+        && activeServerId !== null && activeLocalId !== null
+      ) {
+        await syncManager.enqueue(
+          {
+            opType: 'CHECK_ITEM',
+            listServerId: activeServerId,
+            itemServerId: freshItem.serverId,
+            itemLocalId: localId,
+          },
+          activeLocalId
+        );
+      }
+      setItems((prev) =>
+        prev.map((i) =>
+          i.localId === localId ? { ...i, isChecked: true, isDirty: true, checkedAt } : i
+        )
+      );
+    } else {
+      // ── Unchecking: return item to active list ────────────────────────────
+      // If CHECK_ITEM hasn't synced yet, cancel it (item is still on server).
+      const hadPendingOp = await syncManager.removePendingCheckItem(localId);
+
+      // If the op already synced, the item was removed from server — re-add it.
+      const freshItem = await itemsDb.getItem(localId);
+      const needsReAdd = !hadPendingOp
+        && freshItem?.serverId !== null && freshItem?.serverId !== undefined
+        && activeServerId !== null && activeLocalId !== null;
+
+      await itemsDb.uncheckItem(localId, needsReAdd);
+
+      if (needsReAdd && freshItem && activeServerId !== null && activeLocalId !== null) {
+        await syncManager.enqueue(
+          {
+            opType: 'ADD_ITEM',
+            listServerId: activeServerId,
+            listLocalId: activeLocalId,
+            itemLocalId: localId,
+            name: freshItem.name,
+            description: freshItem.description,
+          },
+          activeLocalId
+        );
+      }
+      setItems((prev) =>
+        prev.map((i) =>
+          i.localId === localId
+            ? { ...i, isChecked: false, isDirty: needsReAdd, checkedAt: null }
+            : i
+        )
+      );
+    }
+  }, [items, activeLocalId, activeServerId]);
+
+  const handleClearTrolley = useCallback(async () => {
+    if (!activeLocalId) return;
+    // Items were already removed from the server when each was checked off.
+    // This is purely a local cleanup.
+    await itemsDb.clearCheckedItems(activeLocalId);
+    setItems((prev) => prev.filter((i) => !i.isChecked));
+  }, [activeLocalId]);
 
   const handleToggleImportant = useCallback(async (localId: string) => {
     const item = items.find((i) => i.localId === localId);
@@ -411,6 +477,13 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
                   <SwipeableItemInline item={item} handlers={sharedHandlers} />
                 </View>
               ))}
+              <TouchableOpacity
+                style={styles.doneBtn}
+                onPress={handleClearTrolley}
+                activeOpacity={0.75}
+              >
+                <Text style={styles.doneBtnText}>Shopping is done!</Text>
+              </TouchableOpacity>
             </View>
           )}
         </ScrollView>
@@ -546,6 +619,21 @@ const styles = StyleSheet.create({
   },
   trolleySection: {
     marginTop: Spacing.sm,
+  },
+  doneBtn: {
+    marginTop: Spacing.md,
+    marginBottom: Spacing.sm,
+    alignSelf: 'center',
+    backgroundColor: Colors.mint,
+    borderRadius: Radii.full,
+    paddingVertical: Spacing.sm + 2,
+    paddingHorizontal: Spacing.xxl,
+  },
+  doneBtnText: {
+    fontSize: FontSize.body,
+    fontWeight: '800',
+    color: Colors.white,
+    letterSpacing: 0.2,
   },
   trolleyHeader: {
     flexDirection: 'row',

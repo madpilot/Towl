@@ -17,6 +17,7 @@ export type LocalItem = {
   isDirty: boolean;
   isDeleted: boolean;
   createdAt: number;
+  checkedAt: number | null;
 }
 
 /** Row shape returned by SQLite for the local_items table. */
@@ -36,6 +37,7 @@ type ItemRow = {
   is_dirty: number;
   is_deleted: number;
   created_at: number;
+  checked_at: number | null;
 }
 
 function rowToItem(row: ItemRow): LocalItem {
@@ -55,6 +57,7 @@ function rowToItem(row: ItemRow): LocalItem {
     isDirty: row.is_dirty !== 0,
     isDeleted: row.is_deleted !== 0,
     createdAt: row.created_at,
+    checkedAt: row.checked_at ?? null,
   };
 }
 
@@ -111,6 +114,7 @@ export async function addItemLocally(
     isDirty: true,
     isDeleted: false,
     createdAt: now,
+    checkedAt: null,
   };
 }
 
@@ -204,11 +208,59 @@ export async function hardDeleteItem(localId: string): Promise<void> {
   await db.runAsync('DELETE FROM local_items WHERE local_id = ?', [localId]);
 }
 
-export async function toggleItemChecked(localId: string, checked: boolean): Promise<void> {
+/** Move an item into the trolley: marks it checked, dirty, and records when it was checked. */
+export async function checkItem(localId: string, checkedAt: number): Promise<void> {
   const db = await getDb();
   await db.runAsync(
-    'UPDATE local_items SET is_checked = ? WHERE local_id = ?',
-    [checked ? 1 : 0, localId]
+    'UPDATE local_items SET is_checked = 1, is_dirty = 1, checked_at = ? WHERE local_id = ?',
+    [checkedAt, localId]
+  );
+}
+
+/**
+ * Move an item back to active.
+ * Pass isDirty=true when the CHECK_ITEM op already synced to the server
+ * (so an ADD_ITEM is needed to restore it); false when the CHECK_ITEM was
+ * still pending and can simply be cancelled from the queue.
+ */
+export async function uncheckItem(localId: string, isDirty: boolean): Promise<void> {
+  const db = await getDb();
+  await db.runAsync(
+    'UPDATE local_items SET is_checked = 0, is_dirty = ?, checked_at = NULL WHERE local_id = ?',
+    [isDirty ? 1 : 0, localId]
+  );
+}
+
+/** Clear the dirty flag after a CHECK_ITEM sync op drains successfully. */
+export async function markItemCheckSynced(localId: string): Promise<void> {
+  const db = await getDb();
+  await db.runAsync(
+    'UPDATE local_items SET is_dirty = 0 WHERE local_id = ?',
+    [localId]
+  );
+}
+
+/** Hard-delete all checked (trolley) items for a list. No server call needed — the
+ *  server was already updated by the CHECK_ITEM sync op. */
+export async function clearCheckedItems(listLocalId: string): Promise<void> {
+  const db = await getDb();
+  await db.runAsync(
+    'DELETE FROM local_items WHERE list_local_id = ? AND is_checked = 1',
+    [listLocalId]
+  );
+}
+
+/** Hard-delete checked items that were added to the trolley before `olderThan` (epoch ms). */
+export async function clearExpiredCheckedItems(
+  listLocalId: string,
+  olderThan: number
+): Promise<void> {
+  const db = await getDb();
+  await db.runAsync(
+    `DELETE FROM local_items
+     WHERE list_local_id = ? AND is_checked = 1
+       AND checked_at IS NOT NULL AND checked_at < ?`,
+    [listLocalId, olderThan]
   );
 }
 
@@ -253,9 +305,12 @@ export async function removeItemsDeletedOnServer(
   const db = await getDb();
   if (serverIds.length === 0) {
     // Server returned no items — delete every synced, non-pending-removal item.
+    // Checked (trolley) items are excluded: their absence from the server list
+    // is intentional (we removed them via CHECK_ITEM) and they expire locally.
     await db.runAsync(
       `DELETE FROM local_items
-       WHERE list_local_id = ? AND server_id IS NOT NULL AND is_deleted = 0`,
+       WHERE list_local_id = ? AND server_id IS NOT NULL
+         AND is_deleted = 0 AND is_checked = 0`,
       [listLocalId]
     );
   } else {
@@ -265,6 +320,7 @@ export async function removeItemsDeletedOnServer(
        WHERE list_local_id = ?
          AND server_id IS NOT NULL
          AND is_deleted = 0
+         AND is_checked = 0
          AND server_id NOT IN (${placeholders})`,
       [listLocalId, ...serverIds]
     );

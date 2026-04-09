@@ -64,6 +64,14 @@ export const DeleteListPayloadSchema = z.object({
 });
 export type DeleteListPayload = z.infer<typeof DeleteListPayloadSchema>;
 
+export const CheckItemPayloadSchema = z.object({
+  opType: z.literal('CHECK_ITEM'),
+  listServerId: z.number(),
+  itemServerId: z.number(),
+  itemLocalId: z.string(),
+});
+export type CheckItemPayload = z.infer<typeof CheckItemPayloadSchema>;
+
 export const SyncPayloadSchema = z.discriminatedUnion('opType', [
   AddItemPayloadSchema,
   RemoveItemPayloadSchema,
@@ -71,6 +79,7 @@ export const SyncPayloadSchema = z.discriminatedUnion('opType', [
   UpdateItemPayloadSchema,
   CreateListPayloadSchema,
   DeleteListPayloadSchema,
+  CheckItemPayloadSchema,
 ]);
 
 export type SyncPayload = z.infer<typeof SyncPayloadSchema>;
@@ -146,4 +155,18 @@ export async function incrementAttempts(id: string): Promise<void> {
 export async function clearAll(): Promise<void> {
   const db = await getDb();
   await db.runAsync('DELETE FROM sync_queue');
+}
+
+/**
+ * Remove any pending CHECK_ITEM ops for a given item from the queue.
+ * Returns true if at least one op was found and removed (meaning the item was
+ * still pending removal from the server — the caller can skip re-adding it).
+ */
+export async function removePendingCheckItem(itemLocalId: string): Promise<boolean> {
+  const ops = await getAll();
+  const matching = ops.filter(
+    (op) => op.payload.opType === 'CHECK_ITEM' && op.payload.itemLocalId === itemLocalId
+  );
+  for (const op of matching) await remove(op.id);
+  return matching.length > 0;
 }
