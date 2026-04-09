@@ -11,25 +11,23 @@ jest.mock('@/components/Sheet', () => {
 });
 
 import { MembersSection } from '@/screens/settings/MembersSection';
-import { useHouseholdDetailStore } from '@/store/householdDetailStore';
+import { useMembersSection } from '@/store/householdDetailStore';
 
 const mockInviteMember = jest.fn();
 const mockRemoveMember = jest.fn();
 
-function mockStore(overrides: Record<string, unknown> = {}) {
-  (useHouseholdDetailStore as unknown as jest.Mock).mockImplementation((sel: (s: unknown) => unknown) =>
-    sel({
-      members: [],
-      inviteMember: mockInviteMember,
-      removeMember: mockRemoveMember,
-      ...overrides,
-    })
-  );
+function mockHook(overrides: Record<string, unknown> = {}) {
+  (useMembersSection as jest.Mock).mockReturnValue({
+    members: [],
+    inviteMember: mockInviteMember,
+    removeMember: mockRemoveMember,
+    ...overrides,
+  });
 }
 
 beforeEach(() => {
   jest.clearAllMocks();
-  mockStore();
+  mockHook();
 });
 
 describe('MembersSection', () => {
@@ -39,7 +37,7 @@ describe('MembersSection', () => {
   });
 
   it('renders member names', () => {
-    mockStore({ members: [{ id: 1, name: 'Alice' }, { id: 2, name: 'Bob' }] });
+    mockHook({ members: [{ id: 1, name: 'Alice' }, { id: 2, name: 'Bob' }] });
     render(<MembersSection />);
     expect(screen.getByText('Alice')).toBeTruthy();
     expect(screen.getByText('Bob')).toBeTruthy();
@@ -61,7 +59,7 @@ describe('MembersSection', () => {
   });
 
   it('opens remove sheet when ✕ is pressed', () => {
-    mockStore({ members: [{ id: 1, name: 'Alice' }] });
+    mockHook({ members: [{ id: 1, name: 'Alice' }] });
     render(<MembersSection />);
     fireEvent.press(screen.getByText('✕'));
     expect(screen.getByText('Remove member')).toBeTruthy();
@@ -69,7 +67,7 @@ describe('MembersSection', () => {
 
   it('calls removeMember when removal is confirmed', async () => {
     mockRemoveMember.mockResolvedValue(undefined);
-    mockStore({ members: [{ id: 1, name: 'Alice' }] });
+    mockHook({ members: [{ id: 1, name: 'Alice' }] });
     render(<MembersSection />);
     fireEvent.press(screen.getByText('✕'));
     await act(async () => { fireEvent.press(screen.getByText('Remove member')); });

@@ -2,14 +2,11 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Alert, StyleSheet } from 'react-native';
 import Sheet from '@/components/Sheet';
 import { SectionLabel, Card, Sep, Row, Field, PrimaryBtn, SecondaryBtn } from '@/components/settings';
-import { useHouseholdDetailStore } from '@/store/householdDetailStore';
+import { useListsSection } from '@/store/householdDetailStore';
 import { Colors, Spacing, FontSize } from '@/theme';
 
 export function ListsSection() {
-  const lists = useHouseholdDetailStore((s) => s.lists);
-  const createList = useHouseholdDetailStore((s) => s.createList);
-  const renameList = useHouseholdDetailStore((s) => s.renameList);
-  const deleteList = useHouseholdDetailStore((s) => s.deleteList);
+  const { lists, createList, renameList, deleteList } = useListsSection();
 
   const [modal, setModal] = useState<'new' | 'edit' | null>(null);
   const [listName, setListName] = useState('');

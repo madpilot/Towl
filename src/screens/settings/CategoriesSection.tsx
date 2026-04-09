@@ -2,14 +2,11 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Alert, StyleSheet } from 'react-native';
 import Sheet from '@/components/Sheet';
 import { SectionLabel, Card, Sep, Row, Field, PrimaryBtn, SecondaryBtn } from '@/components/settings';
-import { useHouseholdDetailStore } from '@/store/householdDetailStore';
+import { useCategoriesSection } from '@/store/householdDetailStore';
 import { Colors, Spacing, FontSize } from '@/theme';
 
 export function CategoriesSection() {
-  const categories = useHouseholdDetailStore((s) => s.categories);
-  const createCategory = useHouseholdDetailStore((s) => s.createCategory);
-  const updateCategory = useHouseholdDetailStore((s) => s.updateCategory);
-  const deleteCategory = useHouseholdDetailStore((s) => s.deleteCategory);
+  const { categories, createCategory, updateCategory, deleteCategory } = useCategoriesSection();
 
   const [modal, setModal] = useState<'new' | 'edit' | null>(null);
   const [catName, setCatName] = useState('');

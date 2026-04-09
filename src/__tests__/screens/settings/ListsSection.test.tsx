@@ -11,7 +11,7 @@ jest.mock('@/components/Sheet', () => {
 });
 
 import { ListsSection } from '@/screens/settings/ListsSection';
-import { useHouseholdDetailStore } from '@/store/householdDetailStore';
+import { useListsSection } from '@/store/householdDetailStore';
 import type { ApiShoppingList } from '@/api/shoppinglists';
 
 const mockCreateList = jest.fn();
@@ -23,21 +23,19 @@ const sampleLists = [
   { id: 2, name: 'Party', items: [] },
 ] as unknown as ApiShoppingList[];
 
-function mockStore(overrides: Record<string, unknown> = {}) {
-  (useHouseholdDetailStore as unknown as jest.Mock).mockImplementation((sel: (s: unknown) => unknown) =>
-    sel({
-      lists: [],
-      createList: mockCreateList,
-      renameList: mockRenameList,
-      deleteList: mockDeleteList,
-      ...overrides,
-    })
-  );
+function mockHook(overrides: Record<string, unknown> = {}) {
+  (useListsSection as jest.Mock).mockReturnValue({
+    lists: [],
+    createList: mockCreateList,
+    renameList: mockRenameList,
+    deleteList: mockDeleteList,
+    ...overrides,
+  });
 }
 
 beforeEach(() => {
   jest.clearAllMocks();
-  mockStore();
+  mockHook();
 });
 
 describe('ListsSection', () => {
@@ -47,7 +45,7 @@ describe('ListsSection', () => {
   });
 
   it('renders list names and item counts', () => {
-    mockStore({ lists: sampleLists });
+    mockHook({ lists: sampleLists });
     render(<ListsSection />);
     expect(screen.getByText('Weekly Shop')).toBeTruthy();
     expect(screen.getByText('2 items')).toBeTruthy();
@@ -56,7 +54,7 @@ describe('ListsSection', () => {
   });
 
   it('uses singular "item" for a single-item list', () => {
-    mockStore({ lists: [{ id: 3, name: 'Solo', items: [{ id: 20 }] }] });
+    mockHook({ lists: [{ id: 3, name: 'Solo', items: [{ id: 20 }] }] });
     render(<ListsSection />);
     expect(screen.getByText('1 item')).toBeTruthy();
   });
@@ -77,7 +75,7 @@ describe('ListsSection', () => {
   });
 
   it('opens edit sheet when a list row is pressed', () => {
-    mockStore({ lists: sampleLists });
+    mockHook({ lists: sampleLists });
     render(<ListsSection />);
     fireEvent.press(screen.getByText('Weekly Shop'));
     expect(screen.getByText('Save changes')).toBeTruthy();
@@ -86,7 +84,7 @@ describe('ListsSection', () => {
 
   it('calls renameList when save changes is pressed', async () => {
     mockRenameList.mockResolvedValue(undefined);
-    mockStore({ lists: sampleLists });
+    mockHook({ lists: sampleLists });
     render(<ListsSection />);
     fireEvent.press(screen.getByText('Weekly Shop'));
     fireEvent.changeText(screen.getByDisplayValue('Weekly Shop'), 'Big Shop');
@@ -96,7 +94,7 @@ describe('ListsSection', () => {
 
   it('calls deleteList when delete is pressed', async () => {
     mockDeleteList.mockResolvedValue(undefined);
-    mockStore({ lists: sampleLists });
+    mockHook({ lists: sampleLists });
     render(<ListsSection />);
     fireEvent.press(screen.getByText('Weekly Shop'));
     await act(async () => { fireEvent.press(screen.getByText('Delete list')); });

@@ -11,7 +11,7 @@ jest.mock('@/components/Sheet', () => {
 });
 
 import { CategoriesSection } from '@/screens/settings/CategoriesSection';
-import { useHouseholdDetailStore } from '@/store/householdDetailStore';
+import { useCategoriesSection } from '@/store/householdDetailStore';
 import type { HouseholdCategory } from '@/api/households';
 
 const mockCreateCategory = jest.fn();
@@ -23,21 +23,19 @@ const sampleCategories: HouseholdCategory[] = [
   { id: 2, name: 'Dairy', ordering: 1 },
 ];
 
-function mockStore(overrides: Record<string, unknown> = {}) {
-  (useHouseholdDetailStore as unknown as jest.Mock).mockImplementation((sel: (s: unknown) => unknown) =>
-    sel({
-      categories: [],
-      createCategory: mockCreateCategory,
-      updateCategory: mockUpdateCategory,
-      deleteCategory: mockDeleteCategory,
-      ...overrides,
-    })
-  );
+function mockHook(overrides: Record<string, unknown> = {}) {
+  (useCategoriesSection as jest.Mock).mockReturnValue({
+    categories: [],
+    createCategory: mockCreateCategory,
+    updateCategory: mockUpdateCategory,
+    deleteCategory: mockDeleteCategory,
+    ...overrides,
+  });
 }
 
 beforeEach(() => {
   jest.clearAllMocks();
-  mockStore();
+  mockHook();
 });
 
 describe('CategoriesSection', () => {
@@ -47,7 +45,7 @@ describe('CategoriesSection', () => {
   });
 
   it('renders category names', () => {
-    mockStore({ categories: sampleCategories });
+    mockHook({ categories: sampleCategories });
     render(<CategoriesSection />);
     expect(screen.getByText('Produce')).toBeTruthy();
     expect(screen.getByText('Dairy')).toBeTruthy();
@@ -69,7 +67,7 @@ describe('CategoriesSection', () => {
   });
 
   it('opens edit sheet when a category row is pressed', () => {
-    mockStore({ categories: sampleCategories });
+    mockHook({ categories: sampleCategories });
     render(<CategoriesSection />);
     fireEvent.press(screen.getByText('Produce'));
     expect(screen.getByText('Save changes')).toBeTruthy();
@@ -78,7 +76,7 @@ describe('CategoriesSection', () => {
 
   it('calls updateCategory when save changes is pressed', async () => {
     mockUpdateCategory.mockResolvedValue(undefined);
-    mockStore({ categories: sampleCategories });
+    mockHook({ categories: sampleCategories });
     render(<CategoriesSection />);
     fireEvent.press(screen.getByText('Produce'));
     fireEvent.changeText(screen.getByDisplayValue('Produce'), 'Fresh Produce');
@@ -88,7 +86,7 @@ describe('CategoriesSection', () => {
 
   it('calls deleteCategory when delete is pressed', async () => {
     mockDeleteCategory.mockResolvedValue(undefined);
-    mockStore({ categories: sampleCategories });
+    mockHook({ categories: sampleCategories });
     render(<CategoriesSection />);
     fireEvent.press(screen.getByText('Produce'));
     await act(async () => { fireEvent.press(screen.getByText('Delete category')); });

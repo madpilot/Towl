@@ -1,5 +1,6 @@
 import { Alert } from 'react-native';
 import { create } from 'zustand';
+import { useShallow } from 'zustand/react/shallow';
 import { useAuthStore } from './authStore';
 import type { ApiShoppingList } from '@/api/shoppinglists';
 import type { HouseholdCategory, HouseholdMember } from '@/api/households';
@@ -179,3 +180,52 @@ export const useHouseholdDetailStore = create<HouseholdDetailState>((set, get) =
     set((s) => ({ members: s.members.filter((m) => m.id !== memberId) }));
   },
 }));
+
+// ── Section hooks ─────────────────────────────────────────────────────────────
+// Each hook returns exactly the slice a section component needs, using
+// useShallow so the component only re-renders when its own data changes.
+
+export function useHouseholdDetail() {
+  return useHouseholdDetailStore(
+    useShallow((s) => ({
+      loading: s.loading,
+      householdName: s.householdName,
+      initialize: s.initialize,
+      loadAll: s.loadAll,
+      renameHousehold: s.renameHousehold,
+      leaveHousehold: s.leaveHousehold,
+    }))
+  );
+}
+
+export function useListsSection() {
+  return useHouseholdDetailStore(
+    useShallow((s) => ({
+      lists: s.lists,
+      createList: s.createList,
+      renameList: s.renameList,
+      deleteList: s.deleteList,
+    }))
+  );
+}
+
+export function useCategoriesSection() {
+  return useHouseholdDetailStore(
+    useShallow((s) => ({
+      categories: s.categories,
+      createCategory: s.createCategory,
+      updateCategory: s.updateCategory,
+      deleteCategory: s.deleteCategory,
+    }))
+  );
+}
+
+export function useMembersSection() {
+  return useHouseholdDetailStore(
+    useShallow((s) => ({
+      members: s.members,
+      inviteMember: s.inviteMember,
+      removeMember: s.removeMember,
+    }))
+  );
+}

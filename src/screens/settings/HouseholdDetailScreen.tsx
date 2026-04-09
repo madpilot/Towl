@@ -15,7 +15,7 @@ import { SectionLabel, Card, Field, PrimaryBtn, SecondaryBtn } from '@/component
 import { MembersSection } from './MembersSection';
 import { ListsSection } from './ListsSection';
 import { CategoriesSection } from './CategoriesSection';
-import { useHouseholdDetailStore } from '@/store/householdDetailStore';
+import { useHouseholdDetail } from '@/store/householdDetailStore';
 import { Colors, Spacing, FontSize } from '@/theme';
 import type { HouseholdDetailScreenProps } from '@/navigation/types';
 
@@ -24,12 +24,7 @@ type ModalKind = 'rename' | 'leave' | null;
 export default function HouseholdDetailScreen({ navigation, route }: HouseholdDetailScreenProps) {
   const { householdId, householdName: initialName } = route.params;
 
-  const initialize = useHouseholdDetailStore((s) => s.initialize);
-  const loadAll = useHouseholdDetailStore((s) => s.loadAll);
-  const loading = useHouseholdDetailStore((s) => s.loading);
-  const householdName = useHouseholdDetailStore((s) => s.householdName);
-  const renameHousehold = useHouseholdDetailStore((s) => s.renameHousehold);
-  const leaveHousehold = useHouseholdDetailStore((s) => s.leaveHousehold);
+  const { loading, householdName, initialize, loadAll, renameHousehold, leaveHousehold } = useHouseholdDetail();
 
   const [modal, setModal] = useState<ModalKind>(null);
   const [renameValue, setRenameValue] = useState('');

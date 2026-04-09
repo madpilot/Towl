@@ -2,13 +2,11 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Alert, StyleSheet } from 'react-native';
 import Sheet from '@/components/Sheet';
 import { SectionLabel, Card, Sep, Field, PrimaryBtn, SecondaryBtn } from '@/components/settings';
-import { useHouseholdDetailStore } from '@/store/householdDetailStore';
+import { useMembersSection } from '@/store/householdDetailStore';
 import { Colors, Spacing, FontSize } from '@/theme';
 
 export function MembersSection() {
-  const members = useHouseholdDetailStore((s) => s.members);
-  const inviteMember = useHouseholdDetailStore((s) => s.inviteMember);
-  const removeMember = useHouseholdDetailStore((s) => s.removeMember);
+  const { members, inviteMember, removeMember } = useMembersSection();
 
   const [modal, setModal] = useState<'invite' | 'remove' | null>(null);
   const [inviteUsername, setInviteUsername] = useState('');
