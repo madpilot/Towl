@@ -8,6 +8,7 @@ import {
   View,
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
+import HouseIcon from '@/components/icons/HouseIcon';
 import { useHouseholdStore, persistAndSelectHousehold } from '@/store/householdStore';
 import { useAuthStore } from '@/store/authStore';
 import { Colors, FontSize, Radii, Spacing } from '@/theme';
@@ -64,7 +65,7 @@ function HouseholdRow({ household, selected, onPress }: HouseholdRowProps) {
       activeOpacity={0.7}
       style={[rowStyles.row, selected && rowStyles.rowSelected]}
     >
-      <Text style={rowStyles.emoji}>🏠</Text>
+      <HouseIcon color={selected ? Colors.mint : Colors.mintLight} size={24} />
       <View style={{ flex: 1 }}>
         <Text style={[rowStyles.name, selected && rowStyles.nameSelected]}>
           {household.name}
@@ -95,11 +96,6 @@ const rowStyles = {
   rowSelected: {
     borderColor: Colors.mint,
     backgroundColor: `${Colors.mint}14`,
-  },
-  emoji: {
-    fontSize: 24,
-    lineHeight: 28,
-    flexShrink: 0,
   },
   name: {
     fontSize: 15,
