@@ -11,6 +11,7 @@ jest.mock('@/db/syncQueue', () => ({
 jest.mock('@/db/items', () => ({
   markItemSynced: jest.fn(),
   hardDeleteItem: jest.fn(),
+  markItemCheckSynced: jest.fn(),
 }));
 
 jest.mock('@/db/lists', () => ({
@@ -273,6 +274,60 @@ describe('drain()', () => {
       expect(syncQueue.remove).not.toHaveBeenCalled();
       expect(mockBumpSyncVersion).not.toHaveBeenCalled();
     });
+  });
+
+  it('processes CHECK_ITEM op: calls removeItem and marks item check-synced', async () => {
+    const op = {
+      id: 'op-check',
+      attempts: 0,
+      listLocalId: 'list-local-1',
+      createdAt: Date.now(),
+      payload: {
+        opType: 'CHECK_ITEM' as const,
+        listServerId: 5,
+        itemServerId: 77,
+        itemLocalId: 'item-local-1',
+      },
+    };
+    (syncQueue.getAll as jest.Mock)
+      .mockResolvedValueOnce([op])
+      .mockResolvedValue([]);
+    mockApi.removeItem.mockResolvedValue(undefined);
+
+    await drain();
+
+    expect(mockApi.removeItem).toHaveBeenCalledWith(5, 77);
+    expect(itemsDb.markItemCheckSynced).toHaveBeenCalledWith('item-local-1');
+    expect(itemsDb.hardDeleteItem).not.toHaveBeenCalled();
+    expect(syncQueue.remove).toHaveBeenCalledWith('op-check');
+  });
+
+  it('CHECK_ITEM: treats 404 as success (item already removed from server)', async () => {
+    const op = {
+      id: 'op-check-404',
+      attempts: 0,
+      listLocalId: null,
+      createdAt: Date.now(),
+      payload: {
+        opType: 'CHECK_ITEM' as const,
+        listServerId: 5,
+        itemServerId: 77,
+        itemLocalId: 'item-local-1',
+      },
+    };
+    (syncQueue.getAll as jest.Mock)
+      .mockResolvedValueOnce([op])
+      .mockResolvedValue([]);
+    const notFound = Object.assign(new Error('Not Found'), {
+      isAxiosError: true,
+      response: { status: 404 },
+    });
+    mockApi.removeItem.mockRejectedValue(notFound);
+
+    await drain();
+
+    expect(syncQueue.remove).toHaveBeenCalledWith('op-check-404');
+    expect(itemsDb.markItemCheckSynced).not.toHaveBeenCalled();
   });
 
   it('resets draining flag after completion so a follow-up drain processes remaining ops', async () => {

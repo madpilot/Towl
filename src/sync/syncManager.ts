@@ -17,6 +17,10 @@ export async function enqueue(payload: SyncPayload, listLocalId?: string): Promi
   void drain();
 }
 
+export async function removePendingCheckItem(itemLocalId: string): Promise<boolean> {
+  return syncQueue.removePendingCheckItem(itemLocalId);
+}
+
 export async function drain(): Promise<void> {
   if (draining) return;
   if (!useNetworkStore.getState().isOnline) return;
@@ -120,6 +124,19 @@ async function dispatchPayload(api: ShoppingListsApi, payload: SyncPayload): Pro
         throw err;
       }
       await itemsDb.hardDeleteItem(payload.itemLocalId);
+      break;
+    }
+
+    case 'CHECK_ITEM': {
+      // Same DELETE call as REMOVE_ITEM, but we leave the item in the local
+      // trolley — it will be cleared by the user or by the 4-hour expiry.
+      try {
+        await api.removeItem(payload.listServerId, payload.itemServerId);
+      } catch (err) {
+        if (isAxiosError(err) && err.response?.status === 404) break;
+        throw err;
+      }
+      await itemsDb.markItemCheckSynced(payload.itemLocalId);
       break;
     }
 
