@@ -1,0 +1,307 @@
+import { create } from 'zustand';
+import { useShallow } from 'zustand/react/shallow';
+import * as SecureStore from 'expo-secure-store';
+import * as itemsDb from '@/db/items';
+import * as listsDb from '@/db/lists';
+import * as syncManager from '@/sync/syncManager';
+import { useAuthStore } from '@/store/authStore';
+import { matchItem } from '@/data/foodMatcher';
+import { recordItemUsed } from '@/db/history';
+import { SECURE_STORE_KEYS } from '@/utils/constants';
+import type { LocalItem } from '@/db/items';
+import type { LocalList } from '@/db/lists';
+
+// ─── State shape ─────────────────────────────────────────────────────────────
+
+type ListDetailState = {
+  activeLocalId: string | null;
+  activeServerId: number | null;
+  activeName: string;
+  items: LocalItem[];
+  allLists: LocalList[];
+  loading: boolean;
+  refreshing: boolean;
+  listPickerVisible: boolean;
+  editingId: string | null;
+
+  // UI toggles
+  setListPickerVisible: (v: boolean) => void;
+  setEditingId: (id: string | null) => void;
+
+  // Lifecycle
+  bootstrap: (householdId: number, restoreLastList: boolean) => Promise<void>;
+  refresh: (householdId: number) => Promise<void>;
+  reloadAfterSync: () => Promise<void>;
+
+  // Navigation
+  switchToList: (list: LocalList, householdId: number) => Promise<void>;
+
+  // Item actions
+  toggleDone: (localId: string) => Promise<void>;
+  toggleImportant: (localId: string) => Promise<void>;
+  deleteItem: (localId: string) => Promise<void>;
+  saveItem: (localId: string, name: string, iconKey: string | null) => Promise<void>;
+  addItem: (name: string, description: string, iconKey: string | null, category: string) => Promise<void>;
+  clearTrolley: () => Promise<void>;
+};
+
+// ─── Store ───────────────────────────────────────────────────────────────────
+
+export const useListDetailStore = create<ListDetailState>((set, get) => {
+
+  // ── Private helpers ────────────────────────────────────────────────────────
+
+  async function loadItems(localId: string): Promise<void> {
+    // Auto-expire checked items that have been in the trolley for over 4 hours.
+    await itemsDb.clearExpiredCheckedItems(localId, Date.now() - 4 * 60 * 60 * 1000);
+    const rows = await itemsDb.getItemsForList(localId);
+    set({ items: rows });
+  }
+
+  async function syncFromServer(localId: string, serverId: number | null, householdId: number): Promise<void> {
+    if (serverId === null) return;
+    const api = useAuthStore.getState().shoppingListsApi;
+    try {
+      const serverLists = await api?.getShoppingLists(householdId) ?? [];
+      const apiList = serverLists.find((l) => l.id === serverId);
+      if (!apiList) return;
+      for (const apiItem of apiList.items) {
+        const match = matchItem(apiItem.icon ?? apiItem.name);
+        await itemsDb.upsertItemFromServer(
+          apiItem.id, localId, apiItem.name, apiItem.description,
+          match.iconKey, match.category,
+          apiItem.category?.id ?? null,
+          apiItem.category?.name ?? null,
+          apiItem.category?.ordering ?? null
+        );
+      }
+      await itemsDb.removeItemsDeletedOnServer(localId, apiList.items.map((i) => i.id));
+      await loadItems(localId);
+    } catch {
+      // Offline or transient failure — local data is fine.
+    }
+  }
+
+  // ── Store ─────────────────────────────────────────────────────────────────
+
+  return {
+    activeLocalId: null,
+    activeServerId: null,
+    activeName: '',
+    items: [],
+    allLists: [],
+    loading: true,
+    refreshing: false,
+    listPickerVisible: false,
+    editingId: null,
+
+    setListPickerVisible: (v) => set({ listPickerVisible: v }),
+    setEditingId: (id) => set({ editingId: id }),
+
+    bootstrap: async (householdId, restoreLastList) => {
+      set({ loading: true, items: [], activeLocalId: null, activeServerId: null, activeName: '' });
+
+      const lists = await listsDb.getAllLists(householdId);
+      set({ allLists: lists });
+
+      if (lists.length === 0) {
+        set({ loading: false });
+        return;
+      }
+
+      let initial: LocalList;
+      if (restoreLastList) {
+        const lastId = await SecureStore.getItemAsync(SECURE_STORE_KEYS.LAST_LIST_LOCAL_ID);
+        initial = (lastId ? lists.find((l) => l.localId === lastId) : null) ?? lists[0];
+      } else {
+        initial = lists[0];
+      }
+
+      set({ activeLocalId: initial.localId, activeServerId: initial.serverId, activeName: initial.name });
+      await loadItems(initial.localId);
+      set({ loading: false });
+      void syncFromServer(initial.localId, initial.serverId, householdId);
+    },
+
+    refresh: async (householdId) => {
+      const { activeLocalId, activeServerId } = get();
+      if (!activeLocalId) return;
+      set({ refreshing: true });
+      await syncFromServer(activeLocalId, activeServerId, householdId);
+      set({ refreshing: false });
+    },
+
+    reloadAfterSync: async () => {
+      const { activeLocalId } = get();
+      if (activeLocalId) await loadItems(activeLocalId);
+    },
+
+    switchToList: async (list, householdId) => {
+      set({
+        activeLocalId: list.localId,
+        activeServerId: list.serverId,
+        activeName: list.name,
+        listPickerVisible: false,
+        items: [],
+        loading: true,
+      });
+      await SecureStore.setItemAsync(SECURE_STORE_KEYS.LAST_LIST_LOCAL_ID, list.localId);
+      await loadItems(list.localId);
+      set({ loading: false });
+      void syncFromServer(list.localId, list.serverId, householdId);
+    },
+
+    toggleDone: async (localId) => {
+      const { items, activeLocalId, activeServerId } = get();
+      const item = items.find((i) => i.localId === localId);
+      if (!item) return;
+
+      if (!item.isChecked) {
+        // ── Checking off: move into trolley, remove from server list ──────────
+        const checkedAt = Date.now();
+        await itemsDb.checkItem(localId, checkedAt);
+        const freshItem = await itemsDb.getItem(localId);
+        if (
+          freshItem?.serverId !== null && freshItem?.serverId !== undefined
+          && activeServerId !== null && activeLocalId !== null
+        ) {
+          await syncManager.enqueue(
+            { opType: 'CHECK_ITEM', listServerId: activeServerId,
+              itemServerId: freshItem.serverId, itemLocalId: localId },
+            activeLocalId
+          );
+        }
+        set({
+          items: items.map((i) =>
+            i.localId === localId ? { ...i, isChecked: true, isDirty: true, checkedAt } : i
+          ),
+        });
+      } else {
+        // ── Unchecking: return item to active list ────────────────────────────
+        const hadPendingOp = await syncManager.removePendingCheckItem(localId);
+        const freshItem = await itemsDb.getItem(localId);
+        const needsReAdd = !hadPendingOp
+          && freshItem?.serverId !== null && freshItem?.serverId !== undefined
+          && activeServerId !== null && activeLocalId !== null;
+
+        await itemsDb.uncheckItem(localId, needsReAdd);
+
+        if (needsReAdd && freshItem && activeServerId !== null && activeLocalId !== null) {
+          await syncManager.enqueue(
+            { opType: 'ADD_ITEM', listServerId: activeServerId, listLocalId: activeLocalId,
+              itemLocalId: localId, name: freshItem.name, description: freshItem.description },
+            activeLocalId
+          );
+        }
+        set({
+          items: items.map((i) =>
+            i.localId === localId
+              ? { ...i, isChecked: false, isDirty: needsReAdd, checkedAt: null }
+              : i
+          ),
+        });
+      }
+    },
+
+    toggleImportant: async (localId) => {
+      const { items } = get();
+      const item = items.find((i) => i.localId === localId);
+      if (!item) return;
+      const next = !item.isImportant;
+      await itemsDb.toggleItemImportant(localId, next);
+      set({ items: items.map((i) => i.localId === localId ? { ...i, isImportant: next } : i) });
+    },
+
+    deleteItem: async (localId) => {
+      const { activeLocalId, activeServerId, items } = get();
+      await itemsDb.softDeleteItem(localId);
+      const freshItem = await itemsDb.getItem(localId);
+      if (freshItem?.serverId !== null && freshItem?.serverId !== undefined
+          && activeServerId !== null && activeLocalId !== null) {
+        await syncManager.enqueue(
+          { opType: 'REMOVE_ITEM', listServerId: activeServerId,
+            itemServerId: freshItem.serverId, itemLocalId: localId },
+          activeLocalId
+        );
+      } else {
+        await itemsDb.hardDeleteItem(localId);
+      }
+      set({ items: items.filter((i) => i.localId !== localId) });
+    },
+
+    saveItem: async (localId, name, iconKey) => {
+      const { activeLocalId, activeServerId, items } = get();
+      await itemsDb.updateItemNameAndIcon(localId, name, iconKey);
+      const freshItem = await itemsDb.getItem(localId);
+      if (freshItem?.serverId !== null && freshItem?.serverId !== undefined
+          && activeServerId !== null && activeLocalId !== null) {
+        const category = freshItem.serverCategoryId !== null
+          ? { id: freshItem.serverCategoryId, name: freshItem.serverCategoryName ?? '',
+              ordering: freshItem.serverCategoryOrdering ?? 0 }
+          : null;
+        await syncManager.enqueue(
+          { opType: 'UPDATE_ITEM', listServerId: activeServerId, itemServerId: freshItem.serverId,
+            itemLocalId: localId, name, description: freshItem.description, iconKey, category },
+          activeLocalId
+        );
+      }
+      set({ items: items.map((i) => i.localId === localId ? { ...i, name, iconKey } : i) });
+    },
+
+    addItem: async (name, description, iconKey, category) => {
+      const { activeLocalId, activeServerId, items } = get();
+      if (!activeLocalId) return;
+      const match = iconKey ? { iconKey, category } : matchItem(name);
+      const newItem = await itemsDb.addItemLocally(
+        activeLocalId, name, description, match.iconKey, match.category
+      );
+      await recordItemUsed(name, match.iconKey, match.category);
+      if (activeServerId !== null) {
+        await syncManager.enqueue(
+          { opType: 'ADD_ITEM', listServerId: activeServerId, listLocalId: activeLocalId,
+            itemLocalId: newItem.localId, name, description },
+          activeLocalId
+        );
+      }
+      set({ items: [...items, newItem] });
+    },
+
+    clearTrolley: async () => {
+      const { activeLocalId, items } = get();
+      if (!activeLocalId) return;
+      // Items were already removed from the server when each was checked off.
+      await itemsDb.clearCheckedItems(activeLocalId);
+      set({ items: items.filter((i) => !i.isChecked) });
+    },
+  };
+});
+
+// ─── Section hooks ────────────────────────────────────────────────────────────
+
+/** State and actions for the list header / picker. */
+export function useListNav() {
+  return useListDetailStore(useShallow((s) => ({
+    activeName: s.activeName,
+    allLists: s.allLists,
+    listPickerVisible: s.listPickerVisible,
+    activeLocalId: s.activeLocalId,
+    refreshing: s.refreshing,
+    setListPickerVisible: s.setListPickerVisible,
+    switchToList: s.switchToList,
+    refresh: s.refresh,
+  })));
+}
+
+/** Item-level handlers passed to SwipeableItem and CategorySection. */
+export function useItemActions() {
+  return useListDetailStore(useShallow((s) => ({
+    editingId: s.editingId,
+    setEditingId: s.setEditingId,
+    toggleDone: s.toggleDone,
+    toggleImportant: s.toggleImportant,
+    deleteItem: s.deleteItem,
+    saveItem: s.saveItem,
+    addItem: s.addItem,
+    clearTrolley: s.clearTrolley,
+  })));
+}

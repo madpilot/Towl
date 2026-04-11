@@ -1,96 +1,47 @@
 /**
  * Tests for ListDetailScreen.
  *
- * The screen self-bootstraps from SecureStore + DB (no route params).
- * AddItemBar is mocked to a simple controlled input.
+ * All store interactions are mocked so tests focus on:
+ *   - bootstrap/reloadAfterSync lifecycle
+ *   - rendering (loading state, item categories)
+ *   - user interactions (add item, open list picker)
  */
 
-jest.mock('expo-secure-store', () => ({
-  getItemAsync: jest.fn(),
-  setItemAsync: jest.fn(),
-}));
-
-jest.mock('@/db/items', () => ({
-  getItemsForList: jest.fn(),
-  getItem: jest.fn(),
-  addItemLocally: jest.fn(),
-  softDeleteItem: jest.fn(),
-  hardDeleteItem: jest.fn(),
-  upsertItemFromServer: jest.fn(),
-  removeItemsDeletedOnServer: jest.fn(),
-  checkItem: jest.fn(),
-  uncheckItem: jest.fn(),
-  markItemCheckSynced: jest.fn(),
-  clearCheckedItems: jest.fn(),
-  clearExpiredCheckedItems: jest.fn(),
-  toggleItemImportant: jest.fn(),
-  updateItemNameAndIcon: jest.fn(),
-}));
-
-jest.mock('@/db/lists', () => ({
-  getAllLists: jest.fn(),
-}));
-
-jest.mock('@/sync/syncManager', () => ({
-  enqueue: jest.fn().mockResolvedValue(undefined),
-  drain: jest.fn().mockResolvedValue(undefined),
-  removePendingCheckItem: jest.fn().mockResolvedValue(false),
-}));
-
-jest.mock('@/db/history', () => ({
-  recordItemUsed: jest.fn(),
-}));
-
-const mockGetShoppingLists = jest.fn();
-jest.mock('@/store/authStore', () => ({
-  useAuthStore: jest.fn((sel: (s: { shoppingListsApi: { getShoppingLists: jest.Mock } }) => unknown) =>
-    sel({ shoppingListsApi: { getShoppingLists: mockGetShoppingLists } })
-  ),
-}));
-
-jest.mock('@/data/foodMatcher', () => ({
-  matchItem: jest.fn(() => ({ iconKey: 'apple', category: 'Produce' })),
-  suggestIcons: jest.fn(() => []),
+jest.mock('@/store/listDetailStore', () => ({
+  useListDetailStore: jest.fn(),
+  useListNav: jest.fn(),
+  useItemActions: jest.fn(),
 }));
 
 jest.mock('@/store/householdStore', () => ({
-  useHouseholdStore: jest.fn(() => ({ selectedHousehold: { id: 1, name: 'Home', photo: null } })),
+  useHouseholdStore: jest.fn((sel: (s: unknown) => unknown) =>
+    sel({ selectedHousehold: { id: 1, name: 'Home', photo: null } })
+  ),
 }));
 
 let mockSyncVersion = 0;
 jest.mock('@/store/syncStore', () => ({
-  useSyncStore: jest.fn((selector: (s: { syncVersion: number }) => unknown) =>
-    selector({ syncVersion: mockSyncVersion })
-  ),
+  useSyncStore: jest.fn((sel: (s: unknown) => unknown) => sel({ syncVersion: mockSyncVersion })),
 }));
 
-jest.mock('@/components/KitchenOwlIcon', () => {
-  const React = require('react');
-  const { Text } = require('react-native');
-  function KitchenOwlIcon({ iconKey }: { iconKey: string | null | undefined }) {
-    return React.createElement(Text, { testID: `icon-${iconKey ?? 'none'}` }, iconKey ?? '?');
-  }
-  return KitchenOwlIcon;
-});
-
-jest.mock('@/components/TommyOwl', () => {
+jest.mock('@/screens/lists/ListPickerModal', () => {
   const React = require('react');
   const { View } = require('react-native');
-  function TommyOwl() { return React.createElement(View, { testID: 'tommy-owl' }); }
-  return TommyOwl;
+  function ListPickerModal() { return React.createElement(View, { testID: 'list-picker-modal' }); }
+  return ListPickerModal;
 });
 
-jest.mock('@/components/BottomNav', () => {
+jest.mock('@/screens/lists/TrolleySection', () => {
   const React = require('react');
   const { View } = require('react-native');
-  function BottomNav() { return React.createElement(View, { testID: 'bottom-nav' }); }
-  return BottomNav;
+  function TrolleySection() { return React.createElement(View, { testID: 'trolley-section' }); }
+  return TrolleySection;
 });
 
 jest.mock('@/components/AddItemBar', () => {
   const React = require('react');
   const { TextInput, TouchableOpacity, View } = require('react-native');
-  function AddItemBar({ onAdd }: { onAdd: (name: string, desc: string, iconKey: string | null, category: string) => void }) {
+  function AddItemBar({ onAdd }: { onAdd: (name: string, desc: string, iconKey: string | null, cat: string) => void }) {
     const [val, setVal] = React.useState('');
     return React.createElement(View, null,
       React.createElement(TextInput, { testID: 'add-item-input', value: val, onChangeText: setVal }),
@@ -103,192 +54,178 @@ jest.mock('@/components/AddItemBar', () => {
   return AddItemBar;
 });
 
+jest.mock('@/components/CategorySection', () => {
+  const React = require('react');
+  const { View, Text } = require('react-native');
+  function CategorySection({ category, items }: { category: string; items: Array<{ localId: string; name: string }> }) {
+    return React.createElement(View, { testID: `category-${category}` },
+      items.map((i) => React.createElement(Text, { key: i.localId }, i.name))
+    );
+  }
+  return CategorySection;
+});
+
+jest.mock('@/components/BottomNav', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  function BottomNav() { return React.createElement(View, { testID: 'bottom-nav' }); }
+  return BottomNav;
+});
+
+jest.mock('@/components/icons/HouseIcon', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  function HouseIcon() { return React.createElement(View, { testID: 'house-icon' }); }
+  return HouseIcon;
+});
+
 import React from 'react';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
-import * as SecureStore from 'expo-secure-store';
+import { useListDetailStore, useListNav, useItemActions } from '@/store/listDetailStore';
+import { useHouseholdStore } from '@/store/householdStore';
 import { useSyncStore } from '@/store/syncStore';
 import ListDetailScreen from '@/screens/lists/ListDetailScreen';
-import * as itemsDb from '@/db/items';
-import * as listsDb from '@/db/lists';
-import * as syncManager from '@/sync/syncManager';
-import * as historyDb from '@/db/history';
 import type { LocalItem } from '@/db/items';
-import type { LocalList } from '@/db/lists';
 
-const mockNavigation = { navigate: jest.fn(), canGoBack: jest.fn(() => false), goBack: jest.fn() };
+const mockNavigation = { navigate: jest.fn() };
 const baseProps = { navigation: mockNavigation as never, route: {} as never };
 
-function makeList(overrides: Partial<LocalList> = {}): LocalList {
+const mockBootstrap = jest.fn().mockResolvedValue(undefined);
+const mockReloadAfterSync = jest.fn().mockResolvedValue(undefined);
+const mockAddItem = jest.fn().mockResolvedValue(undefined);
+const mockSetListPickerVisible = jest.fn();
+const mockSetEditingId = jest.fn();
+
+function makeItem(overrides: Partial<LocalItem> = {}): LocalItem {
   return {
-    localId: 'list-local-1',
-    serverId: 5,
-    householdId: 1,
-    name: 'Groceries',
-    isDirty: false,
-    isDeleted: false,
-    lastSynced: Date.now(),
+    localId: 'item-1', serverId: 100, listLocalId: 'list-local-1',
+    name: 'Milk', description: '', iconKey: 'milk_carton', category: 'Dairy & Eggs',
+    serverCategoryId: null, serverCategoryName: null, serverCategoryOrdering: null,
+    isChecked: false, isImportant: false, isDirty: false, isDeleted: false,
+    createdAt: Date.now(), checkedAt: null,
     ...overrides,
   };
 }
 
-function makeItem(overrides: Partial<LocalItem> = {}): LocalItem {
-  return {
-    localId: 'item-1',
-    serverId: 100,
-    listLocalId: 'list-local-1',
-    name: 'Milk',
-    description: '',
-    iconKey: 'milk_carton',
-    category: 'Dairy & Eggs',
-    serverCategoryId: null,
-    serverCategoryName: null,
-    serverCategoryOrdering: null,
-    isChecked: false,
-    isImportant: false,
-    isDirty: false,
-    isDeleted: false,
-    createdAt: Date.now(),
-    checkedAt: null,
-    ...overrides,
-  };
+function setupMocks({
+  loading = false,
+  items = [] as LocalItem[],
+  activeName = 'Groceries',
+  editingId = null as string | null,
+} = {}) {
+  (useListDetailStore as unknown as jest.Mock).mockImplementation((sel: (s: unknown) => unknown) =>
+    sel({ bootstrap: mockBootstrap, reloadAfterSync: mockReloadAfterSync, loading, items })
+  );
+  (useListNav as jest.Mock).mockReturnValue({
+    activeName, allLists: [], activeLocalId: 'list-local-1',
+    listPickerVisible: false, refreshing: false,
+    setListPickerVisible: mockSetListPickerVisible,
+    switchToList: jest.fn(), refresh: jest.fn(),
+  });
+  (useItemActions as jest.Mock).mockReturnValue({
+    editingId, setEditingId: mockSetEditingId,
+    toggleDone: jest.fn(), toggleImportant: jest.fn(),
+    deleteItem: jest.fn(), saveItem: jest.fn(), addItem: mockAddItem,
+    clearTrolley: jest.fn(),
+  });
 }
 
 beforeEach(() => {
   jest.clearAllMocks();
   mockSyncVersion = 0;
-  (SecureStore.getItemAsync as jest.Mock).mockResolvedValue(null);
-  (SecureStore.setItemAsync as jest.Mock).mockResolvedValue(undefined);
-  (itemsDb.getItemsForList as jest.Mock).mockResolvedValue([]);
-  (itemsDb.getItem as jest.Mock).mockResolvedValue(makeItem());
-  (itemsDb.addItemLocally as jest.Mock).mockResolvedValue(makeItem({ localId: 'new-item' }));
-  (itemsDb.softDeleteItem as jest.Mock).mockResolvedValue(undefined);
-  (itemsDb.hardDeleteItem as jest.Mock).mockResolvedValue(undefined);
-  (itemsDb.upsertItemFromServer as jest.Mock).mockResolvedValue(makeItem());
-  (itemsDb.removeItemsDeletedOnServer as jest.Mock).mockResolvedValue(undefined);
-  (itemsDb.checkItem as jest.Mock).mockResolvedValue(undefined);
-  (itemsDb.uncheckItem as jest.Mock).mockResolvedValue(undefined);
-  (itemsDb.clearCheckedItems as jest.Mock).mockResolvedValue(undefined);
-  (itemsDb.clearExpiredCheckedItems as jest.Mock).mockResolvedValue(undefined);
-  (itemsDb.toggleItemImportant as jest.Mock).mockResolvedValue(undefined);
-  (itemsDb.updateItemNameAndIcon as jest.Mock).mockResolvedValue(undefined);
-  (listsDb.getAllLists as jest.Mock).mockResolvedValue([makeList()]);
-  (syncManager.enqueue as jest.Mock).mockResolvedValue(undefined);
-  (historyDb.recordItemUsed as jest.Mock).mockResolvedValue(undefined);
+  setupMocks();
 });
 
 describe('ListDetailScreen', () => {
-  it('bootstraps from first list when no last list is stored', async () => {
-    const { getByText } = render(<ListDetailScreen {...baseProps} />);
-    await waitFor(() => expect(getByText('Groceries')).toBeTruthy());
-  });
+  describe('bootstrap lifecycle', () => {
+    it('calls bootstrap with restoreLastList: true on first mount', async () => {
+      render(<ListDetailScreen {...baseProps} />);
+      await waitFor(() => expect(mockBootstrap).toHaveBeenCalledWith(1, true));
+    });
 
-  it('restores the last selected list from SecureStore', async () => {
-    const lists = [makeList(), makeList({ localId: 'list-local-2', name: 'Pharmacy' })];
-    (listsDb.getAllLists as jest.Mock).mockResolvedValue(lists);
-    (SecureStore.getItemAsync as jest.Mock).mockResolvedValue('list-local-2');
+    it('calls bootstrap with restoreLastList: false on subsequent householdId change', async () => {
+      const { rerender } = render(<ListDetailScreen {...baseProps} />);
+      await waitFor(() => expect(mockBootstrap).toHaveBeenCalledWith(1, true));
 
-    const { getByText } = render(<ListDetailScreen {...baseProps} />);
-    await waitFor(() => expect(getByText('Pharmacy')).toBeTruthy());
-  });
+      (useHouseholdStore as unknown as jest.Mock).mockImplementation((sel: (s: unknown) => unknown) =>
+        sel({ selectedHousehold: { id: 2, name: 'Work', photo: null } })
+      );
+      rerender(<ListDetailScreen {...baseProps} />);
 
-  it('renders items from db', async () => {
-    (itemsDb.getItemsForList as jest.Mock).mockResolvedValue([
-      makeItem({ name: 'Milk' }),
-      makeItem({ localId: 'item-2', name: 'Eggs', iconKey: 'eggs' }),
-    ]);
+      await waitFor(() => expect(mockBootstrap).toHaveBeenCalledWith(2, false));
+    });
 
-    const { getByText } = render(<ListDetailScreen {...baseProps} />);
-    await waitFor(() => {
-      expect(getByText('Milk')).toBeTruthy();
-      expect(getByText('Eggs')).toBeTruthy();
+    it('skips bootstrap when no household is selected', async () => {
+      (useHouseholdStore as unknown as jest.Mock).mockImplementation((sel: (s: unknown) => unknown) =>
+        sel({ selectedHousehold: null })
+      );
+      render(<ListDetailScreen {...baseProps} />);
+      await act(async () => {});
+      expect(mockBootstrap).not.toHaveBeenCalled();
     });
   });
 
-  it('adds item and enqueues sync op', async () => {
-    const { getByTestId } = render(<ListDetailScreen {...baseProps} />);
-    await waitFor(() => expect(getByTestId('add-item-input')).toBeTruthy());
+  describe('sync reload', () => {
+    it('calls reloadAfterSync when syncVersion increments', async () => {
+      const { rerender } = render(<ListDetailScreen {...baseProps} />);
 
-    fireEvent.changeText(getByTestId('add-item-input'), 'Bread');
-    await act(async () => { fireEvent.press(getByTestId('add-item-submit')); });
+      mockSyncVersion = 1;
+      (useSyncStore as unknown as jest.Mock).mockImplementation((sel: (s: unknown) => unknown) =>
+        sel({ syncVersion: 1 })
+      );
+      rerender(<ListDetailScreen {...baseProps} />);
 
-    await waitFor(() => {
-      expect(itemsDb.addItemLocally).toHaveBeenCalledWith(
-        'list-local-1', 'Bread', '', 'apple', 'Produce'
-      );
-      expect(historyDb.recordItemUsed).toHaveBeenCalled();
-      expect(syncManager.enqueue).toHaveBeenCalledWith(
-        expect.objectContaining({ opType: 'ADD_ITEM', listServerId: 5 }),
-        'list-local-1'
-      );
+      await waitFor(() => expect(mockReloadAfterSync).toHaveBeenCalledTimes(1));
+    });
+
+    it('does not call reloadAfterSync on initial render', async () => {
+      render(<ListDetailScreen {...baseProps} />);
+      await act(async () => {});
+      expect(mockReloadAfterSync).not.toHaveBeenCalled();
     });
   });
 
-  it('does not enqueue sync op when list has no serverId', async () => {
-    (listsDb.getAllLists as jest.Mock).mockResolvedValue([
-      makeList({ serverId: null }),
-    ]);
+  describe('rendering', () => {
+    it('shows the active list name', () => {
+      setupMocks({ activeName: 'Groceries' });
+      const { getByText } = render(<ListDetailScreen {...baseProps} />);
+      expect(getByText('Groceries')).toBeTruthy();
+    });
 
-    const { getByTestId } = render(<ListDetailScreen {...baseProps} />);
-    await waitFor(() => expect(getByTestId('add-item-input')).toBeTruthy());
+    it('renders category sections for unchecked items', () => {
+      setupMocks({ items: [makeItem({ category: 'Dairy & Eggs', isChecked: false })] });
+      const { getByTestId } = render(<ListDetailScreen {...baseProps} />);
+      expect(getByTestId('category-Dairy & Eggs')).toBeTruthy();
+    });
 
-    fireEvent.changeText(getByTestId('add-item-input'), 'Butter');
-    await act(async () => { fireEvent.press(getByTestId('add-item-submit')); });
+    it('excludes checked items from category sections (they go to TrolleySection)', () => {
+      setupMocks({ items: [makeItem({ isChecked: true })] });
+      const { queryByTestId } = render(<ListDetailScreen {...baseProps} />);
+      expect(queryByTestId('category-Dairy & Eggs')).toBeNull();
+    });
 
-    await waitFor(() => expect(itemsDb.addItemLocally).toHaveBeenCalled());
-    expect(syncManager.enqueue).not.toHaveBeenCalled();
+    it('always renders TrolleySection and ListPickerModal', () => {
+      const { getByTestId } = render(<ListDetailScreen {...baseProps} />);
+      expect(getByTestId('trolley-section')).toBeTruthy();
+      expect(getByTestId('list-picker-modal')).toBeTruthy();
+    });
   });
 
-  it('reloads items from db when syncVersion increments', async () => {
-    // syncVersion starts at 0; initial mount loads items once.
-    const { rerender } = render(<ListDetailScreen {...baseProps} />);
-    await waitFor(() => expect(itemsDb.getItemsForList).toHaveBeenCalledTimes(1));
-
-    // Simulate a completed sync pass by bumping syncVersion.
-    mockSyncVersion = 1;
-    (useSyncStore as unknown as jest.Mock).mockImplementation(
-      (selector: (s: { syncVersion: number }) => unknown) => selector({ syncVersion: 1 })
-    );
-    rerender(<ListDetailScreen {...baseProps} />);
-
-    await waitFor(() => expect(itemsDb.getItemsForList).toHaveBeenCalledTimes(2));
+  describe('item actions', () => {
+    it('calls addItem from useItemActions when AddItemBar submits', async () => {
+      const { getByTestId } = render(<ListDetailScreen {...baseProps} />);
+      fireEvent.changeText(getByTestId('add-item-input'), 'Bread');
+      await act(async () => { fireEvent.press(getByTestId('add-item-submit')); });
+      expect(mockAddItem).toHaveBeenCalledWith('Bread', '', null, 'Other');
+    });
   });
 
-  it('enqueues UPDATE_ITEM with fresh serverId read from db on save', async () => {
-    // Item starts with serverId: null in state (newly added, not yet synced).
-    // After editing, handleSave reads fresh from DB which has the real serverId.
-    (itemsDb.getItemsForList as jest.Mock).mockResolvedValue([
-      makeItem({ localId: 'item-new', serverId: null, isDirty: true }),
-    ]);
-    // DB read returns the now-synced item with a real serverId.
-    (itemsDb.getItem as jest.Mock).mockResolvedValue(makeItem({ localId: 'item-new', serverId: 42 }));
-
-    // SwipeableItem edit flow is complex to exercise via testing-library, so
-    // we test the handleSave path by directly invoking it through the component's
-    // internal state. We verify the correct enqueue call is made.
-    // Simulate by checking: updateItemNameAndIcon + getItem + enqueue are called.
-    // The easiest approach is to confirm the mock wiring; functional tests of
-    // the full swipe→edit→save flow are covered in SwipeableItem.test.tsx.
-    // Here we verify the contract: handleSave reads DB, not stale state.
-    expect(itemsDb.updateItemNameAndIcon).not.toHaveBeenCalled();
-    // Render the screen and confirm it loads without error.
-    const { getByText } = render(<ListDetailScreen {...baseProps} />);
-    await waitFor(() => expect(getByText('Groceries')).toBeTruthy());
-  });
-
-  it('calls removeItemsDeletedOnServer after upserting server items', async () => {
-    const serverItem = { id: 99, name: 'Butter', description: '', icon: null, category: null };
-    // makeList() has serverId: 5, so the server list must use id: 5 to match.
-    mockGetShoppingLists.mockResolvedValue([
-      { id: 5, name: 'Groceries', items: [serverItem] },
-    ]);
-
-    render(<ListDetailScreen {...baseProps} />);
-
-    await waitFor(() =>
-      expect(itemsDb.removeItemsDeletedOnServer).toHaveBeenCalledWith(
-        'list-local-1',
-        [99]
-      )
-    );
+  describe('list picker', () => {
+    it('opens list picker when list name header is pressed', () => {
+      setupMocks({ activeName: 'Groceries' });
+      const { getByText } = render(<ListDetailScreen {...baseProps} />);
+      fireEvent.press(getByText('Groceries'));
+      expect(mockSetListPickerVisible).toHaveBeenCalledWith(true);
+    });
   });
 });
