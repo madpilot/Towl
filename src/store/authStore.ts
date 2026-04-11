@@ -17,6 +17,7 @@ type AuthState = {
   setAuthenticated: (user: StoredUser | null, serverUrl: string) => void;
   setUnauthenticated: () => void;
   setServerUrl: (url: string) => void;
+  setUser: (user: StoredUser | null) => void;
   setApis: (authApi: AuthApi, householdsApi: HouseholdsApi, shoppingListsApi: ShoppingListsApi) => void;
   clearApis: () => void;
 }
@@ -36,6 +37,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ status: 'unauthenticated', user: null }),
 
   setServerUrl: (url) => set({ serverUrl: url }),
+
+  setUser: (user) => set({ user }),
 
   setApis: (authApi, householdsApi, shoppingListsApi) =>
     set({ authApi, householdsApi, shoppingListsApi }),

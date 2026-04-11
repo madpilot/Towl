@@ -10,11 +10,10 @@ import {
   Alert,
   StyleSheet,
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
-import * as SecureStore from 'expo-secure-store';
 import Sheet from '@/components/Sheet';
 import { logout } from '@/auth/authManager';
 import { useAuthStore } from '@/store/authStore';
+import { TokenStore } from '@/auth/tokenStore';
 import BottomNav from '@/components/BottomNav';
 import { useHouseholdStore } from '@/store/householdStore';
 import TommyOwl from '@/components/TommyOwl';
@@ -28,11 +27,25 @@ import {
   SecondaryBtn,
 } from '@/components/settings';
 import { Colors, Spacing, Radii, FontSize } from '@/theme';
-import { SECURE_STORE_KEYS } from '@/utils/constants';
 import type { Household } from '@/api/households';
+import type { ApiSessionToken } from '@/api/auth';
 import type { SettingsScreenProps } from '@/navigation/types';
 
-// ─── Avatar ──────────────────────────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function sessionLabel(name: string): string {
+  const match = name.match(/(Firefox|Chrome|Edg|Safari|Towl|OPR|Opera)\/[\d.]+/);
+  if (match) return match[0];
+  return name.length > 38 ? name.slice(0, 35) + '…' : name;
+}
+
+function formatDate(ms: number): string {
+  return new Date(ms).toLocaleDateString(undefined, {
+    month: 'short', day: 'numeric', year: 'numeric',
+  });
+}
+
+// ─── Avatar ───────────────────────────────────────────────────────────────────
 
 function Avatar({ name, size = 52, uri }: { name: string; size?: number; uri?: string | null }) {
   const initials = name
@@ -88,8 +101,10 @@ type ModalKind =
 
 export default function SettingsScreen({ navigation }: SettingsScreenProps) {
   const user = useAuthStore((s) => s.user);
+  const setUser = useAuthStore((s) => s.setUser);
   const authApi = useAuthStore((s) => s.authApi);
   const householdsApi = useAuthStore((s) => s.householdsApi);
+  const serverUrl = useAuthStore((s) => s.serverUrl);
   const setStoreHouseholds = useHouseholdStore((s) => s.setHouseholds);
 
   const [households, setHouseholds] = useState<Household[]>([]);
@@ -114,68 +129,46 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
   const [newHHName, setNewHHName] = useState('');
   const [creatingHH, setCreatingHH] = useState(false);
 
-  // Avatar
+  // Avatar (from server)
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
 
   useEffect(() => {
-    SecureStore.getItemAsync(SECURE_STORE_KEYS.AVATAR_URI)
-      .then((uri) => { if (uri) setAvatarUri(uri); })
+    if (!authApi || !serverUrl) return;
+    authApi.getUser()
+      .then((apiUser) => {
+        if (apiUser.photo) setAvatarUri(`${serverUrl}/upload/${apiUser.photo}`);
+      })
       .catch(() => {});
-  }, []);
+  }, [authApi, serverUrl]);
 
-  function handleAvatarPress() {
-    Alert.alert('Profile photo', undefined, [
+  // Sessions
+  const [sessions, setSessions] = useState<ApiSessionToken[]>([]);
+  const [loadingSessions, setLoadingSessions] = useState(false);
+
+  useEffect(() => {
+    if (modal !== 'sessions' || !authApi) return;
+    setLoadingSessions(true);
+    authApi.getSessions()
+      .then((data) => setSessions(data))
+      .catch(() => Alert.alert('Error', 'Could not load sessions.'))
+      .finally(() => setLoadingSessions(false));
+  }, [modal, authApi]);
+
+  function handleRevokeSession(sessionId: number) {
+    Alert.alert('Revoke session', 'This will sign out that device.', [
+      { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Take photo',
+        text: 'Revoke',
+        style: 'destructive',
         onPress: async () => {
-          const perm = await ImagePicker.requestCameraPermissionsAsync();
-          if (!perm.granted) {
-            Alert.alert('Permission required', 'Camera access is needed to take a photo.');
-            return;
-          }
-          const result = await ImagePicker.launchCameraAsync({
-            allowsEditing: true,
-            aspect: [1, 1],
-            quality: 0.7,
-          });
-          if (!result.canceled && result.assets[0]) {
-            const uri = result.assets[0].uri;
-            setAvatarUri(uri);
-            await SecureStore.setItemAsync(SECURE_STORE_KEYS.AVATAR_URI, uri);
+          try {
+            await authApi?.revokeSession(sessionId);
+            setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+          } catch {
+            Alert.alert('Error', 'Could not revoke that session.');
           }
         },
       },
-      {
-        text: 'Choose from library',
-        onPress: async () => {
-          const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-          if (!perm.granted) {
-            Alert.alert('Permission required', 'Photo library access is needed to choose a photo.');
-            return;
-          }
-          const result = await ImagePicker.launchImageLibraryAsync({
-            allowsEditing: true,
-            aspect: [1, 1],
-            quality: 0.7,
-          });
-          if (!result.canceled && result.assets[0]) {
-            const uri = result.assets[0].uri;
-            setAvatarUri(uri);
-            await SecureStore.setItemAsync(SECURE_STORE_KEYS.AVATAR_URI, uri);
-          }
-        },
-      },
-      ...(avatarUri
-        ? [{
-            text: 'Delete photo',
-            style: 'destructive' as const,
-            onPress: async () => {
-              setAvatarUri(null);
-              await SecureStore.deleteItemAsync(SECURE_STORE_KEYS.AVATAR_URI);
-            },
-          }]
-        : []),
-      { text: 'Cancel', style: 'cancel' as const },
     ]);
   }
 
@@ -200,6 +193,11 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
     setSavingName(true);
     try {
       await authApi.updateProfile(editName.trim());
+      if (user) {
+        const updated = { ...user, name: editName.trim() };
+        setUser(updated);
+        void TokenStore.instance.saveUser(updated);
+      }
       setModal(null);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Failed to update name.';
@@ -277,9 +275,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
         {/* Profile hero */}
         <View style={styles.hero}>
-          <TouchableOpacity onPress={handleAvatarPress} activeOpacity={0.8}>
-            <Avatar name={displayName} size={52} uri={avatarUri} />
-          </TouchableOpacity>
+          <Avatar name={displayName} size={52} uri={avatarUri} />
           <View>
             <Text style={styles.heroName}>{displayName}</Text>
             {displayUsername ? (
@@ -310,7 +306,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
           <Sep />
           <Row
             label="Active sessions"
-            onPress={() => setModal('sessions')}
+            onPress={() => { setSessions([]); setModal('sessions'); }}
           />
         </Card>
 
@@ -386,13 +382,34 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
         <View style={{ height: Spacing.xl }} />
       </Sheet>
 
-      {/* Sessions stub modal */}
+      {/* Sessions modal */}
       <Sheet visible={modal === 'sessions'} title="Active sessions" onClose={() => setModal(null)}>
-        <View style={styles.stubWrap}>
-          <Text style={styles.stubText}>
-            {"Active session management requires a KitchenOwl API endpoint that hasn't been confirmed yet."}
-          </Text>
-        </View>
+        {loadingSessions ? (
+          <View style={styles.sessionsLoading}>
+            <ActivityIndicator color={Colors.mint} />
+          </View>
+        ) : sessions.length === 0 ? (
+          <View style={styles.stubWrap}>
+            <Text style={styles.stubText}>No active sessions found.</Text>
+          </View>
+        ) : (
+          <View style={styles.sessionsList}>
+            {sessions.map((s, i) => (
+              <View key={s.id}>
+                <View style={styles.sessionRow}>
+                  <View style={styles.sessionInfo}>
+                    <Text style={styles.sessionName} numberOfLines={1}>{sessionLabel(s.name)}</Text>
+                    <Text style={styles.sessionDate}>{formatDate(s.created_at)}</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => handleRevokeSession(s.id)} hitSlop={8}>
+                    <Text style={styles.revokeBtn}>Revoke</Text>
+                  </TouchableOpacity>
+                </View>
+                {i < sessions.length - 1 && <Sep />}
+              </View>
+            ))}
+          </View>
+        )}
         <SecondaryBtn label="Done" onPress={() => setModal(null)} />
         <View style={{ height: Spacing.xl }} />
       </Sheet>
@@ -494,5 +511,37 @@ const styles = StyleSheet.create({
     fontSize: FontSize.body,
     fontWeight: '700',
     color: Colors.mint,
+  },
+  sessionsLoading: {
+    padding: Spacing.xxl,
+    alignItems: 'center',
+  },
+  sessionsList: {
+    paddingTop: Spacing.sm,
+  },
+  sessionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.md,
+  },
+  sessionInfo: {
+    flex: 1,
+  },
+  sessionName: {
+    fontSize: FontSize.body,
+    fontWeight: '700',
+    color: Colors.textDark,
+  },
+  sessionDate: {
+    fontSize: FontSize.small,
+    color: Colors.textFaded,
+    marginTop: 2,
+  },
+  revokeBtn: {
+    fontSize: FontSize.body,
+    fontWeight: '700',
+    color: Colors.deleteRedStrong,
+    paddingLeft: Spacing.md,
   },
 });
