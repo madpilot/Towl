@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Alert, StyleSheet } from 'react-native';
 import Sheet from '@/components/Sheet';
+import AuthenticatedImage from '@/components/AuthenticatedImage';
 import { SectionLabel, Card, Sep, Field, PrimaryBtn, SecondaryBtn } from '@/components/settings';
 import { useMembersSection } from '@/store/householdDetailStore';
+import { useAuthStore } from '@/store/authStore';
 import { Colors, Spacing, FontSize } from '@/theme';
 
 export function MembersSection() {
   const { members, inviteMember, removeMember } = useMembersSection();
+  const serverUrl = useAuthStore((s) => s.serverUrl);
 
   const [modal, setModal] = useState<'invite' | 'remove' | null>(null);
   const [inviteUsername, setInviteUsername] = useState('');
@@ -53,9 +56,16 @@ export function MembersSection() {
           members.map((m, i) => (
             <View key={m.id}>
               <View style={styles.memberRow}>
-                <View style={styles.avatar}>
-                  <Text style={styles.initial}>{m.name[0]?.toUpperCase() ?? '?'}</Text>
-                </View>
+                {m.photo && serverUrl ? (
+                  <AuthenticatedImage
+                    uri={`${serverUrl}/api/upload/${m.photo}`}
+                    style={styles.avatar}
+                  />
+                ) : (
+                  <View style={styles.avatar}>
+                    <Text style={styles.initial}>{m.name[0]?.toUpperCase() ?? '?'}</Text>
+                  </View>
+                )}
                 <Text style={styles.name}>{m.name}</Text>
                 <TouchableOpacity
                   onPress={() => { setRemovingMemberId(m.id); setRemovingMemberName(m.name); setModal('remove'); }}

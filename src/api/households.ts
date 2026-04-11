@@ -21,9 +21,27 @@ export const HouseholdMemberSchema = z.object({
   id: z.number(),
   name: z.string(),
   username: z.string(),
+  photo: z.string().nullable(),
 });
 
 export type HouseholdMember = z.infer<typeof HouseholdMemberSchema>;
+
+const HouseholdDefaultListSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  household_id: z.number(),
+});
+
+export const HouseholdDetailSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  photo: z.string().nullable(),
+  description: z.string().nullable().optional(),
+  default_shopping_list: HouseholdDefaultListSchema.nullable().optional(),
+  member: z.array(HouseholdMemberSchema).default([]),
+});
+
+export type HouseholdDetail = z.infer<typeof HouseholdDetailSchema>;
 
 export class HouseholdsApi {
   constructor(private client: ApiClientManager) {}
@@ -37,6 +55,11 @@ export class HouseholdsApi {
   async createHousehold(name: string): Promise<Household> {
     const res = await this.client.post<unknown>('/household', { name });
     return HouseholdSchema.parse(res.data);
+  }
+
+  async getHousehold(id: number): Promise<HouseholdDetail> {
+    const res = await this.client.get<unknown>(`/household/${id}`);
+    return HouseholdDetailSchema.parse(res.data);
   }
 
   // Endpoint unknown — stub until confirmed
@@ -65,9 +88,10 @@ export class HouseholdsApi {
   }
 
   // ── Members ────────────────────────────────────────────────────────────────
-  // All member endpoints unknown — stubs until confirmed
-  async getMembers(_householdId: number): Promise<HouseholdMember[]> {
-    throw new Error('getMembers: KitchenOwl API endpoint not yet confirmed');
+
+  async getMembers(householdId: number): Promise<HouseholdMember[]> {
+    const detail = await this.getHousehold(householdId);
+    return detail.member;
   }
 
   async inviteMember(_householdId: number, _username: string): Promise<void> {
