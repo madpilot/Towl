@@ -122,9 +122,8 @@ export class AuthApi {
     return user.tokens;
   }
 
-  // Endpoint unknown — stub until confirmed
-  async revokeSession(_sessionId: number): Promise<void> {
-    throw new Error('revokeSession: KitchenOwl API endpoint not yet confirmed');
+  async revokeSession(sessionId: number): Promise<void> {
+    await this.client.delete(`/auth/${sessionId}`);
   }
 
   async revokeAllOtherSessions(): Promise<void> {
