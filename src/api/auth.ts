@@ -54,7 +54,7 @@ export const ApiSessionTokenSchema = z.object({
   type: z.string(),
   last_used_at: z.number().nullable(),
   created_at: z.number(),
-  refresh_token_id: z.number(),
+  refresh_token_id: z.number().nullable(),
   updated_at: z.number(),
 });
 export type ApiSessionToken = z.infer<typeof ApiSessionTokenSchema>;

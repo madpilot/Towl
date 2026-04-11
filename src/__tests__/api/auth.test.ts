@@ -55,6 +55,15 @@ describe('getUser', () => {
 
     expect(user.tokens).toEqual([]);
   });
+
+  it('parses tokens where refresh_token_id is null (LLT tokens)', async () => {
+    const lltToken = { ...userFixture.tokens[0], id: 999, type: 'llt', refresh_token_id: null };
+    mockGet.mockResolvedValue({ data: { ...userFixture, tokens: [lltToken] } });
+
+    const user = await api.getUser();
+
+    expect(user.tokens[0]?.refresh_token_id).toBeNull();
+  });
 });
 
 describe('getSessions', () => {
