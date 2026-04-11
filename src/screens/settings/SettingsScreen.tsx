@@ -136,7 +136,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
     if (!authApi || !serverUrl) return;
     authApi.getUser()
       .then((apiUser) => {
-        if (apiUser.photo) setAvatarUri(`${serverUrl}/upload/${apiUser.photo}`);
+        if (apiUser.photo) setAvatarUri(`${serverUrl}/api/upload/${apiUser.photo}`);
       })
       .catch(() => {});
   }, [authApi, serverUrl]);

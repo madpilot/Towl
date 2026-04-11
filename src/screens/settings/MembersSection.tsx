@@ -57,7 +57,7 @@ export function MembersSection() {
               <View style={styles.memberRow}>
                 {m.photo && serverUrl ? (
                   <Image
-                    source={{ uri: `${serverUrl}/upload/${m.photo}` }}
+                    source={{ uri: `${serverUrl}/api/upload/${m.photo}` }}
                     style={styles.avatar}
                   />
                 ) : (
