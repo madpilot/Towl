@@ -149,7 +149,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
     if (modal !== 'sessions' || !authApi) return;
     setLoadingSessions(true);
     authApi.getSessions()
-      .then((data) => setSessions(data))
+      .then((data) => setSessions([...data].sort((a, b) => a.created_at - b.created_at)))
       .catch(() => Alert.alert('Error', 'Could not load sessions.'))
       .finally(() => setLoadingSessions(false));
   }, [modal, authApi]);
