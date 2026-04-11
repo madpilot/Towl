@@ -15,7 +15,7 @@ export default function TrolleySection() {
     <View style={styles.section}>
       <View style={styles.header}>
         <View style={styles.dot} />
-        <Text style={styles.label}>IN THE TROLLEY</Text>
+        <Text style={styles.label}>In the trolley</Text>
         <View style={styles.rule} />
       </View>
       {doneItems.map((item) => (
@@ -58,6 +58,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 1.2,
     color: Colors.mintLight,
+    textTransform: 'uppercase',
   },
   rule: {
     flex: 1,

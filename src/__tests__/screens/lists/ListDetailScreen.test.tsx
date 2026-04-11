@@ -155,12 +155,12 @@ describe('ListDetailScreen', () => {
       await waitFor(() => expect(mockBootstrap).toHaveBeenCalledWith(2, false));
     });
 
-    it('skips bootstrap when householdId is 0', async () => {
+    it('skips bootstrap when no household is selected', async () => {
       (useHouseholdStore as unknown as jest.Mock).mockImplementation((sel: (s: unknown) => unknown) =>
         sel({ selectedHousehold: null })
       );
       render(<ListDetailScreen {...baseProps} />);
-      await new Promise((r) => setTimeout(r, 10));
+      await act(async () => {});
       expect(mockBootstrap).not.toHaveBeenCalled();
     });
   });
