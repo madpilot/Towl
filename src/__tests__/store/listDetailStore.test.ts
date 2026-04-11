@@ -43,9 +43,13 @@ jest.mock('@/data/foodMatcher', () => ({
 }));
 
 const mockGetShoppingLists = jest.fn();
+const mockGetHousehold = jest.fn();
 jest.mock('@/store/authStore', () => ({
   useAuthStore: {
-    getState: jest.fn(() => ({ shoppingListsApi: { getShoppingLists: mockGetShoppingLists } })),
+    getState: jest.fn(() => ({
+      shoppingListsApi: { getShoppingLists: mockGetShoppingLists },
+      householdsApi: { getHousehold: mockGetHousehold },
+    })),
   },
 }));
 
@@ -98,6 +102,9 @@ beforeEach(() => {
   (itemsDb.clearExpiredCheckedItems as jest.Mock).mockResolvedValue(undefined);
   (listsDb.getAllLists as jest.Mock).mockResolvedValue([]);
   (mockGetShoppingLists as jest.Mock).mockResolvedValue([]);
+  (mockGetHousehold as jest.Mock).mockResolvedValue({
+    id: 1, name: 'Home', photo: null, member: [], default_shopping_list: null,
+  });
 });
 
 // ─── bootstrap ───────────────────────────────────────────────────────────────
@@ -139,6 +146,35 @@ describe('bootstrap', () => {
     const lists = [makeList()];
     (listsDb.getAllLists as jest.Mock).mockResolvedValue(lists);
     (SecureStore.getItemAsync as jest.Mock).mockResolvedValue('nonexistent-id');
+
+    await useListDetailStore.getState().bootstrap(1, true);
+
+    expect(useListDetailStore.getState().activeLocalId).toBe('list-local-1');
+  });
+
+  it('selects server default list when no saved key exists', async () => {
+    const lists = [makeList(), makeList({ localId: 'list-2', name: 'Pharmacy', serverId: 8 })];
+    (listsDb.getAllLists as jest.Mock).mockResolvedValue(lists);
+    (SecureStore.getItemAsync as jest.Mock).mockResolvedValue(null);
+    (mockGetHousehold as jest.Mock).mockResolvedValue({
+      id: 1, name: 'Home', photo: null, member: [],
+      default_shopping_list: { id: 8, name: 'Pharmacy', household_id: 1 },
+    });
+
+    await useListDetailStore.getState().bootstrap(1, true);
+
+    expect(useListDetailStore.getState().activeLocalId).toBe('list-2');
+    expect(useListDetailStore.getState().activeName).toBe('Pharmacy');
+  });
+
+  it('falls back to first list when server default list not found locally', async () => {
+    const lists = [makeList()];
+    (listsDb.getAllLists as jest.Mock).mockResolvedValue(lists);
+    (SecureStore.getItemAsync as jest.Mock).mockResolvedValue(null);
+    (mockGetHousehold as jest.Mock).mockResolvedValue({
+      id: 1, name: 'Home', photo: null, member: [],
+      default_shopping_list: { id: 99, name: 'Unknown', household_id: 1 },
+    });
 
     await useListDetailStore.getState().bootstrap(1, true);
 

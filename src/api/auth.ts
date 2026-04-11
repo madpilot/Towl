@@ -46,6 +46,29 @@ export async function testConnection(serverUrl: string): Promise<boolean> {
   }
 }
 
+// ─── Authenticated user + session schemas ─────────────────────────────────────
+
+export const ApiSessionTokenSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  type: z.string(),
+  last_used_at: z.number().nullable(),
+  created_at: z.number(),
+  refresh_token_id: z.number(),
+  updated_at: z.number(),
+});
+export type ApiSessionToken = z.infer<typeof ApiSessionTokenSchema>;
+
+export const ApiUserSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  username: z.string(),
+  email: z.string().nullable().optional(),
+  photo: z.string().nullable().optional(),
+  tokens: z.array(ApiSessionTokenSchema).default([]),
+});
+export type ApiUser = z.infer<typeof ApiUserSchema>;
+
 // ─── Authenticated API class ──────────────────────────────────────────────────
 
 export class AuthApi {
@@ -72,9 +95,14 @@ export class AuthApi {
   }
 
   // ── Profile ───────────────────────────────────────────────────────────────
-  // Endpoint: POST /user  (shape unconfirmed — update once verified)
+
   async updateProfile(name: string): Promise<void> {
-    await this.client.post('/user', { name });
+    await this.client.post('/users', { name });
+  }
+
+  async getUser(): Promise<ApiUser> {
+    const res = await this.client.get<unknown>('/user');
+    return ApiUserSchema.parse(res.data);
   }
 
   // Endpoint unknown — stub until KitchenOwl endpoint is confirmed
@@ -88,11 +116,13 @@ export class AuthApi {
   }
 
   // ── Sessions ──────────────────────────────────────────────────────────────
-  // Endpoints unknown — stubs until confirmed
-  async getSessions(): Promise<Session[]> {
-    throw new Error('getSessions: KitchenOwl API endpoint not yet confirmed');
+
+  async getSessions(): Promise<ApiSessionToken[]> {
+    const user = await this.getUser();
+    return user.tokens;
   }
 
+  // Endpoint unknown — stub until confirmed
   async revokeSession(_sessionId: number): Promise<void> {
     throw new Error('revokeSession: KitchenOwl API endpoint not yet confirmed');
   }
@@ -101,11 +131,3 @@ export class AuthApi {
     throw new Error('revokeAllOtherSessions: KitchenOwl API endpoint not yet confirmed');
   }
 }
-
-export type Session = {
-  id: number;
-  device: string;
-  location: string;
-  lastSeen: string;
-  current: boolean;
-};

@@ -58,6 +58,19 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
     set({ items: rows });
   }
 
+  async function getServerDefaultList(householdId: number, lists: LocalList[]): Promise<LocalList | null> {
+    const householdsApi = useAuthStore.getState().householdsApi;
+    if (!householdsApi) return null;
+    try {
+      const detail = await householdsApi.getHousehold(householdId);
+      const defaultServerId = detail.default_shopping_list?.id;
+      if (!defaultServerId) return null;
+      return lists.find((l) => l.serverId === defaultServerId) ?? null;
+    } catch {
+      return null;
+    }
+  }
+
   async function syncFromServer(localId: string, serverId: number | null, householdId: number): Promise<void> {
     if (serverId === null) return;
     const api = useAuthStore.getState().shoppingListsApi;
@@ -112,9 +125,10 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
       let initial: LocalList;
       if (restoreLastList) {
         const lastId = await SecureStore.getItemAsync(SECURE_STORE_KEYS.LAST_LIST_LOCAL_ID);
-        initial = (lastId ? lists.find((l) => l.localId === lastId) : null) ?? lists[0];
+        const savedList = lastId ? lists.find((l) => l.localId === lastId) : null;
+        initial = savedList ?? (await getServerDefaultList(householdId, lists)) ?? lists[0];
       } else {
-        initial = lists[0];
+        initial = (await getServerDefaultList(householdId, lists)) ?? lists[0];
       }
 
       set({ activeLocalId: initial.localId, activeServerId: initial.serverId, activeName: initial.name });

@@ -16,6 +16,7 @@ const mockCreateCategory = jest.fn();
 const mockUpdateCategory = jest.fn();
 const mockDeleteCategory = jest.fn();
 
+const mockGetHousehold = jest.fn();
 const mockGetMembers = jest.fn();
 const mockInviteMember = jest.fn();
 const mockRemoveMember = jest.fn();
@@ -30,6 +31,7 @@ const shoppingListsApi = {
 };
 
 const householdsApi = {
+  getHousehold: mockGetHousehold,
   getCategories: mockGetCategories,
   createCategory: mockCreateCategory,
   updateCategory: mockUpdateCategory,
@@ -76,12 +78,13 @@ describe('initialize', () => {
 });
 
 describe('loadAll', () => {
-  it('populates lists and categories from the API', async () => {
+  it('populates lists, categories, and members from the API', async () => {
     const lists = [{ id: 1, name: 'Weekly', items: [] }];
     const categories = [{ id: 1, name: 'Produce', ordering: 0 }];
+    const members = [{ id: 1, name: 'Alice', username: 'alice', photo: null }];
     mockGetShoppingLists.mockResolvedValue(lists);
     mockGetCategories.mockResolvedValue(categories);
-    mockGetMembers.mockRejectedValue(new Error('stub'));
+    mockGetMembers.mockResolvedValue(members);
 
     useHouseholdDetailStore.setState({ householdId: 42 });
     await useHouseholdDetailStore.getState().loadAll();
@@ -89,6 +92,7 @@ describe('loadAll', () => {
     const state = useHouseholdDetailStore.getState();
     expect(state.lists).toEqual(lists);
     expect(state.categories).toEqual(categories);
+    expect(state.members).toEqual(members);
     expect(state.loading).toBe(false);
   });
 });
@@ -146,12 +150,13 @@ describe('createCategory', () => {
   });
 });
 
+
 describe('removeMember', () => {
   it('removes the member from the store', async () => {
     mockRemoveMember.mockResolvedValue(undefined);
     useHouseholdDetailStore.setState({
       householdId: 1,
-      members: [{ id: 3, name: 'Alice', username: 'alice' }],
+      members: [{ id: 3, name: 'Alice', username: 'alice', photo: null }],
     });
 
     await useHouseholdDetailStore.getState().removeMember(3);

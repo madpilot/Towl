@@ -62,10 +62,8 @@ export class ShoppingListsApi {
     return ApiShoppingListItemSchema.parse(res.data);
   }
 
-  async removeItem(listId: number, itemId: number): Promise<void> {
-    await this.client.delete(`/shoppinglist/${listId}/item`, {
-      data: { item_id: itemId },
-    });
+  async deleteItem(itemId: number): Promise<void> {
+    await this.client.delete(`/item/${itemId}`);
   }
 
   async updateItemDescription(
