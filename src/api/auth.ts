@@ -97,7 +97,7 @@ export class AuthApi {
   // ── Profile ───────────────────────────────────────────────────────────────
 
   async updateProfile(name: string): Promise<void> {
-    await this.client.post('/users', { name });
+    await this.client.post('/user', { name });
   }
 
   async getUser(): Promise<ApiUser> {

@@ -79,12 +79,12 @@ describe('getSessions', () => {
 });
 
 describe('updateProfile', () => {
-  it('POSTs name to /users', async () => {
+  it('POSTs name to /user', async () => {
     mockPost.mockResolvedValue({ data: {} });
 
     await api.updateProfile('Bob');
 
-    expect(mockPost).toHaveBeenCalledWith('/users', { name: 'Bob' });
+    expect(mockPost).toHaveBeenCalledWith('/user', { name: 'Bob' });
   });
 });
 
