@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, Image, TouchableOpacity, Alert, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, StyleSheet } from 'react-native';
 import Sheet from '@/components/Sheet';
+import AuthenticatedImage from '@/components/AuthenticatedImage';
 import { SectionLabel, Card, Sep, Field, PrimaryBtn, SecondaryBtn } from '@/components/settings';
 import { useMembersSection } from '@/store/householdDetailStore';
 import { useAuthStore } from '@/store/authStore';
@@ -56,8 +57,8 @@ export function MembersSection() {
             <View key={m.id}>
               <View style={styles.memberRow}>
                 {m.photo && serverUrl ? (
-                  <Image
-                    source={{ uri: `${serverUrl}/api/upload/${m.photo}` }}
+                  <AuthenticatedImage
+                    uri={`${serverUrl}/api/upload/${m.photo}`}
                     style={styles.avatar}
                   />
                 ) : (

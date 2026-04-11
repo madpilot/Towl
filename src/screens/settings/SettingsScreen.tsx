@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
-  Image,
   ScrollView,
   TouchableOpacity,
   SafeAreaView,
@@ -11,6 +10,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import Sheet from '@/components/Sheet';
+import AuthenticatedImage from '@/components/AuthenticatedImage';
 import { logout } from '@/auth/authManager';
 import { useAuthStore } from '@/store/authStore';
 import { TokenStore } from '@/auth/tokenStore';
@@ -58,7 +58,7 @@ function Avatar({ name, size = 52, uri }: { name: string; size?: number; uri?: s
   if (uri) {
     return (
       <View style={containerStyle}>
-        <Image source={{ uri }} style={[avatarStyles.image, { borderRadius: size / 2 }]} />
+        <AuthenticatedImage uri={uri} style={[avatarStyles.image, { borderRadius: size / 2 }]} />
       </View>
     );
   }
