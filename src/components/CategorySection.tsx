@@ -1,21 +1,26 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import SwipeableItem from '@/components/SwipeableItem';
-import { Colors, CategoryColors, Spacing, FontSize } from '@/theme';
+import { Colors, CATEGORY_PALETTE, Spacing, FontSize } from '@/theme';
 import type { LocalItem } from '@/db/items';
 import type { SwipeableItemHandlers } from '@/components/SwipeableItem';
 
 type CategorySectionProps = SwipeableItemHandlers & {
   category: string;
+  categoryId: number | null;
   items: LocalItem[];
 }
 
 export default function CategorySection({
   category,
+  categoryId,
   items,
   ...handlers
 }: CategorySectionProps) {
-  const dotColor = CategoryColors[category] ?? CategoryColors['Other'];
+  const coloredCount = CATEGORY_PALETTE.length - 1; // last slot reserved for uncategorized
+  const dotColor = categoryId !== null
+    ? CATEGORY_PALETTE[categoryId % coloredCount]
+    : CATEGORY_PALETTE[CATEGORY_PALETTE.length - 1];
 
   return (
     <View style={styles.section}>
