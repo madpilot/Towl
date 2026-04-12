@@ -57,6 +57,17 @@ describe('getHousehold', () => {
   });
 });
 
+describe('updateCategory', () => {
+  it('POSTs name and ordering to /category/:id', async () => {
+    const mockPost = jest.fn().mockResolvedValue({ data: {} });
+    const apiWithPost = new HouseholdsApi({ get: mockGet, post: mockPost } as unknown as ApiClientManager);
+
+    await apiWithPost.updateCategory(7, 'Baked goods', 0);
+
+    expect(mockPost).toHaveBeenCalledWith('/category/7', { name: 'Baked goods', ordering: 0 });
+  });
+});
+
 describe('getMembers', () => {
   it('returns the member array from the household detail', async () => {
     mockGet.mockResolvedValue({ data: householdDetailFixture });

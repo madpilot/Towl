@@ -137,11 +137,11 @@ export const useHouseholdDetailStore = create<HouseholdDetailState>((set, get) =
   },
 
   updateCategory: async (id, name) => {
-    const { householdId } = get();
-    if (householdId === null) return;
     const { householdsApi } = useAuthStore.getState();
     if (!householdsApi) return;
-    await householdsApi.updateCategory(householdId, id, name);
+    const existing = get().categories.find((c) => c.id === id);
+    const ordering = existing?.ordering ?? 0;
+    await householdsApi.updateCategory(id, name, ordering);
     set((s) => ({ categories: s.categories.map((c) => c.id === id ? { ...c, name } : c) }));
   },
 

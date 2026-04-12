@@ -79,8 +79,8 @@ export class HouseholdsApi {
     throw new Error('createCategory: KitchenOwl API endpoint not yet confirmed');
   }
 
-  async updateCategory(_householdId: number, _categoryId: number, _name: string): Promise<void> {
-    throw new Error('updateCategory: KitchenOwl API endpoint not yet confirmed');
+  async updateCategory(categoryId: number, name: string, ordering: number): Promise<void> {
+    await this.client.post(`/category/${categoryId}`, { name, ordering });
   }
 
   async deleteCategory(_householdId: number, _categoryId: number): Promise<void> {
