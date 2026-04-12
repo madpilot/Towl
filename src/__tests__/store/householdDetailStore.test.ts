@@ -152,7 +152,7 @@ describe('createCategory', () => {
 
 
 describe('reorderCategory', () => {
-  it('calls updateCategory with the category name and new ordering, then updates the ordering in store', async () => {
+  it('reassigns orderings for the full new order before calling the API', async () => {
     mockUpdateCategory.mockResolvedValue(undefined);
     useHouseholdDetailStore.setState({
       householdId: 1,
@@ -162,17 +162,23 @@ describe('reorderCategory', () => {
       ],
     });
 
-    await useHouseholdDetailStore.getState().reorderCategory(7, 0);
+    const newOrder = [
+      { id: 7, name: 'Frozen', ordering: 1 },
+      { id: 3, name: 'Produce', ordering: 0 },
+    ];
+    await useHouseholdDetailStore.getState().reorderCategory(7, 0, newOrder);
 
     expect(mockUpdateCategory).toHaveBeenCalledWith(7, 'Frozen', 0);
-    const updated = useHouseholdDetailStore.getState().categories.find((c) => c.id === 7);
-    expect(updated?.ordering).toBe(0);
+    // Both orderings are updated to reflect the new visual positions (0, 1, …)
+    const state = useHouseholdDetailStore.getState();
+    expect(state.categories.find((c) => c.id === 7)?.ordering).toBe(0);
+    expect(state.categories.find((c) => c.id === 3)?.ordering).toBe(1);
   });
 
   it('does nothing when the category id is not found', async () => {
     useHouseholdDetailStore.setState({ householdId: 1, categories: [] });
 
-    await useHouseholdDetailStore.getState().reorderCategory(99, 0);
+    await useHouseholdDetailStore.getState().reorderCategory(99, 0, []);
 
     expect(mockUpdateCategory).not.toHaveBeenCalled();
   });

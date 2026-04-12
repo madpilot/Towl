@@ -30,7 +30,7 @@ interface HouseholdDetailState {
   createCategory: (name: string) => Promise<void>;
   updateCategory: (id: number, name: string) => Promise<void>;
   deleteCategory: (id: number) => Promise<void>;
-  reorderCategory: (id: number, newOrdering: number) => Promise<void>;
+  reorderCategory: (id: number, newOrdering: number, newOrder: HouseholdCategory[]) => Promise<void>;
 
   // Members
   inviteMember: (username: string) => Promise<void>;
@@ -154,15 +154,15 @@ export const useHouseholdDetailStore = create<HouseholdDetailState>((set, get) =
     set((s) => ({ categories: s.categories.filter((c) => c.id !== id) }));
   },
 
-  reorderCategory: async (id, newOrdering) => {
+  reorderCategory: async (id, newOrdering, newOrder) => {
     const { householdsApi } = useAuthStore.getState();
     if (!householdsApi) return;
     const existing = get().categories.find((c) => c.id === id);
     if (!existing) return;
+    // Optimistically assign orderings 0, 1, 2, … to the new visual order so
+    // any subsequent sort of the store's categories produces the correct sequence.
+    set({ categories: newOrder.map((c, i) => ({ ...c, ordering: i })) });
     await householdsApi.updateCategory(id, existing.name, newOrdering);
-    set((s) => ({
-      categories: s.categories.map((c) => c.id === id ? { ...c, ordering: newOrdering } : c),
-    }));
   },
 
   // ── Members ───────────────────────────────────────────────────────────────

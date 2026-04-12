@@ -143,7 +143,7 @@ export function CategoriesSection({ onDragScrollLock }: CategoriesSectionProps =
       const [moved] = newCats.splice(fromIndex, 1);
       newCats.splice(target, 0, moved);
       setLocalCats(newCats);
-      void reorderRef.current(moved.id, target);
+      void reorderRef.current(moved.id, target, newCats);
     }
 
     setDraggingIndex(null);
