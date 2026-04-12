@@ -128,29 +128,28 @@ export const useHouseholdDetailStore = create<HouseholdDetailState>((set, get) =
   // ── Categories ────────────────────────────────────────────────────────────
 
   createCategory: async (name) => {
-    const { householdId } = get();
+    const { householdId, categories } = get();
     if (householdId === null) return;
     const { householdsApi } = useAuthStore.getState();
     if (!householdsApi) return;
-    const created = await householdsApi.createCategory(householdId, name);
+    const ordering = categories.length;
+    const created = await householdsApi.createCategory(householdId, name, ordering);
     set((s) => ({ categories: [...s.categories, created] }));
   },
 
   updateCategory: async (id, name) => {
-    const { householdId } = get();
-    if (householdId === null) return;
     const { householdsApi } = useAuthStore.getState();
     if (!householdsApi) return;
-    await householdsApi.updateCategory(householdId, id, name);
+    const existing = get().categories.find((c) => c.id === id);
+    const ordering = existing?.ordering ?? 0;
+    await householdsApi.updateCategory(id, name, ordering);
     set((s) => ({ categories: s.categories.map((c) => c.id === id ? { ...c, name } : c) }));
   },
 
   deleteCategory: async (id) => {
-    const { householdId } = get();
-    if (householdId === null) return;
     const { householdsApi } = useAuthStore.getState();
     if (!householdsApi) return;
-    await householdsApi.deleteCategory(householdId, id);
+    await householdsApi.deleteCategory(id);
     set((s) => ({ categories: s.categories.filter((c) => c.id !== id) }));
   },
 
