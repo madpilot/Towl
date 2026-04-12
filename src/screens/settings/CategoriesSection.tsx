@@ -286,6 +286,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: Spacing.md + 2,
+    paddingLeft: Spacing.sm,
   },
   handleText: {
     fontSize: FontSize.heading,
@@ -298,7 +299,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: Spacing.md + 2,
-    paddingLeft: Spacing.sm,
     paddingRight: Spacing.xl,
   },
   rowName: {
