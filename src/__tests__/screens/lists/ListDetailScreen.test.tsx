@@ -192,14 +192,25 @@ describe('ListDetailScreen', () => {
       expect(getByText('Groceries')).toBeTruthy();
     });
 
-    it('renders category sections for unchecked items', () => {
-      setupMocks({ items: [makeItem({ category: 'Dairy & Eggs', isChecked: false })] });
+    it('renders category sections for unchecked items grouped by server category', () => {
+      setupMocks({ items: [makeItem({
+        serverCategoryId: 2,
+        serverCategoryName: 'Dairy & Eggs',
+        serverCategoryOrdering: 1,
+        isChecked: false,
+      })] });
       const { getByTestId } = render(<ListDetailScreen {...baseProps} />);
       expect(getByTestId('category-Dairy & Eggs')).toBeTruthy();
     });
 
+    it('groups items with no server category as Uncategorized', () => {
+      setupMocks({ items: [makeItem({ serverCategoryId: null, isChecked: false })] });
+      const { getByTestId } = render(<ListDetailScreen {...baseProps} />);
+      expect(getByTestId('category-Uncategorized')).toBeTruthy();
+    });
+
     it('excludes checked items from category sections (they go to TrolleySection)', () => {
-      setupMocks({ items: [makeItem({ isChecked: true })] });
+      setupMocks({ items: [makeItem({ serverCategoryId: 2, serverCategoryName: 'Dairy & Eggs', isChecked: true })] });
       const { queryByTestId } = render(<ListDetailScreen {...baseProps} />);
       expect(queryByTestId('category-Dairy & Eggs')).toBeNull();
     });

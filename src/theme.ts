@@ -17,31 +17,18 @@ export const Colors = {
   deleteRedStrong: '#c0392b',
 } as const;
 
-/** Background tint for each KitchenOwl category dot/pill. */
-export const CategoryColors: Record<string, string> = {
-  'Produce': '#d6f5e0',
-  'Dairy & Eggs': '#ddf0ff',
-  'Meat & Seafood': '#ffd6d6',
-  'Bakery': '#fff3d0',
-  'Pantry': '#ead6ff',
-  'Beverages': '#cce8ff',
-  'Snacks': '#ffe8cc',
-  'Condiments': '#e8e8ff',
-  'Frozen': '#d4f0ff',
-  'Prepared': '#ffd6cc',
-  'Household': '#efefef',
-  'Personal Care': '#ffd6f5',
-  'Baby': '#ffe0f0',
-  'Pet': '#e4f5e0',
-  'Clothing': '#f0e8ff',
-  'Office': '#e0e8ff',
-  'Hardware': '#e8e4d4',
-  'Electronics': '#d4e8ff',
-  'Sports': '#d4f4e0',
-  'Kitchenware': '#fff4e0',
-  'Craft': '#f4e0ff',
-  'Other': '#f0f0f0',
-};
+/**
+ * Rotating palette for category dot colours.
+ * Index into this with `serverCategoryId % CATEGORY_PALETTE.length`.
+ * The last entry is reserved for the "Uncategorized" group (null serverCategoryId).
+ */
+export const CATEGORY_PALETTE = [
+  '#d6f5e0', '#ddf0ff', '#ffd6d6', '#fff3d0', '#ead6ff',
+  '#cce8ff', '#ffe8cc', '#e8e8ff', '#d4f0ff', '#ffd6cc',
+  '#ffd6f5', '#ffe0f0', '#e4f5e0', '#f0e8ff', '#e0e8ff',
+  '#e8e4d4', '#d4e8ff', '#d4f4e0', '#fff4e0', '#f4e0ff',
+  '#f0f0f0', // last slot: uncategorized / fallback
+] as const;
 
 export const Spacing = {
   xs: 4,

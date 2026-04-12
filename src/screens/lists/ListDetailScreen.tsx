@@ -23,30 +23,34 @@ import { Colors, Spacing, FontSize } from '@/theme';
 import type { LocalItem } from '@/db/items';
 import type { ListDetailScreenProps } from '@/navigation/types';
 
-// ─── Category ordering ────────────────────────────────────────────────────────
+// ─── Category grouping ───────────────────────────────────────────
 
-const CATEGORY_ORDER = [
-  'Produce', 'Dairy & Eggs', 'Meat & Seafood', 'Bakery', 'Pantry',
-  'Beverages', 'Snacks', 'Condiments', 'Frozen', 'Prepared',
-  'Household', 'Personal Care', 'Baby', 'Pet', 'Clothing',
-  'Office', 'Hardware', 'Electronics', 'Sports', 'Kitchenware', 'Craft', 'Other',
-];
+type CategoryGroup = { category: string; categoryId: number | null; items: LocalItem[] };
 
-function groupByCategory(items: LocalItem[]): { category: string; items: LocalItem[] }[] {
-  const map = new Map<string, LocalItem[]>();
+/**
+ * Groups unchecked items by their server category, ordered by the category's
+ * `ordering` field from the server. Items with no server category (not yet
+ * synced, or the household has no categories) are collected into an
+ * "Uncategorized" group at the end.
+ */
+function groupByCategory(items: LocalItem[]): CategoryGroup[] {
+  const map = new Map<number | null, { name: string; ordering: number; items: LocalItem[] }>();
   for (const item of items) {
-    const cat = item.category || 'Other';
-    const existing = map.get(cat);
-    if (existing) existing.push(item);
-    else map.set(cat, [item]);
+    const key = item.serverCategoryId;
+    const existing = map.get(key);
+    if (existing) {
+      existing.items.push(item);
+    } else {
+      map.set(key, {
+        name: item.serverCategoryName ?? 'Uncategorized',
+        ordering: item.serverCategoryOrdering ?? Number.MAX_SAFE_INTEGER,
+        items: [item],
+      });
+    }
   }
-  const ordered = CATEGORY_ORDER
-    .filter((c) => map.has(c))
-    .map((c) => ({ category: c, items: map.get(c) ?? [] }));
-  for (const [cat, catItems] of map.entries()) {
-    if (!CATEGORY_ORDER.includes(cat)) ordered.push({ category: cat, items: catItems });
-  }
-  return ordered;
+  return [...map.entries()]
+    .sort(([, a], [, b]) => a.ordering - b.ordering)
+    .map(([id, group]) => ({ category: group.name, categoryId: id, items: group.items }));
 }
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
@@ -149,10 +153,11 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
             />
           }
         >
-          {categoryGroups.map(({ category, items: catItems }) => (
+          {categoryGroups.map(({ category, categoryId, items: catItems }) => (
             <CategorySection
-              key={category}
+              key={categoryId ?? 'uncategorized'}
               category={category}
+              categoryId={categoryId}
               items={catItems}
               onToggleDone={toggleDone}
               onToggleImportant={toggleImportant}
