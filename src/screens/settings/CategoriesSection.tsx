@@ -12,9 +12,9 @@ const ITEM_HEIGHT_EST = 46;
 
 type DragRowProps = {
   cat: HouseholdCategory;
+  /** Stable index in localCats — used for position math, never changes mid-drag. */
   index: number;
   isDragging: boolean;
-  isTarget: boolean;
   onDragStart: (index: number) => void;
   onDragMove: (index: number, dy: number) => void;
   onDragEnd: (index: number, dy: number) => void;
@@ -26,7 +26,6 @@ function DragRow({
   cat,
   index,
   isDragging,
-  isTarget,
   onDragStart,
   onDragMove,
   onDragEnd,
@@ -49,7 +48,7 @@ function DragRow({
 
   return (
     <View
-      style={[styles.dragRow, isDragging && styles.dragRowLifted, isTarget && styles.dragRowTarget]}
+      style={[styles.dragRow, isDragging && styles.dragRowLifted]}
       onLayout={onHeightMeasured ? (e) => onHeightMeasured(e.nativeEvent.layout.height) : undefined}
     >
       {/* Drag handle — the only touch target for dragging */}
@@ -83,7 +82,7 @@ export type CategoriesSectionProps = {
 export function CategoriesSection({ onDragScrollLock }: CategoriesSectionProps = {}) {
   const { categories, createCategory, updateCategory, deleteCategory, reorderCategory } = useCategoriesSection();
 
-  // Local sorted copy — updated from the store while not dragging.
+  // Stable ground-truth order — only updated when a drag commits or store changes.
   const [localCats, setLocalCats] = useState<HouseholdCategory[]>(() =>
     [...categories].sort((a, b) => a.ordering - b.ordering)
   );
@@ -98,15 +97,23 @@ export function CategoriesSection({ onDragScrollLock }: CategoriesSectionProps =
     }
   }, [categories]);
 
-  // Drag visual state.
+  // Drag state — draggingIndex is the item's stable position in localCats.
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   const [targetIndex, setTargetIndex] = useState<number | null>(null);
 
-  // Measured height of one row (updated by the first item's onLayout).
+  // Real-time display order: localCats with the dragged item moved to targetIndex.
+  const displayCats = useMemo(() => {
+    if (draggingIndex === null || targetIndex === null || draggingIndex === targetIndex) {
+      return localCats;
+    }
+    const next = [...localCats];
+    const [item] = next.splice(draggingIndex, 1);
+    next.splice(targetIndex, 0, item);
+    return next;
+  }, [localCats, draggingIndex, targetIndex]);
+
   const itemHeightRef = useRef(ITEM_HEIGHT_EST);
 
-  // Keep the latest versions of these in refs so stable useCallback([]) closures
-  // can access them without needing to be recreated.
   const reorderRef = useRef(reorderCategory);
   useEffect(() => { reorderRef.current = reorderCategory; }, [reorderCategory]);
 
@@ -208,26 +215,30 @@ export function CategoriesSection({ onDragScrollLock }: CategoriesSectionProps =
             <Text style={styles.emptyText}>No categories yet.</Text>
           </View>
         ) : (
-          localCats.map((cat, i) => (
-            <View key={cat.id}>
-              <DragRow
-                cat={cat}
-                index={i}
-                isDragging={draggingIndex === i}
-                isTarget={targetIndex === i && draggingIndex !== i}
-                onDragStart={handleDragStart}
-                onDragMove={handleDragMove}
-                onDragEnd={handleDragEnd}
-                onEditPress={() => {
-                  setEditingCatId(cat.id);
-                  setCatName(cat.name);
-                  setModal('edit');
-                }}
-                onHeightMeasured={i === 0 ? (h) => { itemHeightRef.current = h; } : undefined}
-              />
-              {i < localCats.length - 1 && <Sep />}
-            </View>
-          ))
+          displayCats.map((cat, displayIdx) => {
+            // Pass the stable localCats index so the PanResponder is never
+            // recreated mid-drag when the item's display position changes.
+            const stableIndex = localCatsRef.current.findIndex((c) => c.id === cat.id);
+            return (
+              <View key={cat.id}>
+                <DragRow
+                  cat={cat}
+                  index={stableIndex}
+                  isDragging={draggingIndex === stableIndex}
+                  onDragStart={handleDragStart}
+                  onDragMove={handleDragMove}
+                  onDragEnd={handleDragEnd}
+                  onEditPress={() => {
+                    setEditingCatId(cat.id);
+                    setCatName(cat.name);
+                    setModal('edit');
+                  }}
+                  onHeightMeasured={displayIdx === 0 ? (h) => { itemHeightRef.current = h; } : undefined}
+                />
+                {displayIdx < displayCats.length - 1 && <Sep />}
+              </View>
+            );
+          })
         )}
         <Sep />
         <TouchableOpacity
@@ -265,15 +276,10 @@ const styles = StyleSheet.create({
   dragRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingLeft: Spacing.xl,
   },
   dragRowLifted: {
-    backgroundColor: Colors.mintBg,
-    opacity: 0.6,
-  },
-  dragRowTarget: {
-    borderTopWidth: 2,
-    borderTopColor: Colors.mint,
+    backgroundColor: Colors.mintPale,
+    opacity: 0.7,
   },
   handle: {
     width: 28,
@@ -286,13 +292,13 @@ const styles = StyleSheet.create({
     color: Colors.textFaded,
     lineHeight: 22,
     textAlign: 'center',
-    width: 28,
   },
   rowContent: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: Spacing.md + 2,
+    paddingLeft: Spacing.sm,
     paddingRight: Spacing.xl,
   },
   rowName: {
