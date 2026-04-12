@@ -34,12 +34,11 @@ function DragRow({
   onHeightMeasured,
 }: DragRowProps) {
   // Recreate PanResponder only when index or stable callbacks change.
-  // Callbacks are stable (useCallback([]) in parent), so recreation only
-  // happens when this row's position in the list changes.
   const panHandlers = useMemo(
     () =>
       PanResponder.create({
         onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: () => true,
         onPanResponderGrant: () => onDragStart(index),
         onPanResponderMove: (_, g) => onDragMove(index, g.dy),
         onPanResponderRelease: (_, g) => onDragEnd(index, g.dy),
@@ -53,11 +52,19 @@ function DragRow({
       style={[styles.dragRow, isDragging && styles.dragRowLifted, isTarget && styles.dragRowTarget]}
       onLayout={onHeightMeasured ? (e) => onHeightMeasured(e.nativeEvent.layout.height) : undefined}
     >
+      {/* Drag handle — the only touch target for dragging */}
       <View style={styles.handle} {...panHandlers}>
         <Text style={styles.handleText}>≡</Text>
       </View>
-      <Text style={styles.rowName} numberOfLines={1}>{cat.name}</Text>
-      <TouchableOpacity onPress={onEditPress} hitSlop={8} testID={`edit-category-${cat.id}`}>
+
+      {/* Name + chevron — tapping anywhere here opens the edit sheet */}
+      <TouchableOpacity
+        style={styles.rowContent}
+        onPress={onEditPress}
+        activeOpacity={0.7}
+        testID={`edit-category-${cat.id}`}
+      >
+        <Text style={styles.rowName} numberOfLines={1}>{cat.name}</Text>
         <Text style={styles.editChevron}>›</Text>
       </TouchableOpacity>
     </View>
@@ -66,7 +73,14 @@ function DragRow({
 
 // ─── CategoriesSection ────────────────────────────────────────────────────────
 
-export function CategoriesSection() {
+export type CategoriesSectionProps = {
+  /** Called with true when a drag begins and false when it ends.
+   *  Pass this to the parent ScrollView's scrollEnabled prop to prevent
+   *  the native scroll view from stealing the vertical gesture. */
+  onDragScrollLock?: (locked: boolean) => void;
+};
+
+export function CategoriesSection({ onDragScrollLock }: CategoriesSectionProps = {}) {
   const { categories, createCategory, updateCategory, deleteCategory, reorderCategory } = useCategoriesSection();
 
   // Local sorted copy — updated from the store while not dragging.
@@ -91,19 +105,19 @@ export function CategoriesSection() {
   // Measured height of one row (updated by the first item's onLayout).
   const itemHeightRef = useRef(ITEM_HEIGHT_EST);
 
-  // reorderCategory changes identity on each render; keep a stable ref for use
-  // inside the drag-end callback.
+  // Keep the latest versions of these in refs so stable useCallback([]) closures
+  // can access them without needing to be recreated.
   const reorderRef = useRef(reorderCategory);
+  useEffect(() => { reorderRef.current = reorderCategory; }, [reorderCategory]);
 
-  useEffect(() => {
-    reorderRef.current = reorderCategory;
-  }, [reorderCategory]);
+  const onDragScrollLockRef = useRef(onDragScrollLock);
+  useEffect(() => { onDragScrollLockRef.current = onDragScrollLock; }, [onDragScrollLock]);
 
-  // Stable drag callbacks — deps are [] because all mutable state is accessed
-  // through refs, not closed-over state values.
+  // Stable drag callbacks — all mutable state is accessed through refs.
 
   const handleDragStart = useCallback((idx: number) => {
     isDraggingRef.current = true;
+    onDragScrollLockRef.current?.(true);
     setDraggingIndex(idx);
     setTargetIndex(idx);
   }, []);
@@ -135,6 +149,7 @@ export function CategoriesSection() {
     setDraggingIndex(null);
     setTargetIndex(null);
     isDraggingRef.current = false;
+    onDragScrollLockRef.current?.(false);
   }, []);
 
   // ── Modal state ────────────────────────────────────────────────────────────
@@ -250,8 +265,7 @@ const styles = StyleSheet.create({
   dragRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.md + 2,
+    paddingLeft: Spacing.xl,
   },
   dragRowLifted: {
     backgroundColor: Colors.mintBg,
@@ -265,12 +279,19 @@ const styles = StyleSheet.create({
     width: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingRight: Spacing.sm,
+    paddingVertical: Spacing.md + 2,
   },
   handleText: {
     fontSize: FontSize.heading,
     color: Colors.textFaded,
     lineHeight: 22,
+  },
+  rowContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: Spacing.md + 2,
+    paddingRight: Spacing.xl,
   },
   rowName: {
     flex: 1,

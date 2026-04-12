@@ -28,6 +28,7 @@ export default function HouseholdDetailScreen({ navigation, route }: HouseholdDe
 
   const [modal, setModal] = useState<ModalKind>(null);
   const [renameValue, setRenameValue] = useState('');
+  const [scrollEnabled, setScrollEnabled] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -75,7 +76,7 @@ export default function HouseholdDetailScreen({ navigation, route }: HouseholdDe
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} scrollEnabled={scrollEnabled}>
         {loading ? (
           <View style={styles.center}>
             <ActivityIndicator color={Colors.mint} />
@@ -84,7 +85,7 @@ export default function HouseholdDetailScreen({ navigation, route }: HouseholdDe
           <>
             <MembersSection />
             <ListsSection />
-            <CategoriesSection />
+            <CategoriesSection onDragScrollLock={(locked) => setScrollEnabled(!locked)} />
 
             <SectionLabel label="Danger Zone" />
             <Card>
