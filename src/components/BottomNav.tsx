@@ -52,6 +52,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
+    zIndex: 20,
     backgroundColor: Colors.white,
     borderTopLeftRadius: Radii.xl + 4,
     borderTopRightRadius: Radii.xl + 4,
