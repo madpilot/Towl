@@ -17,6 +17,7 @@ import type { HouseholdCategory } from '@/api/households';
 const mockCreateCategory = jest.fn();
 const mockUpdateCategory = jest.fn();
 const mockDeleteCategory = jest.fn();
+const mockReorderCategory = jest.fn();
 
 const sampleCategories: HouseholdCategory[] = [
   { id: 1, name: 'Produce', ordering: 0 },
@@ -29,6 +30,7 @@ function mockHook(overrides: Record<string, unknown> = {}) {
     createCategory: mockCreateCategory,
     updateCategory: mockUpdateCategory,
     deleteCategory: mockDeleteCategory,
+    reorderCategory: mockReorderCategory,
     ...overrides,
   });
 }
@@ -51,6 +53,12 @@ describe('CategoriesSection', () => {
     expect(screen.getByText('Dairy')).toBeTruthy();
   });
 
+  it('renders a drag handle for each category', () => {
+    mockHook({ categories: sampleCategories });
+    render(<CategoriesSection />);
+    expect(screen.getAllByText('≡')).toHaveLength(2);
+  });
+
   it('opens new-category sheet when the add row is pressed', () => {
     render(<CategoriesSection />);
     fireEvent.press(screen.getByText('+ Add category'));
@@ -66,10 +74,10 @@ describe('CategoriesSection', () => {
     expect(mockCreateCategory).toHaveBeenCalledWith('Bakery');
   });
 
-  it('opens edit sheet when a category row is pressed', () => {
+  it('opens edit sheet when the edit button is pressed', () => {
     mockHook({ categories: sampleCategories });
     render(<CategoriesSection />);
-    fireEvent.press(screen.getByText('Produce'));
+    fireEvent.press(screen.getByTestId('edit-category-1'));
     expect(screen.getByText('Save changes')).toBeTruthy();
     expect(screen.getByText('Delete category')).toBeTruthy();
   });
@@ -78,7 +86,7 @@ describe('CategoriesSection', () => {
     mockUpdateCategory.mockResolvedValue(undefined);
     mockHook({ categories: sampleCategories });
     render(<CategoriesSection />);
-    fireEvent.press(screen.getByText('Produce'));
+    fireEvent.press(screen.getByTestId('edit-category-1'));
     fireEvent.changeText(screen.getByDisplayValue('Produce'), 'Fresh Produce');
     await act(async () => { fireEvent.press(screen.getByText('Save changes')); });
     expect(mockUpdateCategory).toHaveBeenCalledWith(1, 'Fresh Produce');
@@ -88,7 +96,7 @@ describe('CategoriesSection', () => {
     mockDeleteCategory.mockResolvedValue(undefined);
     mockHook({ categories: sampleCategories });
     render(<CategoriesSection />);
-    fireEvent.press(screen.getByText('Produce'));
+    fireEvent.press(screen.getByTestId('edit-category-1'));
     await act(async () => { fireEvent.press(screen.getByText('Delete category')); });
     expect(mockDeleteCategory).toHaveBeenCalledWith(1);
   });

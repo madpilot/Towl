@@ -30,6 +30,7 @@ interface HouseholdDetailState {
   createCategory: (name: string) => Promise<void>;
   updateCategory: (id: number, name: string) => Promise<void>;
   deleteCategory: (id: number) => Promise<void>;
+  reorderCategory: (id: number, newOrdering: number) => Promise<void>;
 
   // Members
   inviteMember: (username: string) => Promise<void>;
@@ -153,6 +154,17 @@ export const useHouseholdDetailStore = create<HouseholdDetailState>((set, get) =
     set((s) => ({ categories: s.categories.filter((c) => c.id !== id) }));
   },
 
+  reorderCategory: async (id, newOrdering) => {
+    const { householdsApi } = useAuthStore.getState();
+    if (!householdsApi) return;
+    const existing = get().categories.find((c) => c.id === id);
+    if (!existing) return;
+    await householdsApi.updateCategory(id, existing.name, newOrdering);
+    set((s) => ({
+      categories: s.categories.map((c) => c.id === id ? { ...c, ordering: newOrdering } : c),
+    }));
+  },
+
   // ── Members ───────────────────────────────────────────────────────────────
 
   inviteMember: async (username) => {
@@ -215,6 +227,7 @@ export function useCategoriesSection() {
       createCategory: s.createCategory,
       updateCategory: s.updateCategory,
       deleteCategory: s.deleteCategory,
+      reorderCategory: s.reorderCategory,
     }))
   );
 }

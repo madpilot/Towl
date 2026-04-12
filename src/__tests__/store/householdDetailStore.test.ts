@@ -151,6 +151,33 @@ describe('createCategory', () => {
 });
 
 
+describe('reorderCategory', () => {
+  it('calls updateCategory with the category name and new ordering, then updates the ordering in store', async () => {
+    mockUpdateCategory.mockResolvedValue(undefined);
+    useHouseholdDetailStore.setState({
+      householdId: 1,
+      categories: [
+        { id: 3, name: 'Produce', ordering: 0 },
+        { id: 7, name: 'Frozen', ordering: 1 },
+      ],
+    });
+
+    await useHouseholdDetailStore.getState().reorderCategory(7, 0);
+
+    expect(mockUpdateCategory).toHaveBeenCalledWith(7, 'Frozen', 0);
+    const updated = useHouseholdDetailStore.getState().categories.find((c) => c.id === 7);
+    expect(updated?.ordering).toBe(0);
+  });
+
+  it('does nothing when the category id is not found', async () => {
+    useHouseholdDetailStore.setState({ householdId: 1, categories: [] });
+
+    await useHouseholdDetailStore.getState().reorderCategory(99, 0);
+
+    expect(mockUpdateCategory).not.toHaveBeenCalled();
+  });
+});
+
 describe('removeMember', () => {
   it('removes the member from the store', async () => {
     mockRemoveMember.mockResolvedValue(undefined);
