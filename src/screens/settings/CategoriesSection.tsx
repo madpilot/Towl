@@ -299,6 +299,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: Spacing.md + 2,
+    paddingLeft: Spacing.md,
     paddingRight: Spacing.xl,
   },
   rowName: {
