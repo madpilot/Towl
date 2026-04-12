@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: Spacing.md + 2,
-    paddingLeft: Spacing.sm,
+    paddingLeft: Spacing.sm + 4,
   },
   handleText: {
     fontSize: FontSize.heading,
