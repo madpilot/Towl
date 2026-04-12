@@ -285,6 +285,8 @@ const styles = StyleSheet.create({
     fontSize: FontSize.heading,
     color: Colors.textFaded,
     lineHeight: 22,
+    textAlign: 'center',
+    width: 28,
   },
   rowContent: {
     flex: 1,
