@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo } from 'react';
 import {
   Animated,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -50,7 +52,10 @@ export default function Sheet({ visible, title, onClose, children }: SheetProps)
 
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
-      <View style={styles.root}>
+      <KeyboardAvoidingView
+        style={styles.root}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
         {/* Backdrop fades in independently of the sheet */}
         <Animated.View style={[StyleSheet.absoluteFill, styles.backdrop, { opacity: backdropOpacity }]}>
           <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={onClose} />
@@ -68,7 +73,7 @@ export default function Sheet({ visible, title, onClose, children }: SheetProps)
             {children}
           </ScrollView>
         </Animated.View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
