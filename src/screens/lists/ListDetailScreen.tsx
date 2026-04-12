@@ -177,10 +177,11 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
             <TrolleySection />
           </ScrollView>
         )}
-
-        {/* Bottom navigation bar */}
-        <BottomNav active="lists" />
       </KeyboardAvoidingView>
+
+      {/* BottomNav is position:absolute — anchor it to SafeAreaView, not KAV,
+          so behavior="height" shrinking KAV doesn't pull it off the bottom edge. */}
+      <BottomNav active="lists" />
 
       {/* List picker modal */}
       <ListPickerModal />
