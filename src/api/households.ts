@@ -74,17 +74,17 @@ export class HouseholdsApi {
     return z.array(HouseholdCategorySchema).parse(res.data);
   }
 
-  // Category write endpoints unknown — stubs until confirmed
-  async createCategory(_householdId: number, _name: string): Promise<HouseholdCategory> {
-    throw new Error('createCategory: KitchenOwl API endpoint not yet confirmed');
+  async createCategory(householdId: number, name: string, ordering: number): Promise<HouseholdCategory> {
+    const res = await this.client.post<unknown>(`/household/${householdId}/category`, { name, ordering });
+    return HouseholdCategorySchema.parse(res.data);
   }
 
   async updateCategory(categoryId: number, name: string, ordering: number): Promise<void> {
     await this.client.post(`/category/${categoryId}`, { name, ordering });
   }
 
-  async deleteCategory(_householdId: number, _categoryId: number): Promise<void> {
-    throw new Error('deleteCategory: KitchenOwl API endpoint not yet confirmed');
+  async deleteCategory(categoryId: number): Promise<void> {
+    await this.client.delete(`/category/${categoryId}`);
   }
 
   // ── Members ────────────────────────────────────────────────────────────────

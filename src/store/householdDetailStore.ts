@@ -128,11 +128,12 @@ export const useHouseholdDetailStore = create<HouseholdDetailState>((set, get) =
   // ── Categories ────────────────────────────────────────────────────────────
 
   createCategory: async (name) => {
-    const { householdId } = get();
+    const { householdId, categories } = get();
     if (householdId === null) return;
     const { householdsApi } = useAuthStore.getState();
     if (!householdsApi) return;
-    const created = await householdsApi.createCategory(householdId, name);
+    const ordering = categories.length;
+    const created = await householdsApi.createCategory(householdId, name, ordering);
     set((s) => ({ categories: [...s.categories, created] }));
   },
 
@@ -146,11 +147,9 @@ export const useHouseholdDetailStore = create<HouseholdDetailState>((set, get) =
   },
 
   deleteCategory: async (id) => {
-    const { householdId } = get();
-    if (householdId === null) return;
     const { householdsApi } = useAuthStore.getState();
     if (!householdsApi) return;
-    await householdsApi.deleteCategory(householdId, id);
+    await householdsApi.deleteCategory(id);
     set((s) => ({ categories: s.categories.filter((c) => c.id !== id) }));
   },
 

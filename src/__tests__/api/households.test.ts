@@ -6,7 +6,9 @@ import { HouseholdsApi } from '@/api/households';
 import type { ApiClientManager } from '@/api/client';
 
 const mockGet = jest.fn();
-const client = { get: mockGet } as unknown as ApiClientManager;
+const mockPost = jest.fn();
+const mockDelete = jest.fn();
+const client = { get: mockGet, post: mockPost, delete: mockDelete } as unknown as ApiClientManager;
 const api = new HouseholdsApi(client);
 
 const householdDetailFixture = {
@@ -57,14 +59,34 @@ describe('getHousehold', () => {
   });
 });
 
+describe('createCategory', () => {
+  it('POSTs name and ordering to /household/:id/category and returns parsed category', async () => {
+    mockPost.mockResolvedValue({ data: { id: 5, name: 'Baked goods', ordering: 2 } });
+
+    const created = await api.createCategory(1, 'Baked goods', 2);
+
+    expect(mockPost).toHaveBeenCalledWith('/household/1/category', { name: 'Baked goods', ordering: 2 });
+    expect(created).toEqual({ id: 5, name: 'Baked goods', ordering: 2 });
+  });
+});
+
 describe('updateCategory', () => {
   it('POSTs name and ordering to /category/:id', async () => {
-    const mockPost = jest.fn().mockResolvedValue({ data: {} });
-    const apiWithPost = new HouseholdsApi({ get: mockGet, post: mockPost } as unknown as ApiClientManager);
+    mockPost.mockResolvedValue({ data: {} });
 
-    await apiWithPost.updateCategory(7, 'Baked goods', 0);
+    await api.updateCategory(7, 'Baked goods', 0);
 
     expect(mockPost).toHaveBeenCalledWith('/category/7', { name: 'Baked goods', ordering: 0 });
+  });
+});
+
+describe('deleteCategory', () => {
+  it('sends DELETE /category/:id', async () => {
+    mockDelete.mockResolvedValue({ data: {} });
+
+    await api.deleteCategory(7);
+
+    expect(mockDelete).toHaveBeenCalledWith('/category/7');
   });
 });
 
