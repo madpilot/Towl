@@ -8,6 +8,8 @@ import {
   SafeAreaView,
   ActivityIndicator,
   RefreshControl,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useShallow } from 'zustand/react/shallow';
 import { useHouseholdStore } from '@/store/householdStore';
@@ -104,75 +106,81 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
 
   return (
     <SafeAreaView style={styles.root}>
-      {/* Tap-away overlay to dismiss edit mode */}
-      {editingId !== null && (
-        <TouchableOpacity
-          style={styles.editOverlay}
-          activeOpacity={1}
-          onPress={() => setEditingId(null)}
-        />
-      )}
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoid}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        {/* Tap-away overlay to dismiss edit mode */}
+        {editingId !== null && (
+          <TouchableOpacity
+            style={styles.editOverlay}
+            activeOpacity={1}
+            onPress={() => setEditingId(null)}
+          />
+        )}
 
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.listPicker}
-          onPress={() => setListPickerVisible(true)}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.listName} numberOfLines={1}>{activeName}</Text>
-          <Text style={styles.chevron}>▾</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => navigation.navigate('HouseholdPicker')}
-          activeOpacity={0.7}
-          hitSlop={8}
-        >
-          <HouseIcon color={Colors.mint} size={28} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Add item bar */}
-      <AddItemBar onAdd={addItem} />
-
-      {/* Items list */}
-      {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator color={Colors.mint} />
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.listPicker}
+            onPress={() => setListPickerVisible(true)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.listName} numberOfLines={1}>{activeName}</Text>
+            <Text style={styles.chevron}>▾</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('HouseholdPicker')}
+            activeOpacity={0.7}
+            hitSlop={8}
+          >
+            <HouseIcon color={Colors.mint} size={28} />
+          </TouchableOpacity>
         </View>
-      ) : (
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-              tintColor={Colors.mint}
-            />
-          }
-        >
-          {categoryGroups.map(({ category, categoryId, items: catItems }) => (
-            <CategorySection
-              key={categoryId ?? 'uncategorized'}
-              category={category}
-              categoryId={categoryId}
-              items={catItems}
-              onToggleDone={toggleDone}
-              onToggleImportant={toggleImportant}
-              onDelete={deleteItem}
-              onSave={saveItem}
-              editingId={editingId}
-              setEditingId={setEditingId}
-            />
-          ))}
 
-          <TrolleySection />
-        </ScrollView>
-      )}
+        {/* Add item bar */}
+        <AddItemBar onAdd={addItem} />
 
-      {/* Bottom navigation bar */}
+        {/* Items list */}
+        {loading ? (
+          <View style={styles.center}>
+            <ActivityIndicator color={Colors.mint} />
+          </View>
+        ) : (
+          <ScrollView
+            style={styles.scroll}
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                tintColor={Colors.mint}
+              />
+            }
+          >
+            {categoryGroups.map(({ category, categoryId, items: catItems }) => (
+              <CategorySection
+                key={categoryId ?? 'uncategorized'}
+                category={category}
+                categoryId={categoryId}
+                items={catItems}
+                onToggleDone={toggleDone}
+                onToggleImportant={toggleImportant}
+                onDelete={deleteItem}
+                onSave={saveItem}
+                editingId={editingId}
+                setEditingId={setEditingId}
+              />
+            ))}
+
+            <TrolleySection />
+          </ScrollView>
+        )}
+      </KeyboardAvoidingView>
+
+      {/* BottomNav is position:absolute — anchor it to SafeAreaView, not KAV,
+          so behavior="height" shrinking KAV doesn't pull it off the bottom edge. */}
       <BottomNav active="lists" />
 
       {/* List picker modal */}
@@ -187,6 +195,9 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: Colors.mintBg,
+  },
+  keyboardAvoid: {
+    flex: 1,
   },
   editOverlay: {
     position: 'absolute',
