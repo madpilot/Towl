@@ -63,8 +63,9 @@ export function useItemSuggestions(
         return;
       }
 
-      fn(trimmed)
-        .then((items) => {
+      void (async () => {
+        try {
+          const items = await fn(trimmed);
           if (run.cancelled) return;
           setSuggestions(
             items.slice(0, limit).map((item) => ({
@@ -74,10 +75,10 @@ export function useItemSuggestions(
               category: item.category?.name ?? 'Uncategorised',
             }))
           );
-        })
-        .catch(() => {
+        } catch {
           if (!run.cancelled) setSuggestions([]);
-        });
+        }
+      })();
     }, delay);
 
     return () => {
