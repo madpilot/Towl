@@ -10,6 +10,8 @@ import {
   RefreshControl,
   KeyboardAvoidingView,
   Platform,
+  type NativeSyntheticEvent,
+  type NativeScrollEvent,
 } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { useShallow } from 'zustand/react/shallow';
@@ -140,6 +142,74 @@ function ListDetailContent({ navigation }: ListDetailContentProps) {
   const dragDrop = useDragDrop();
   const dragging = dragDrop?.dragging ?? false;
 
+  // ── Auto-scroll while dragging ────────────────────────────────────────────────
+  // When the dragged ghost nears the top or bottom of the scroll view, scroll
+  // programmatically so the user can reach categories outside the visible area.
+
+  const scrollRef = useRef<ScrollView>(null);
+  /** Wraps the ScrollView — used solely for measureInWindow (ScrollView type lacks it). */
+  const scrollWrapperRef = useRef<View>(null);
+  /** Absolute screen bounds of the ScrollView, measured via measureInWindow. */
+  const scrollBoundsRef = useRef<{ top: number; bottom: number } | null>(null);
+  /** Current scroll offset, kept in sync via onScroll. */
+  const scrollOffsetYRef = useRef(0);
+  /**
+   * Stable ref to the current dragDrop context value.
+   * Updated after every render so the interval closure always reads up-to-date
+   * shared values (ghostY) without listing dragDrop in the effect deps.
+   */
+  const dragDropRef = useRef(dragDrop);
+  useEffect(() => { dragDropRef.current = dragDrop; });
+
+  // Measure the ScrollView's absolute position whenever its layout changes.
+  const onScrollViewLayout = useCallback(() => {
+    scrollWrapperRef.current?.measureInWindow((_x, y, _w, height) => {
+      scrollBoundsRef.current = { top: y, bottom: y + height };
+    });
+  }, []);
+
+  // Track scroll offset so the auto-scroll can calculate the next position.
+  const onScrollView = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    scrollOffsetYRef.current = e.nativeEvent.contentOffset.y;
+  }, []);
+
+  // Start / stop the auto-scroll interval based on dragging state.
+  useEffect(() => {
+    if (!dragging) return;
+
+    const EDGE_ZONE = 80; // px from the edge that triggers scrolling
+    const MAX_SPEED = 10; // px per tick at the very edge (~600 px/s at 60 fps)
+
+    const interval = setInterval(() => {
+      const ctx = dragDropRef.current;
+      const bounds = scrollBoundsRef.current;
+      if (!ctx || !bounds) return;
+
+      // ghostY is absolute_y − 30; add 30 back to approximate the finger position.
+      const fingerY = ctx.ghostY.value + 30;
+
+      const distFromTop = fingerY - bounds.top;
+      const distFromBottom = bounds.bottom - fingerY;
+
+      let speed = 0;
+      if (distFromTop >= 0 && distFromTop < EDGE_ZONE) {
+        speed = -MAX_SPEED * (1 - distFromTop / EDGE_ZONE);
+      } else if (distFromBottom >= 0 && distFromBottom < EDGE_ZONE) {
+        speed = MAX_SPEED * (1 - distFromBottom / EDGE_ZONE);
+      }
+
+      if (Math.abs(speed) >= 1) {
+        const newY = Math.max(0, scrollOffsetYRef.current + speed);
+        scrollRef.current?.scrollTo({ y: newY, animated: false });
+        // Zone bounds have shifted — re-measure so hit-testing stays accurate.
+        ctx.remeasureZones();
+      }
+    }, 16); // ~60 fps
+
+    return () => clearInterval(interval);
+  }, [dragging]);
+  // dragDropRef and the scroll refs are stable refs — safe to omit from deps.
+
   // ── Bootstrap ────────────────────────────────────────────────────────────────
   const isFirstMountRef = useRef(true);
   useEffect(() => {
@@ -236,37 +306,42 @@ function ListDetailContent({ navigation }: ListDetailContentProps) {
             <ActivityIndicator color={Colors.mint} />
           </View>
         ) : (
-          <ScrollView
-            style={styles.scroll}
-            contentContainerStyle={styles.scrollContent}
-            keyboardShouldPersistTaps="handled"
-            // Disable scroll during drag so the ScrollView doesn't interfere.
-            scrollEnabled={!dragging}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={handleRefresh}
-                tintColor={Colors.mint}
-              />
-            }
-          >
-            {draggableGroups.map(({ category, categoryId, items: catItems }) => (
-              <CategorySection
-                key={categoryId ?? 'uncategorized'}
-                category={category}
-                categoryId={categoryId}
-                items={catItems}
-                onToggleDone={toggleDone}
-                onToggleImportant={toggleImportant}
-                onDelete={deleteItem}
-                onSave={saveItem}
-                editingId={editingId}
-                setEditingId={setEditingId}
-              />
-            ))}
+          <View ref={scrollWrapperRef} style={styles.scroll} onLayout={onScrollViewLayout}>
+            <ScrollView
+              ref={scrollRef}
+              style={styles.scrollInner}
+              contentContainerStyle={styles.scrollContent}
+              keyboardShouldPersistTaps="handled"
+              // Disable user-initiated scroll during drag; programmatic scrollTo still works.
+              scrollEnabled={!dragging}
+              onScroll={onScrollView}
+              scrollEventThrottle={16}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={handleRefresh}
+                  tintColor={Colors.mint}
+                />
+              }
+            >
+              {draggableGroups.map(({ category, categoryId, items: catItems }) => (
+                <CategorySection
+                  key={categoryId ?? 'uncategorized'}
+                  category={category}
+                  categoryId={categoryId}
+                  items={catItems}
+                  onToggleDone={toggleDone}
+                  onToggleImportant={toggleImportant}
+                  onDelete={deleteItem}
+                  onSave={saveItem}
+                  editingId={editingId}
+                  setEditingId={setEditingId}
+                />
+              ))}
 
-            <TrolleySection />
-          </ScrollView>
+              <TrolleySection />
+            </ScrollView>
+          </View>
         )}
       </KeyboardAvoidingView>
 
@@ -344,6 +419,9 @@ const styles = StyleSheet.create({
   scroll: {
     flex: 1,
     zIndex: 11,
+  },
+  scrollInner: {
+    flex: 1,
   },
   scrollContent: {
     paddingHorizontal: Spacing.xl,

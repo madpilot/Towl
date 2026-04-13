@@ -440,6 +440,17 @@ function SwipeRowContent({
             </View>
           )}
 
+          {/* Invisible full-card press target for double-tap-to-edit.
+              Rendered before the checkbox so the checkbox sits on top and
+              receives taps in its area first. */}
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            onPress={handlePress}
+            activeOpacity={1}
+            accessible={false}
+            testID="card-tap-target"
+          />
+
           <TouchableOpacity
             style={[rowStyles.checkBtn, item.isChecked && rowStyles.checkBtnDone]}
             onPress={onToggleDone}
@@ -449,15 +460,6 @@ function SwipeRowContent({
           >
             {item.isChecked && <IconCheck color={Colors.white} size={14} />}
           </TouchableOpacity>
-
-          {/* Invisible full-card press target for double-tap-to-edit */}
-          <TouchableOpacity
-            style={StyleSheet.absoluteFill}
-            onPress={handlePress}
-            activeOpacity={1}
-            accessible={false}
-            testID="card-tap-target"
-          />
         </Animated.View>
       </GestureDetector>
     </View>

@@ -60,6 +60,12 @@ export type DragDropContextValue = {
   commitDrop: () => void;
   /** Called from gesture onFinalize — always cleans up drag state. */
   cancelDrag: () => void;
+  /**
+   * Clears cached zone bounds and re-measures all registered zones.
+   * Call this after the ScrollView scrolls during a drag so that zone
+   * hit-testing reflects the updated screen positions.
+   */
+  remeasureZones: () => void;
 };
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -205,6 +211,16 @@ export function DragDropProvider({ children, onDrop }: DragDropProviderProps) {
     setHoveredCategoryId(undefined);
   }, []);
 
+  /**
+   * Clears cached zone bounds so the next updateDragPosition call re-measures.
+   * Called by the auto-scroll loop after programmatic scrolling moves the zones.
+   */
+  const remeasureZones = useCallback(() => {
+    boundsRef.current.clear();
+    measuringRef.current = false;
+    void measureAllZones();
+  }, [measureAllZones]);
+
   // ── Context value ──────────────────────────────────────────────────────────
 
   const value: DragDropContextValue = {
@@ -220,6 +236,7 @@ export function DragDropProvider({ children, onDrop }: DragDropProviderProps) {
     updateDragPosition,
     commitDrop,
     cancelDrag,
+    remeasureZones,
   };
 
   return (
