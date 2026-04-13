@@ -27,6 +27,7 @@ import KitchenOwlIcon from '@/components/KitchenOwlIcon';
 import ListPickerModal from '@/screens/lists/ListPickerModal';
 import TrolleySection from '@/screens/lists/TrolleySection';
 import { Colors, Spacing, FontSize, Radii } from '@/theme';
+import * as Haptics from 'expo-haptics';
 import type { LocalItem } from '@/db/items';
 import type { ListDetailScreenProps } from '@/navigation/types';
 
@@ -229,6 +230,7 @@ function ListDetailContent({ navigation }: ListDetailContentProps) {
   }, [syncVersion, reloadAfterSync]);
 
   const handleRefresh = useCallback(() => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     void refresh(householdId);
   }, [householdId, refresh]);
 

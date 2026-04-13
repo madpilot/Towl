@@ -77,3 +77,11 @@ jest.mock('expo/virtual/streams', () => ({}));
 jest.mock('expo-crypto', () => ({
   randomUUID: () => require('node:crypto').randomUUID(),
 }));
+
+// expo-haptics — no native haptic hardware in tests.
+jest.mock('expo-haptics', () => ({
+  impactAsync: jest.fn().mockResolvedValue(undefined),
+  notificationAsync: jest.fn().mockResolvedValue(undefined),
+  ImpactFeedbackStyle: { Light: 'light', Medium: 'medium', Heavy: 'heavy', Soft: 'soft', Rigid: 'rigid' },
+  NotificationFeedbackType: { Success: 'success', Warning: 'warning', Error: 'error' },
+}));

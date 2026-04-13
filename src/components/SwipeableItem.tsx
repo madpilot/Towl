@@ -32,12 +32,22 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
 import Svg, { Path } from 'react-native-svg';
 import KitchenOwlIcon from '@/components/KitchenOwlIcon';
 import IconPicker from '@/components/IconPicker';
 import { useDragDrop } from '@/components/DragDropContext';
 import { Colors, FontSize, Radii, Spacing } from '@/theme';
 import type { LocalItem } from '@/db/items';
+
+// ─── Haptic helpers (module-level so runOnJS refs are stable) ────
+function hapticLight(): void {
+  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+}
+
+function hapticSuccess(): void {
+  void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+}
 
 // ─── Thresholds ───────────────────────────────────────────────────
 const SWIPE_DONE_PX = 36;
@@ -284,6 +294,11 @@ function SwipeRowContent({
     []
   );
 
+  const handleCheckButtonPress = useCallback(() => {
+    if (!item.isChecked) hapticSuccess();
+    onToggleDone();
+  }, [item.isChecked, onToggleDone]);
+
   // ── Gesture ───────────────────────────────────────────────────
 
   // Swipe pan — activates after horizontal movement; drives swipe actions.
@@ -310,10 +325,12 @@ function SwipeRowContent({
         const name: BackZone =
           zone === 1 ? 'done' : zone === 2 ? 'star' : zone === 3 ? 'delete' : 'none';
         runOnJS(updateZone)(name);
+        runOnJS(hapticLight)();
       }
     })
     .onEnd((e) => {
       if (e.translationX < -SWIPE_DONE_PX) {
+        if (!item.isChecked) runOnJS(hapticSuccess)();
         runOnJS(onToggleDone)();
       } else if (e.translationX > SWIPE_DELETE_PX) {
         runOnJS(onDelete)();
@@ -453,7 +470,7 @@ function SwipeRowContent({
 
           <TouchableOpacity
             style={[rowStyles.checkBtn, item.isChecked && rowStyles.checkBtnDone]}
-            onPress={onToggleDone}
+            onPress={handleCheckButtonPress}
             activeOpacity={0.8}
             accessibilityRole="button"
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
