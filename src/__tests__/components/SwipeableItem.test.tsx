@@ -191,8 +191,8 @@ describe('SwipeableItem', () => {
     });
   });
 
-  describe('swipe left — long (delete)', () => {
-    it('calls onDelete when released past DELETE threshold', () => {
+  describe('swipe left — long (delete removed)', () => {
+    it('does not call onDelete when swiped far left', () => {
       const handlers = makeHandlers();
       render(<SwipeableItem item={makeItem()} {...handlers} />);
 
@@ -200,12 +200,11 @@ describe('SwipeableItem', () => {
         gestureCbs.onEnd?.({ translationX: -185, velocityX: 0 });
       });
 
-      expect(handlers.onDelete).toHaveBeenCalledWith('item-1');
-      expect(handlers.onToggleDone).not.toHaveBeenCalled();
+      expect(handlers.onDelete).not.toHaveBeenCalled();
     });
   });
 
-  describe('swipe right — important', () => {
+  describe('swipe right — important (short)', () => {
     it('calls onToggleImportant when released past STAR threshold', () => {
       const handlers = makeHandlers();
       render(<SwipeableItem item={makeItem()} {...handlers} />);
@@ -229,6 +228,32 @@ describe('SwipeableItem', () => {
     });
   });
 
+  describe('swipe right — long (delete)', () => {
+    it('calls onDelete when released past DELETE threshold', () => {
+      const handlers = makeHandlers();
+      render(<SwipeableItem item={makeItem()} {...handlers} />);
+
+      act(() => {
+        gestureCbs.onEnd?.({ translationX: 115, velocityX: 0 });
+      });
+
+      expect(handlers.onDelete).toHaveBeenCalledWith('item-1');
+      expect(handlers.onToggleImportant).not.toHaveBeenCalled();
+    });
+
+    it('does not call onDelete when released between star and delete thresholds', () => {
+      const handlers = makeHandlers();
+      render(<SwipeableItem item={makeItem()} {...handlers} />);
+
+      act(() => {
+        gestureCbs.onEnd?.({ translationX: 60, velocityX: 0 });
+      });
+
+      expect(handlers.onDelete).not.toHaveBeenCalled();
+      expect(handlers.onToggleImportant).toHaveBeenCalledWith('item-1');
+    });
+  });
+
   describe('back zone visual state', () => {
     it('transitions through zones as swipe value changes', () => {
       render(<SwipeableItem item={makeItem()} {...makeHandlers()} />);
@@ -238,8 +263,8 @@ describe('SwipeableItem', () => {
         gestureCbs.onUpdate?.({ translationX: 0 });
         gestureCbs.onUpdate?.({ translationX: -40 });
         gestureCbs.onUpdate?.({ translationX: -80 });
-        gestureCbs.onUpdate?.({ translationX: -185 });
         gestureCbs.onUpdate?.({ translationX: 40 });
+        gestureCbs.onUpdate?.({ translationX: 115 });
       });
     });
   });
