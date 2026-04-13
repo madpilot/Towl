@@ -136,6 +136,16 @@ export default function HouseholdPickerScreen({ navigation }: HouseholdPickerScr
 
   const canGoBack = navigation.canGoBack();
 
+  // HouseholdPicker lives in both the null and non-null selectedHousehold
+  // branches of MainNavigator, so React Navigation won't auto-transition when
+  // the store changes. Explicitly reset to ListDetail once a household is
+  // persisted (covers both the Done button and single-household auto-select).
+  useEffect(() => {
+    if (!canGoBack && selectedHousehold !== null) {
+      navigation.reset({ index: 0, routes: [{ name: 'ListDetail' }] });
+    }
+  }, [selectedHousehold, canGoBack, navigation]);
+
   useEffect(() => {
     async function load() {
       try {

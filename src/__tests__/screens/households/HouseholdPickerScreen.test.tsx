@@ -25,7 +25,7 @@ import { useHouseholdStore, persistAndSelectHousehold } from '@/store/householdS
 import type { Household } from '@/api/households';
 
 const mockPersistAndSelectHousehold = persistAndSelectHousehold as unknown as jest.Mock;
-const mockNavigation = { navigate: jest.fn(), canGoBack: jest.fn(), goBack: jest.fn() };
+const mockNavigation = { navigate: jest.fn(), canGoBack: jest.fn(), goBack: jest.fn(), reset: jest.fn() };
 const baseProps = { navigation: mockNavigation as never, route: {} as never };
 
 function makeHousehold(overrides: Partial<Household> = {}): Household {
@@ -193,6 +193,36 @@ describe('HouseholdPickerScreen', () => {
 
       fireEvent.press(getByTestId('done-button'));
       expect(mockPersistAndSelectHousehold).not.toHaveBeenCalled();
+    });
+
+    it('resets navigation to ListDetail when selectedHousehold becomes non-null', async () => {
+      const household = makeHousehold();
+      mockGetHouseholds.mockResolvedValue([
+        household,
+        makeHousehold({ id: 2, name: 'Office' }),
+      ]);
+
+      // Start with no selection, then simulate store updating after Done.
+      const { rerender } = render(<HouseholdPickerScreen {...baseProps} />);
+      mockStore(household);
+      rerender(<HouseholdPickerScreen {...baseProps} />);
+
+      await waitFor(() =>
+        expect(mockNavigation.reset).toHaveBeenCalledWith({
+          index: 0,
+          routes: [{ name: 'ListDetail' }],
+        })
+      );
+    });
+
+    it('does not reset navigation when canGoBack is true and selectedHousehold is set', async () => {
+      mockNavigation.canGoBack.mockReturnValue(true);
+      mockStore(makeHousehold());
+      mockGetHouseholds.mockResolvedValue([makeHousehold()]);
+
+      render(<HouseholdPickerScreen {...baseProps} />);
+      await waitFor(() => expect(mockNavigation.goBack).not.toHaveBeenCalled());
+      expect(mockNavigation.reset).not.toHaveBeenCalled();
     });
   });
 
