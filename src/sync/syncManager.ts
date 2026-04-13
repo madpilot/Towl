@@ -101,10 +101,12 @@ async function executeOp(op: SyncOp): Promise<void> {
 async function dispatchPayload(api: ShoppingListsApi, payload: SyncPayload): Promise<void> {
   switch (payload.opType) {
     case 'ADD_ITEM': {
+      const addItem = await itemsDb.getItem(payload.itemLocalId);
+      const addDescription = addItem?.isImportant ? `!${payload.description}` : payload.description;
       const result = await api.addItemByName(
         payload.listServerId,
         payload.name,
-        payload.description
+        addDescription
       );
       await itemsDb.markItemSynced(
         payload.itemLocalId,
@@ -150,10 +152,12 @@ async function dispatchPayload(api: ShoppingListsApi, payload: SyncPayload): Pro
     }
 
     case 'UPDATE_ITEM': {
+      const updateItem = await itemsDb.getItem(payload.itemLocalId);
+      const updateDescription = updateItem?.isImportant ? `!${payload.description}` : payload.description;
       await api.updateItem(
         payload.itemServerId,
         payload.name,
-        payload.description,
+        updateDescription,
         payload.iconKey,
         payload.category
       );

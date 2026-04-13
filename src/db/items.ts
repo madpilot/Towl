@@ -40,6 +40,18 @@ type ItemRow = {
   checked_at: number | null;
 }
 
+/**
+ * Parses the "important" hack out of a server description.
+ * A leading `!` marks the item as important; strip it and any following spaces
+ * before storing locally so they're never shown in the UI.
+ */
+export function parseImportantDescription(raw: string): { description: string; isImportant: boolean } {
+  if (raw.startsWith('!')) {
+    return { description: raw.slice(1).trimStart(), isImportant: true };
+  }
+  return { description: raw, isImportant: false };
+}
+
 function rowToItem(row: ItemRow): LocalItem {
   return {
     localId: row.local_id,
@@ -75,7 +87,7 @@ export async function getItemsForList(listLocalId: string): Promise<LocalItem[]>
   const rows = await db.getAllAsync<ItemRow>(
     `SELECT * FROM local_items
      WHERE list_local_id = ? AND is_deleted = 0
-     ORDER BY name ASC`,
+     ORDER BY is_important DESC, name ASC`,
     [listLocalId]
   );
   return rows.map(rowToItem);
@@ -136,6 +148,8 @@ export async function upsertItemFromServer(
     [serverId, listLocalId]
   );
 
+  const parsed = parseImportantDescription(description);
+
   if (existing) {
     // Don't overwrite locally-dirty (unsynced) items with server data
     if (existing.is_dirty === 0) {
@@ -143,10 +157,11 @@ export async function upsertItemFromServer(
         `UPDATE local_items
          SET name=?, description=?, icon_key=?, category=?,
              server_category_id=?, server_category_name=?, server_category_ordering=?,
-             is_dirty=0, is_deleted=0
+             is_important=?, is_dirty=0, is_deleted=0
          WHERE local_id=?`,
-        [name, description, iconKey, category,
+        [name, parsed.description, iconKey, category,
          serverCategoryId, serverCategoryName, serverCategoryOrdering,
+         parsed.isImportant ? 1 : 0,
          existing.local_id]
       );
     }
@@ -163,10 +178,11 @@ export async function upsertItemFromServer(
     `INSERT INTO local_items
      (local_id, server_id, list_local_id, name, description, icon_key, category,
       server_category_id, server_category_name, server_category_ordering,
-      is_checked, is_dirty, is_deleted, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, ?)`,
-    [localId, serverId, listLocalId, name, description, iconKey, category,
-     serverCategoryId, serverCategoryName, serverCategoryOrdering, Date.now()]
+      is_checked, is_important, is_dirty, is_deleted, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 0, 0, ?)`,
+    [localId, serverId, listLocalId, name, parsed.description, iconKey, category,
+     serverCategoryId, serverCategoryName, serverCategoryOrdering,
+     parsed.isImportant ? 1 : 0, Date.now()]
   );
   const row = await db.getFirstAsync<ItemRow>(
     'SELECT * FROM local_items WHERE local_id = ?',

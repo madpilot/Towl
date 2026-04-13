@@ -48,6 +48,97 @@ const baseRow = {
 };
 
 describe('items', () => {
+  describe('parseImportantDescription', () => {
+    it('returns isImportant=false and unchanged description when no leading !', () => {
+      const { parseImportantDescription } = getModule();
+      expect(parseImportantDescription('some item')).toEqual({ description: 'some item', isImportant: false });
+    });
+
+    it('returns isImportant=true and strips the leading ! when present', () => {
+      const { parseImportantDescription } = getModule();
+      expect(parseImportantDescription('!buy this')).toEqual({ description: 'buy this', isImportant: true });
+    });
+
+    it('also strips spaces after the ! so leading whitespace is removed', () => {
+      const { parseImportantDescription } = getModule();
+      expect(parseImportantDescription('!  spaced')).toEqual({ description: 'spaced', isImportant: true });
+    });
+
+    it('returns isImportant=false for an empty string', () => {
+      const { parseImportantDescription } = getModule();
+      expect(parseImportantDescription('')).toEqual({ description: '', isImportant: false });
+    });
+  });
+
+  describe('getItemsForList', () => {
+    it('orders items with is_important DESC, name ASC', async () => {
+      const { getItemsForList } = getModule();
+      await getItemsForList('list-1');
+      const [sql] = mockDb.getAllAsync.mock.calls[0] as [string, unknown[]];
+      expect(sql).toContain('is_important DESC');
+      expect(sql).toContain('name ASC');
+    });
+  });
+
+  describe('upsertItemFromServer', () => {
+    it('strips ! from description and sets is_important=1 on insert when description starts with !', async () => {
+      const { upsertItemFromServer } = getModule();
+      // No existing row
+      mockDb.getFirstAsync
+        .mockResolvedValueOnce(null) // existing check
+        .mockResolvedValueOnce({ ...baseRow, local_id: 'test-uuid', server_id: 10, description: 'buy this', is_important: 1, is_dirty: 0, is_deleted: 0 }); // read-back
+
+      await upsertItemFromServer(10, 'list-1', 'Milk', '!buy this', null, 'Dairy', null, null, null);
+
+      const [sql, params] = mockDb.runAsync.mock.calls[0] as [string, unknown[]];
+      expect(sql).toContain('is_important');
+      // description stored without !
+      expect(params).toContain('buy this');
+      // is_important = 1
+      expect(params).toContain(1);
+      // raw '!' not stored
+      expect(params).not.toContain('!buy this');
+    });
+
+    it('sets is_important=0 on insert when description has no !', async () => {
+      const { upsertItemFromServer } = getModule();
+      mockDb.getFirstAsync
+        .mockResolvedValueOnce(null) // existing check
+        .mockResolvedValueOnce({ ...baseRow, local_id: 'test-uuid', server_id: 11, description: 'plain', is_important: 0, is_dirty: 0, is_deleted: 0 }); // read-back
+
+      await upsertItemFromServer(11, 'list-1', 'Eggs', 'plain', null, 'Dairy', null, null, null);
+
+      const [, params] = mockDb.runAsync.mock.calls[0] as [string, unknown[]];
+      expect(params).toContain(0); // is_important = 0
+      expect(params).toContain('plain');
+    });
+
+    it('updates is_important on existing non-dirty row when server description starts with !', async () => {
+      const { upsertItemFromServer } = getModule();
+      mockDb.getFirstAsync
+        .mockResolvedValueOnce({ ...baseRow, is_dirty: 0 }) // existing check
+        .mockResolvedValueOnce({ ...baseRow, description: 'urgent', is_important: 1 }); // read-back
+
+      await upsertItemFromServer(42, 'list-1', 'Milk', '!urgent', null, 'Dairy', null, null, null);
+
+      const [sql, params] = mockDb.runAsync.mock.calls[0] as [string, unknown[]];
+      expect(sql).toContain('is_important');
+      expect(params).toContain('urgent'); // stripped
+      expect(params).toContain(1); // is_important = 1
+    });
+
+    it('skips UPDATE for existing dirty row (local edits take priority)', async () => {
+      const { upsertItemFromServer } = getModule();
+      mockDb.getFirstAsync
+        .mockResolvedValueOnce({ ...baseRow, is_dirty: 1 }) // existing check
+        .mockResolvedValueOnce({ ...baseRow, is_dirty: 1 }); // read-back
+
+      await upsertItemFromServer(42, 'list-1', 'Milk', '!urgent', null, 'Dairy', null, null, null);
+
+      expect(mockDb.runAsync).not.toHaveBeenCalled();
+    });
+  });
+
   describe('removeItemsDeletedOnServer', () => {
     it('deletes synced clean items whose serverId is absent from the server list', async () => {
       const { removeItemsDeletedOnServer } = getModule();
