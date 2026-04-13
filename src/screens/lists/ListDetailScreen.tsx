@@ -10,18 +10,23 @@ import {
   RefreshControl,
   KeyboardAvoidingView,
   Platform,
+  type NativeSyntheticEvent,
+  type NativeScrollEvent,
 } from 'react-native';
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { useShallow } from 'zustand/react/shallow';
 import { useHouseholdStore } from '@/store/householdStore';
 import { useSyncStore } from '@/store/syncStore';
 import { useListDetailStore, useListNav, useItemActions } from '@/store/listDetailStore';
+import { DragDropProvider, useDragDrop } from '@/components/DragDropContext';
 import CategorySection from '@/components/CategorySection';
 import AddItemBar from '@/components/AddItemBar';
 import BottomNav from '@/components/BottomNav';
 import HouseIcon from '@/components/icons/HouseIcon';
+import KitchenOwlIcon from '@/components/KitchenOwlIcon';
 import ListPickerModal from '@/screens/lists/ListPickerModal';
 import TrolleySection from '@/screens/lists/TrolleySection';
-import { Colors, Spacing, FontSize } from '@/theme';
+import { Colors, Spacing, FontSize, Radii } from '@/theme';
 import type { LocalItem } from '@/db/items';
 import type { ListDetailScreenProps } from '@/navigation/types';
 
@@ -55,27 +60,157 @@ function groupByCategory(items: LocalItem[]): CategoryGroup[] {
     .map(([id, group]) => ({ category: group.name, categoryId: id, items: group.items }));
 }
 
-// ─── Screen ───────────────────────────────────────────────────────────────────
+// ─── Ghost overlay ────────────────────────────────────────────────────────────
 
-export default function ListDetailScreen({ navigation }: ListDetailScreenProps) {
+function DragGhost() {
+  const dragDrop = useDragDrop();
+
+  const ghostStyle = useAnimatedStyle(() => {
+    if (!dragDrop) return { opacity: 0 };
+    return {
+      transform: [
+        { translateX: dragDrop.ghostX.value },
+        { translateY: dragDrop.ghostY.value },
+      ],
+      opacity: dragDrop.ghostOpacity.value,
+    };
+  });
+
+  if (!dragDrop?.draggingItem) return null;
+  const { draggingItem } = dragDrop;
+
+  return (
+    <Animated.View
+      style={[ghostStyles.ghost, ghostStyle]}
+      pointerEvents="none"
+    >
+      <KitchenOwlIcon iconKey={draggingItem.iconKey} size={20} style={{ color: Colors.mint }} />
+      <Text style={ghostStyles.name} numberOfLines={1}>{draggingItem.name}</Text>
+    </Animated.View>
+  );
+}
+
+const ghostStyles = StyleSheet.create({
+  ghost: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    backgroundColor: Colors.white,
+    borderRadius: Radii.lg,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    shadowColor: Colors.mint,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 9999,
+    maxWidth: 220,
+  },
+  name: {
+    fontSize: FontSize.body,
+    fontWeight: '700',
+    color: Colors.textDark,
+    flexShrink: 1,
+  },
+});
+
+// ─── Screen content (inside DragDropProvider) ─────────────────────────────────
+
+type ListDetailContentProps = { navigation: ListDetailScreenProps['navigation'] };
+
+function ListDetailContent({ navigation }: ListDetailContentProps) {
   const selectedHousehold = useHouseholdStore((s) => s.selectedHousehold);
   const householdId = selectedHousehold?.id ?? 0;
 
-  const { bootstrap, reloadAfterSync, loading, items } = useListDetailStore(
+  const { bootstrap, reloadAfterSync, loading, items, allCategories } = useListDetailStore(
     useShallow((s) => ({
       bootstrap: s.bootstrap,
       reloadAfterSync: s.reloadAfterSync,
       loading: s.loading,
       items: s.items,
+      allCategories: s.allCategories,
     }))
   );
 
   const { activeName, refreshing, refresh, setListPickerVisible } = useListNav();
   const { editingId, setEditingId, toggleDone, toggleImportant, deleteItem, saveItem, addItem } = useItemActions();
 
-  // ── Bootstrap: single effect keyed on householdId ────────────────────────────
-  // First mount → restore last-used list from SecureStore.
-  // Subsequent calls (household switch) → use the first available list.
+  const dragDrop = useDragDrop();
+  const dragging = dragDrop?.dragging ?? false;
+
+  // ── Auto-scroll while dragging ────────────────────────────────────────────────
+  // When the dragged ghost nears the top or bottom of the scroll view, scroll
+  // programmatically so the user can reach categories outside the visible area.
+
+  const scrollRef = useRef<ScrollView>(null);
+  /** Wraps the ScrollView — used solely for measureInWindow (ScrollView type lacks it). */
+  const scrollWrapperRef = useRef<View>(null);
+  /** Absolute screen bounds of the ScrollView, measured via measureInWindow. */
+  const scrollBoundsRef = useRef<{ top: number; bottom: number } | null>(null);
+  /** Current scroll offset, kept in sync via onScroll. */
+  const scrollOffsetYRef = useRef(0);
+  /**
+   * Stable ref to the current dragDrop context value.
+   * Updated after every render so the interval closure always reads up-to-date
+   * shared values (ghostY) without listing dragDrop in the effect deps.
+   */
+  const dragDropRef = useRef(dragDrop);
+  useEffect(() => { dragDropRef.current = dragDrop; });
+
+  // Measure the ScrollView's absolute position whenever its layout changes.
+  const onScrollViewLayout = useCallback(() => {
+    scrollWrapperRef.current?.measureInWindow((_x, y, _w, height) => {
+      scrollBoundsRef.current = { top: y, bottom: y + height };
+    });
+  }, []);
+
+  // Track scroll offset so the auto-scroll can calculate the next position.
+  const onScrollView = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    scrollOffsetYRef.current = e.nativeEvent.contentOffset.y;
+  }, []);
+
+  // Start / stop the auto-scroll interval based on dragging state.
+  useEffect(() => {
+    if (!dragging) return;
+
+    const EDGE_ZONE = 80; // px from the edge that triggers scrolling
+    const MAX_SPEED = 10; // px per tick at the very edge (~600 px/s at 60 fps)
+
+    const interval = setInterval(() => {
+      const ctx = dragDropRef.current;
+      const bounds = scrollBoundsRef.current;
+      if (!ctx || !bounds) return;
+
+      // ghostY is absolute_y − 30; add 30 back to approximate the finger position.
+      const fingerY = ctx.ghostY.value + 30;
+
+      const distFromTop = fingerY - bounds.top;
+      const distFromBottom = bounds.bottom - fingerY;
+
+      let speed = 0;
+      if (distFromTop >= 0 && distFromTop < EDGE_ZONE) {
+        speed = -MAX_SPEED * (1 - distFromTop / EDGE_ZONE);
+      } else if (distFromBottom >= 0 && distFromBottom < EDGE_ZONE) {
+        speed = MAX_SPEED * (1 - distFromBottom / EDGE_ZONE);
+      }
+
+      if (Math.abs(speed) >= 1) {
+        const newY = Math.max(0, scrollOffsetYRef.current + speed);
+        scrollRef.current?.scrollTo({ y: newY, animated: false });
+        // Zone bounds have shifted — re-measure so hit-testing stays accurate.
+        ctx.remeasureZones();
+      }
+    }, 16); // ~60 fps
+
+    return () => clearInterval(interval);
+  }, [dragging]);
+  // dragDropRef and the scroll refs are stable refs — safe to omit from deps.
+
+  // ── Bootstrap ────────────────────────────────────────────────────────────────
   const isFirstMountRef = useRef(true);
   useEffect(() => {
     if (!householdId) return;
@@ -101,6 +236,30 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
 
   const activeItems = useMemo(() => items.filter((i) => !i.isChecked), [items]);
   const categoryGroups = useMemo(() => groupByCategory(activeItems), [activeItems]);
+
+  /**
+   * When a drag is active, append empty groups for every known server category
+   * that has no items in the current list (so the user can drag into them).
+   * Empty groups appear after the populated groups so the visible layout
+   * doesn't shift when dragging starts.
+   */
+  const draggableGroups = useMemo<CategoryGroup[]>(() => {
+    if (!dragging) return categoryGroups;
+
+    const activeCategoryIds = new Set(categoryGroups.map((g) => g.categoryId));
+
+    const emptyGroups: CategoryGroup[] = allCategories
+      .filter((c) => !activeCategoryIds.has(c.id))
+      .sort((a, b) => a.ordering - b.ordering)
+      .map((c) => ({ category: c.name, categoryId: c.id, items: [] }));
+
+    const extraGroups: CategoryGroup[] = [...emptyGroups];
+    if (!activeCategoryIds.has(null)) {
+      extraGroups.push({ category: 'Uncategorized', categoryId: null, items: [] });
+    }
+
+    return [...categoryGroups, ...extraGroups];
+  }, [dragging, categoryGroups, allCategories]);
 
   // ── Render ────────────────────────────────────────────────────────────────────
 
@@ -147,45 +306,73 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
             <ActivityIndicator color={Colors.mint} />
           </View>
         ) : (
-          <ScrollView
-            style={styles.scroll}
-            contentContainerStyle={styles.scrollContent}
-            keyboardShouldPersistTaps="handled"
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={handleRefresh}
-                tintColor={Colors.mint}
-              />
-            }
-          >
-            {categoryGroups.map(({ category, categoryId, items: catItems }) => (
-              <CategorySection
-                key={categoryId ?? 'uncategorized'}
-                category={category}
-                categoryId={categoryId}
-                items={catItems}
-                onToggleDone={toggleDone}
-                onToggleImportant={toggleImportant}
-                onDelete={deleteItem}
-                onSave={saveItem}
-                editingId={editingId}
-                setEditingId={setEditingId}
-              />
-            ))}
+          <View ref={scrollWrapperRef} style={styles.scroll} onLayout={onScrollViewLayout}>
+            <ScrollView
+              ref={scrollRef}
+              style={styles.scrollInner}
+              contentContainerStyle={styles.scrollContent}
+              keyboardShouldPersistTaps="handled"
+              // Disable user-initiated scroll during drag; programmatic scrollTo still works.
+              scrollEnabled={!dragging}
+              onScroll={onScrollView}
+              scrollEventThrottle={16}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={handleRefresh}
+                  tintColor={Colors.mint}
+                />
+              }
+            >
+              {draggableGroups.map(({ category, categoryId, items: catItems }) => (
+                <CategorySection
+                  key={categoryId ?? 'uncategorized'}
+                  category={category}
+                  categoryId={categoryId}
+                  items={catItems}
+                  onToggleDone={toggleDone}
+                  onToggleImportant={toggleImportant}
+                  onDelete={deleteItem}
+                  onSave={saveItem}
+                  editingId={editingId}
+                  setEditingId={setEditingId}
+                />
+              ))}
 
-            <TrolleySection />
-          </ScrollView>
+              <TrolleySection />
+            </ScrollView>
+          </View>
         )}
       </KeyboardAvoidingView>
 
-      {/* BottomNav is position:absolute — anchor it to SafeAreaView, not KAV,
-          so behavior="height" shrinking KAV doesn't pull it off the bottom edge. */}
+      {/* BottomNav is position:absolute — anchor it to SafeAreaView, not KAV. */}
       <BottomNav active="lists" />
+
+      {/* Drag ghost — absolute overlay, follows the finger during drag. */}
+      <DragGhost />
 
       {/* List picker modal */}
       <ListPickerModal />
     </SafeAreaView>
+  );
+}
+
+// ─── Screen ───────────────────────────────────────────────────────────────────
+
+export default function ListDetailScreen({ navigation }: ListDetailScreenProps) {
+  const moveItemToCategory = useListDetailStore((s) => s.moveItemToCategory);
+
+  const handleDrop = useCallback(
+    (item: LocalItem, categoryId: number | null) => {
+      void moveItemToCategory(item.localId, categoryId);
+    },
+    [moveItemToCategory]
+  );
+
+  return (
+    <DragDropProvider onDrop={handleDrop}>
+      <ListDetailContent navigation={navigation} />
+    </DragDropProvider>
   );
 }
 
@@ -232,6 +419,9 @@ const styles = StyleSheet.create({
   scroll: {
     flex: 1,
     zIndex: 11,
+  },
+  scrollInner: {
+    flex: 1,
   },
   scrollContent: {
     paddingHorizontal: Spacing.xl,

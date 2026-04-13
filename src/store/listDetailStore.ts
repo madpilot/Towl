@@ -10,6 +10,7 @@ import { recordItemUsed } from '@/db/history';
 import { SECURE_STORE_KEYS } from '@/utils/constants';
 import type { LocalItem } from '@/db/items';
 import type { LocalList } from '@/db/lists';
+import type { HouseholdCategory } from '@/api/households';
 
 // ─── State shape ─────────────────────────────────────────────────────────────
 
@@ -19,6 +20,7 @@ type ListDetailState = {
   activeName: string;
   items: LocalItem[];
   allLists: LocalList[];
+  allCategories: HouseholdCategory[];
   loading: boolean;
   refreshing: boolean;
   listPickerVisible: boolean;
@@ -43,6 +45,10 @@ type ListDetailState = {
   saveItem: (localId: string, name: string, iconKey: string | null) => Promise<void>;
   addItem: (name: string, description: string, iconKey: string | null, category: string) => Promise<void>;
   clearTrolley: () => Promise<void>;
+  moveItemToCategory: (localId: string, categoryId: number | null) => Promise<void>;
+
+  // Category data
+  fetchCategories: (householdId: number) => Promise<void>;
 };
 
 // ─── Store ───────────────────────────────────────────────────────────────────
@@ -103,6 +109,7 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
     activeName: '',
     items: [],
     allLists: [],
+    allCategories: [],
     loading: true,
     refreshing: false,
     listPickerVisible: false,
@@ -151,6 +158,7 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
       await loadItems(initial.localId);
       set({ loading: false });
       void syncFromServer(initial.localId, initial.serverId, householdId);
+      void get().fetchCategories(householdId);
     },
 
     refresh: async (householdId) => {
@@ -158,6 +166,7 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
       if (!activeLocalId) return;
       set({ refreshing: true });
       await syncFromServer(activeLocalId, activeServerId, householdId);
+      void get().fetchCategories(householdId);
       set({ refreshing: false });
     },
 
@@ -302,6 +311,69 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
       // Items were already removed from the server when each was checked off.
       await itemsDb.clearCheckedItems(activeLocalId);
       set({ items: items.filter((i) => !i.isChecked) });
+    },
+
+    fetchCategories: async (householdId) => {
+      const householdsApi = useAuthStore.getState().householdsApi;
+      if (!householdsApi) return;
+      try {
+        const categories = await householdsApi.getCategories(householdId);
+        set({ allCategories: categories });
+      } catch {
+        // Offline or transient failure — keep existing categories.
+      }
+    },
+
+    moveItemToCategory: async (localId, categoryId) => {
+      const { activeLocalId, activeServerId, items, allCategories } = get();
+      const category = categoryId !== null
+        ? (allCategories.find((c) => c.id === categoryId) ?? null)
+        : null;
+
+      const newName = category?.name ?? 'Uncategorized';
+      const newId = category?.id ?? null;
+      const newCategoryName = category?.name ?? null;
+      const newOrdering = category?.ordering ?? null;
+
+      await itemsDb.updateItemCategory(localId, newName, newId, newCategoryName, newOrdering);
+
+      const freshItem = await itemsDb.getItem(localId);
+      if (
+        freshItem?.serverId !== null && freshItem?.serverId !== undefined
+        && activeServerId !== null && activeLocalId !== null
+      ) {
+        const serverCategory = category
+          ? { id: category.id, name: category.name, ordering: category.ordering }
+          : null;
+        await syncManager.enqueue(
+          {
+            opType: 'UPDATE_ITEM',
+            listServerId: activeServerId,
+            itemServerId: freshItem.serverId,
+            itemLocalId: localId,
+            name: freshItem.name,
+            description: freshItem.description,
+            iconKey: freshItem.iconKey,
+            category: serverCategory,
+          },
+          activeLocalId
+        );
+      }
+
+      set({
+        items: items.map((i) =>
+          i.localId === localId
+            ? {
+                ...i,
+                category: newName,
+                serverCategoryId: newId,
+                serverCategoryName: newCategoryName,
+                serverCategoryOrdering: newOrdering,
+                isDirty: true,
+              }
+            : i
+        ),
+      });
     },
   };
 });

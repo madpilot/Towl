@@ -210,4 +210,35 @@ describe('items', () => {
       expect(sql).toContain('is_checked = 0');
     });
   });
+
+  describe('updateItemCategory', () => {
+    it('updates category fields and sets is_dirty=1', async () => {
+      const { updateItemCategory } = getModule();
+      await updateItemCategory('item-1', 'Produce', 4, 'Produce', 2);
+      expect(mockDb.runAsync).toHaveBeenCalledWith(
+        expect.stringContaining('server_category_id = ?'),
+        ['Produce', 4, 'Produce', 2, 'item-1']
+      );
+      const [sql] = mockDb.runAsync.mock.calls[0] as [string, unknown[]];
+      expect(sql).toContain('is_dirty = 1');
+      expect(sql).toContain('server_category_name = ?');
+      expect(sql).toContain('server_category_ordering = ?');
+    });
+
+    it('accepts null category fields for uncategorized items', async () => {
+      const { updateItemCategory } = getModule();
+      await updateItemCategory('item-2', 'Uncategorized', null, null, null);
+      expect(mockDb.runAsync).toHaveBeenCalledWith(
+        expect.any(String),
+        ['Uncategorized', null, null, null, 'item-2']
+      );
+    });
+
+    it('targets only the given local_id', async () => {
+      const { updateItemCategory } = getModule();
+      await updateItemCategory('specific-id', 'Dairy', 1, 'Dairy', 0);
+      const [, params] = mockDb.runAsync.mock.calls[0] as [string, unknown[]];
+      expect(params[params.length - 1]).toBe('specific-id');
+    });
+  });
 });
