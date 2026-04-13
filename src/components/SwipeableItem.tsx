@@ -2,9 +2,9 @@
  * SwipeableItem — shopping list row with gesture-based actions.
  *
  * Gestures (all spring back to resting after release):
- *   Swipe left ≥ 72px   → toggle done
- *   Swipe left ≥ 180px  → delete
- *   Swipe right ≥ 36px  → toggle important
+ *   Swipe left ≥ 36px   → toggle done
+ *   Swipe right ≥ 36px  → toggle important (or undo if item is checked)
+ *   Swipe right ≥ 108px → delete
  *   Double-tap card      → enter edit mode
  *   Tap check button     → toggle done
  *
@@ -41,8 +41,8 @@ const SWIPE_STAR_PX = 36;
 const DOUBLE_TAP_MS = 280;
 
 // Maximum card travel distances (clamped in onUpdate).
-const LEFT_TRAVEL_MAX = 162;
-const RIGHT_TRAVEL_MAX = 108;
+const LEFT_TRAVEL_MAX = 72;
+const RIGHT_TRAVEL_MAX = 162;
 
 const SPRING = { damping: 20, stiffness: 200 } as const;
 
@@ -292,26 +292,26 @@ function SwipeRowContent({
       translateX.value = x;
 
       const zone =
-        x < -SWIPE_DELETE_PX ? 2
-        : x < -SWIPE_DONE_PX ? 1
-        : x > SWIPE_STAR_PX  ? 3
+        x < -SWIPE_DONE_PX    ? 1  // done
+        : x > SWIPE_DELETE_PX ? 3  // delete (right long)
+        : x > SWIPE_STAR_PX   ? 2  // star / undo (right short)
         : 0;
 
       if (zone !== currentZone.value) {
         currentZone.value = zone;
         const name: BackZone =
-          zone === 1 ? 'done' : zone === 2 ? 'delete' : zone === 3 ? 'star' : 'none';
+          zone === 1 ? 'done' : zone === 2 ? 'star' : zone === 3 ? 'delete' : 'none';
         runOnJS(updateZone)(name);
       }
     })
     .onEnd((e) => {
-      if (e.translationX < -SWIPE_DELETE_PX) {
-        runOnJS(onDelete)();
-      } else if (e.translationX < -SWIPE_DONE_PX) {
+      if (e.translationX < -SWIPE_DONE_PX) {
         runOnJS(onToggleDone)();
+      } else if (e.translationX > SWIPE_DELETE_PX) {
+        runOnJS(onDelete)();
       } else if (e.translationX > SWIPE_STAR_PX) {
-        // Checked (trolley) items: right-swipe = undo back to list.
-        // Unchecked items: right-swipe = toggle important.
+        // Checked (trolley) items: right-swipe short = undo back to list.
+        // Unchecked items: right-swipe short = toggle important.
         if (item.isChecked) {
           runOnJS(onToggleDone)();
         } else {
@@ -333,9 +333,9 @@ function SwipeRowContent({
   const backStyle = useAnimatedStyle(() => {
     const x = translateX.value;
     const bg =
-      x < -SWIPE_DELETE_PX ? Colors.deleteRed
-      : x < -SWIPE_DONE_PX ? (item.isChecked ? '#ffe8cc' : Colors.mintLight)
-      : x > SWIPE_STAR_PX  ? (item.isChecked ? '#ffe8cc' : '#fffae8')
+      x < -SWIPE_DONE_PX    ? (item.isChecked ? '#ffe8cc' : Colors.mintLight)
+      : x > SWIPE_DELETE_PX ? Colors.deleteRed
+      : x > SWIPE_STAR_PX   ? (item.isChecked ? '#ffe8cc' : '#fffae8')
       : 'transparent';
     return { backgroundColor: bg };
   });
@@ -360,25 +360,25 @@ function SwipeRowContent({
       <Animated.View
         style={[StyleSheet.absoluteFill, backStyles.container, backStyle]}
       >
-        {backZone === 'star' && (
+        {(backZone === 'star' || backZone === 'delete') && (
           <View style={backStyles.leftZone}>
-            {item.isChecked
-              ? <IconUndo color={Colors.mint} size={24} />
-              : <IconStar color={Colors.yellow} size={24} filled={item.isImportant} />
-            }
-          </View>
-        )}
-        {(backZone === 'done' || backZone === 'delete') && (
-          <View style={backStyles.rightZone}>
             {backZone === 'delete' && (
               <IconTrash color={Colors.deleteRedStrong} size={24} />
             )}
-            {backZone === 'done' && item.isChecked && (
+            {backZone === 'star' && item.isChecked && (
               <IconUndo color={Colors.mint} size={24} />
             )}
-            {backZone === 'done' && !item.isChecked && (
-              <IconCheck color={Colors.mint} size={24} />
+            {backZone === 'star' && !item.isChecked && (
+              <IconStar color={Colors.yellow} size={24} filled={item.isImportant} />
             )}
+          </View>
+        )}
+        {backZone === 'done' && (
+          <View style={backStyles.rightZone}>
+            {item.isChecked
+              ? <IconUndo color={Colors.mint} size={24} />
+              : <IconCheck color={Colors.mint} size={24} />
+            }
           </View>
         )}
       </Animated.View>
