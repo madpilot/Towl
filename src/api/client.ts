@@ -1,5 +1,6 @@
 import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { TokenStore } from '@/auth/tokenStore';
+import { useSyncStore } from '@/store/syncStore';
 
 export { AxiosError };
 export function isAxiosError(err: unknown): err is AxiosError {
@@ -68,6 +69,20 @@ export class ApiClientManager {
           this.isRefreshing = false;
         }
       }
+    );
+
+    // ── Request-count tracking ─────────────────────────────────────────────────
+    // These interceptors run outermost (added last), so they wrap the full
+    // auth + 401-retry chain. Increment when a request leaves; decrement when
+    // the final response (or error) arrives. TommyOwl reads requestCount to
+    // show its busy animation for any in-flight API call, not just sync ops.
+    instance.interceptors.request.use((config) => {
+      useSyncStore.getState().incrementRequestCount();
+      return config;
+    });
+    instance.interceptors.response.use(
+      (response) => { useSyncStore.getState().decrementRequestCount(); return response; },
+      (error: unknown) => { useSyncStore.getState().decrementRequestCount(); return Promise.reject(error); }
     );
 
     this.axiosInstance = instance;
