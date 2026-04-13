@@ -169,12 +169,20 @@ export default function HouseholdPickerScreen({ navigation }: HouseholdPickerScr
 
   async function handleSelect(household: Household) {
     setSelectedId(household.id);
-    await persistAndSelectHousehold(household);
-    // In-app mode: go back to the list. In onboarding mode, the conditional
+    // In-app mode: persist immediately and go back.
+    // In onboarding mode: the Done button handles persist; the conditional
     // render in RootNavigator transitions to ListDetail automatically.
     if (canGoBack) {
+      await persistAndSelectHousehold(household);
       navigation.goBack();
     }
+  }
+
+  async function handleDone() {
+    const household = households.find((h) => h.id === selectedId);
+    if (!household) return;
+    await persistAndSelectHousehold(household);
+    // MainNavigator auto-transitions when selectedHousehold becomes non-null.
   }
 
   return (
@@ -190,7 +198,22 @@ export default function HouseholdPickerScreen({ navigation }: HouseholdPickerScr
             <Text style={styles.backText}>‹ Back</Text>
           </TouchableOpacity>
         )}
-        <Text style={styles.title}>Households</Text>
+        <View style={styles.titleRow}>
+          <Text style={styles.title}>Households</Text>
+          {!canGoBack && (
+            <TouchableOpacity
+              style={styles.doneBtn}
+              onPress={handleDone}
+              disabled={selectedId === null}
+              activeOpacity={0.7}
+              testID="done-button"
+            >
+              <Text style={[styles.doneText, selectedId === null && styles.doneTextDisabled]}>
+                Done
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       {loading ? (
@@ -236,11 +259,28 @@ const styles = StyleSheet.create({
     color: Colors.mint,
     fontWeight: '600',
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   title: {
     fontSize: FontSize.title,
     fontWeight: '900',
     color: Colors.mint,
     letterSpacing: -0.5,
+  },
+  doneBtn: {
+    paddingVertical: 4,
+    paddingLeft: Spacing.md,
+  },
+  doneText: {
+    fontSize: FontSize.body,
+    color: Colors.mint,
+    fontWeight: '700',
+  },
+  doneTextDisabled: {
+    color: Colors.mintLight,
   },
   center: {
     flex: 1,

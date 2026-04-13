@@ -87,46 +87,113 @@ describe('HouseholdPickerScreen', () => {
     });
   });
 
-  it('calls persistAndSelectHousehold when a household is tapped', async () => {
-    const household = makeHousehold({ id: 2, name: 'Office' });
-    mockGetHouseholds.mockResolvedValue([
-      makeHousehold({ id: 1, name: 'Home' }),
-      household,
-    ]);
+  describe('in-app mode (canGoBack = true)', () => {
+    beforeEach(() => {
+      mockNavigation.canGoBack.mockReturnValue(true);
+    });
 
-    const { getByText } = render(<HouseholdPickerScreen {...baseProps} />);
-    await waitFor(() => expect(getByText('Office')).toBeTruthy());
+    it('calls persistAndSelectHousehold immediately when a household is tapped', async () => {
+      const household = makeHousehold({ id: 2, name: 'Office' });
+      mockGetHouseholds.mockResolvedValue([
+        makeHousehold({ id: 1, name: 'Home' }),
+        household,
+      ]);
 
-    fireEvent.press(getByText('Office'));
-    await waitFor(() => expect(mockPersistAndSelectHousehold).toHaveBeenCalledWith(household));
+      const { getByText } = render(<HouseholdPickerScreen {...baseProps} />);
+      await waitFor(() => expect(getByText('Office')).toBeTruthy());
+
+      fireEvent.press(getByText('Office'));
+      await waitFor(() => expect(mockPersistAndSelectHousehold).toHaveBeenCalledWith(household));
+    });
+
+    it('calls goBack after selecting', async () => {
+      mockGetHouseholds.mockResolvedValue([
+        makeHousehold({ id: 1, name: 'Home' }),
+        makeHousehold({ id: 2, name: 'Office' }),
+      ]);
+
+      const { getByText } = render(<HouseholdPickerScreen {...baseProps} />);
+      await waitFor(() => expect(getByText('Office')).toBeTruthy());
+
+      fireEvent.press(getByText('Office'));
+      await waitFor(() => expect(mockNavigation.goBack).toHaveBeenCalled());
+    });
+
+    it('does not show Done button', async () => {
+      mockGetHouseholds.mockResolvedValue([makeHousehold()]);
+
+      const { queryByTestId } = render(<HouseholdPickerScreen {...baseProps} />);
+      await waitFor(() => expect(queryByTestId('done-button')).toBeNull());
+    });
   });
 
-  it('calls goBack after selecting when canGoBack is true', async () => {
-    mockNavigation.canGoBack.mockReturnValue(true);
-    mockGetHouseholds.mockResolvedValue([
-      makeHousehold({ id: 1, name: 'Home' }),
-      makeHousehold({ id: 2, name: 'Office' }),
-    ]);
+  describe('onboarding mode (canGoBack = false)', () => {
+    it('does not call persistAndSelectHousehold when a household is tapped', async () => {
+      mockGetHouseholds.mockResolvedValue([
+        makeHousehold({ id: 1, name: 'Home' }),
+        makeHousehold({ id: 2, name: 'Office' }),
+      ]);
 
-    const { getByText } = render(<HouseholdPickerScreen {...baseProps} />);
-    await waitFor(() => expect(getByText('Office')).toBeTruthy());
+      const { getByText } = render(<HouseholdPickerScreen {...baseProps} />);
+      await waitFor(() => expect(getByText('Office')).toBeTruthy());
 
-    fireEvent.press(getByText('Office'));
-    await waitFor(() => expect(mockNavigation.goBack).toHaveBeenCalled());
-  });
+      fireEvent.press(getByText('Office'));
+      expect(mockPersistAndSelectHousehold).not.toHaveBeenCalled();
+    });
 
-  it('does not call goBack during onboarding (canGoBack false)', async () => {
-    mockNavigation.canGoBack.mockReturnValue(false);
-    mockGetHouseholds.mockResolvedValue([
-      makeHousehold({ id: 1, name: 'Home' }),
-      makeHousehold({ id: 2, name: 'Office' }),
-    ]);
+    it('does not call goBack when a household is tapped', async () => {
+      mockGetHouseholds.mockResolvedValue([
+        makeHousehold({ id: 1, name: 'Home' }),
+        makeHousehold({ id: 2, name: 'Office' }),
+      ]);
 
-    const { getByText } = render(<HouseholdPickerScreen {...baseProps} />);
-    await waitFor(() => expect(getByText('Office')).toBeTruthy());
+      const { getByText } = render(<HouseholdPickerScreen {...baseProps} />);
+      await waitFor(() => expect(getByText('Office')).toBeTruthy());
 
-    fireEvent.press(getByText('Office'));
-    expect(mockNavigation.goBack).not.toHaveBeenCalled();
+      fireEvent.press(getByText('Office'));
+      expect(mockNavigation.goBack).not.toHaveBeenCalled();
+    });
+
+    it('shows Done button when no household is pre-selected (disabled)', async () => {
+      mockGetHouseholds.mockResolvedValue([
+        makeHousehold({ id: 1, name: 'Home' }),
+        makeHousehold({ id: 2, name: 'Office' }),
+      ]);
+
+      const { getByTestId } = render(<HouseholdPickerScreen {...baseProps} />);
+      await waitFor(() => expect(getByTestId('done-button')).toBeTruthy());
+    });
+
+    it('Done button calls persistAndSelectHousehold with the selected household', async () => {
+      const office = makeHousehold({ id: 2, name: 'Office' });
+      mockGetHouseholds.mockResolvedValue([
+        makeHousehold({ id: 1, name: 'Home' }),
+        office,
+      ]);
+
+      const { getByText, getByTestId } = render(<HouseholdPickerScreen {...baseProps} />);
+      await waitFor(() => expect(getByText('Office')).toBeTruthy());
+
+      fireEvent.press(getByText('Office'));
+      fireEvent.press(getByTestId('done-button'));
+
+      await waitFor(() =>
+        expect(mockPersistAndSelectHousehold).toHaveBeenCalledWith(office)
+      );
+    });
+
+    it('Done button does not call persistAndSelectHousehold when no household selected', async () => {
+      mockGetHouseholds.mockResolvedValue([
+        makeHousehold({ id: 1, name: 'Home' }),
+        makeHousehold({ id: 2, name: 'Office' }),
+      ]);
+
+      const { getByTestId } = render(<HouseholdPickerScreen {...baseProps} />);
+      await waitFor(() => expect(getByTestId('done-button')).toBeTruthy());
+
+      fireEvent.press(getByTestId('done-button'));
+      expect(mockPersistAndSelectHousehold).not.toHaveBeenCalled();
+    });
   });
 
   it('shows error message when API fails', async () => {
