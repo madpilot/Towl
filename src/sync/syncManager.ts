@@ -161,6 +161,7 @@ async function dispatchPayload(api: ShoppingListsApi, payload: SyncPayload): Pro
         payload.iconKey,
         payload.category
       );
+      await itemsDb.markItemCheckSynced(payload.itemLocalId);
       break;
     }
 
