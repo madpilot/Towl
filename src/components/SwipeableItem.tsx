@@ -475,7 +475,7 @@ function SwipeRowContent({
             accessibilityRole="button"
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            {item.isChecked && <IconCheck color={Colors.white} size={14} />}
+            {item.isChecked && <IconUndo color={Colors.white} size={14} />}
           </TouchableOpacity>
         </Animated.View>
       </GestureDetector>
