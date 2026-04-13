@@ -490,16 +490,22 @@ const backStyles = StyleSheet.create({
     overflow: 'hidden',
   },
   leftZone: {
-    flex: 1,
-    alignItems: 'flex-start',
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 56,
+    alignItems: 'center',
     justifyContent: 'center',
-    paddingLeft: Spacing.xl,
   },
   rightZone: {
-    flex: 1,
-    alignItems: 'flex-end',
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 56,
+    alignItems: 'center',
     justifyContent: 'center',
-    paddingRight: Spacing.xl,
   },
 });
 
