@@ -18,49 +18,99 @@ export type ItemSuggestion = {
   category: string;
   /** True when this suggestion came from the user's history. */
   fromHistory: boolean;
-}
+};
+
+/** Minimal shape the hook requires from a server search result. */
+export type ServerItem = {
+  name: string;
+  icon?: string | null;
+  category?: { name: string } | null;
+};
 
 const DEBOUNCE_MS = 180;
 
 /**
  * Returns a combined, deduplicated suggestion list for a given input string.
- * History matches are ranked first; icon fuzzy matches fill the remainder.
- * Results are debounced to avoid excessive SQLite queries while typing.
+ *
+ * Results are built in two phases:
+ *   1. Local (history + Fuse.js fuzzy) — emitted after the debounce period.
+ *   2. Server catalog search — merged in when the network call resolves.
+ *
+ * Priority order: history > server catalog results > local icon fuzzy matches.
+ * Server errors (offline) are swallowed silently; local results remain visible.
+ *
+ * @param searchFn  Optional async function that queries the server catalog.
+ *                  Pass null to skip the server phase (e.g. while unauthenticated).
  */
-export function useItemSuggestions(input: string, limit = 8): ItemSuggestion[] {
+export function useItemSuggestions(
+  input: string,
+  limit = 8,
+  searchFn: ((query: string) => Promise<ServerItem[]>) | null = null
+): ItemSuggestion[] {
   const [suggestions, setSuggestions] = useState<ItemSuggestion[]>([]);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Each effect run gets its own cancellable token so stale callbacks are no-ops.
+  const cancelRef = useRef<{ cancelled: boolean }>({ cancelled: false });
+  // Stable ref keeps searchFn out of effect deps while staying current.
+  const searchFnRef = useRef(searchFn);
+  useEffect(() => { searchFnRef.current = searchFn; });
 
   useEffect(() => {
     const trimmed = input.trim();
 
     if (timerRef.current) clearTimeout(timerRef.current);
 
-    // Use 0ms delay for clearing so setState never fires synchronously in the effect.
+    // Invalidate any in-flight server call from the previous run.
+    cancelRef.current.cancelled = true;
+    const run = { cancelled: false };
+    cancelRef.current = run;
+
     const delay = trimmed.length < 2 ? 0 : DEBOUNCE_MS;
     timerRef.current = setTimeout(() => {
       if (trimmed.length < 2) {
         setSuggestions([]);
         return;
       }
-      buildSuggestions(trimmed, limit).then(setSuggestions).catch(() => {
-        setSuggestions([]);
-      });
+
+      // ── Phase 1: local suggestions (history + Fuse.js) ────────────────────
+      buildLocalSuggestions(trimmed, limit)
+        .then((local) => {
+          if (run.cancelled) return;
+          setSuggestions(local);
+
+          // ── Phase 2: server catalog search ─────────────────────────────────
+          const fn = searchFnRef.current;
+          if (!fn) return;
+
+          fn(trimmed)
+            .then((serverItems) => {
+              if (run.cancelled) return;
+              setSuggestions(mergeServerResults(local, serverItems, limit));
+            })
+            .catch(() => {
+              // Offline or API error — local results already shown, nothing to do.
+            });
+        })
+        .catch(() => {
+          if (!run.cancelled) setSuggestions([]);
+        });
     }, delay);
 
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
+      run.cancelled = true;
     };
-  }, [input, limit]);
+  }, [input, limit]); // searchFnRef is a stable ref — safe to omit from deps
 
   return suggestions;
 }
 
-async function buildSuggestions(
+// ─── Local suggestions ────────────────────────────────────────────────────────
+
+async function buildLocalSuggestions(
   query: string,
   limit: number
 ): Promise<ItemSuggestion[]> {
-  // 1. History matches (from SQLite, ranked by frequency + recency)
   const historyEntries = await searchHistory(query, limit);
   const historySuggestions: ItemSuggestion[] = historyEntries.map(
     (entry: HistoryEntry) => ({
@@ -73,7 +123,6 @@ async function buildSuggestions(
     })
   );
 
-  // 2. Icon fuzzy matches (fill remaining slots)
   const seenNames = new Set(historyEntries.map((e: HistoryEntry) => e.name));
   const remaining = limit - historySuggestions.length;
   const iconSuggestions: ItemSuggestion[] =
@@ -94,7 +143,47 @@ async function buildSuggestions(
   return [...historySuggestions, ...iconSuggestions];
 }
 
-/** Returns the emoji for a given icon key via iconMetadata. */
+// ─── Server merge ─────────────────────────────────────────────────────────────
+
+/**
+ * Merges server catalog results into an existing local suggestion list.
+ *
+ * Ordering: history → server items (not already in history) → icon fuzzy
+ * matches (not already covered by history or server). Capped at `limit`.
+ */
+function mergeServerResults(
+  local: ItemSuggestion[],
+  serverItems: ServerItem[],
+  limit: number
+): ItemSuggestion[] {
+  const historyItems = local.filter((s) => s.fromHistory);
+  const iconItems = local.filter((s) => !s.fromHistory);
+
+  const seenNames = new Set(historyItems.map((s) => s.displayName.toLowerCase()));
+
+  const serverSuggestions: ItemSuggestion[] = serverItems
+    .filter((item) => !seenNames.has(item.name.toLowerCase()))
+    .map((item) => {
+      seenNames.add(item.name.toLowerCase());
+      return {
+        key: `server:${item.name}`,
+        displayName: item.name,
+        emoji: item.icon ? iconToEmoji(item.icon) : '🛒',
+        iconKey: item.icon ?? null,
+        category: item.category?.name ?? 'Other',
+        fromHistory: false,
+      };
+    });
+
+  const filteredIconItems = iconItems.filter(
+    (s) => !seenNames.has(s.displayName.toLowerCase())
+  );
+
+  return [...historyItems, ...serverSuggestions, ...filteredIconItems].slice(0, limit);
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 function iconToEmoji(iconKey: string): string {
   const meta: IconMeta = getIconMeta(iconKey);
   return meta.emoji;

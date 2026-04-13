@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,8 @@ import {
 import KitchenOwlIcon from '@/components/KitchenOwlIcon';
 import CameraIcon from '@/components/icons/CameraIcon';
 import { useItemSuggestions } from '@/hooks/useItemSuggestions';
+import { useHouseholdStore } from '@/store/householdStore';
+import { useAuthStore } from '@/store/authStore';
 import { Colors, Spacing, Radii, FontSize } from '@/theme';
 import type { ItemSuggestion } from '@/hooks/useItemSuggestions';
 
@@ -19,7 +21,19 @@ type AddItemBarProps = {
 export default function AddItemBar({ onAdd }: AddItemBarProps) {
   const [value, setValue] = useState('');
   const inputRef = useRef<TextInput>(null);
-  const suggestions = useItemSuggestions(value, 5);
+
+  const householdId = useHouseholdStore((s) => s.selectedHousehold?.id ?? null);
+  const shoppingListsApi = useAuthStore((s) => s.shoppingListsApi);
+
+  const searchFn = useMemo(
+    () =>
+      householdId && shoppingListsApi
+        ? (query: string) => shoppingListsApi.searchItems(householdId, query)
+        : null,
+    [householdId, shoppingListsApi]
+  );
+
+  const suggestions = useItemSuggestions(value, 5, searchFn);
   const showSuggestions = value.trim().length >= 2 && suggestions.length > 0;
 
   function commit(name: string, iconKey: string | null, category: string) {
