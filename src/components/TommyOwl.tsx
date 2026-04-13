@@ -33,7 +33,7 @@ export default function TommyOwl({ size = 90 }: TommyOwlProps) {
 
   const mode: OwlMode = !isOnline
     ? 'sleeping'
-    : (syncStatus === 'syncing' || requestCount > 0)
+    : requestCount > 0
     ? 'active'
     : syncStatus === 'error'
     ? 'error'
