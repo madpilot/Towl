@@ -35,14 +35,14 @@ import { Colors, FontSize, Radii, Spacing } from '@/theme';
 import type { LocalItem } from '@/db/items';
 
 // ─── Thresholds ───────────────────────────────────────────────────
-const SWIPE_DONE_PX = 72;
-const SWIPE_DELETE_PX = 180;
+const SWIPE_DONE_PX = 36;
+const SWIPE_DELETE_PX = 108;
 const SWIPE_STAR_PX = 36;
 const DOUBLE_TAP_MS = 280;
 
 // Maximum card travel distances (clamped in onUpdate).
-const LEFT_TRAVEL_MAX = 48;
-const RIGHT_TRAVEL_MAX = 96;
+const LEFT_TRAVEL_MAX = 162;
+const RIGHT_TRAVEL_MAX = 108;
 
 const SPRING = { damping: 20, stiffness: 200 } as const;
 
