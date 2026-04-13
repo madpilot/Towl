@@ -237,19 +237,19 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
       const { items, activeLocalId, activeServerId } = get();
       const item = items.find((i) => i.localId === localId);
       if (!item) return;
-      const isImportant = !item.isImportant;
-      await itemsDb.toggleItemImportant(localId, isImportant);
+      const isImportant = item.isImportant;
+      await itemsDb.toggleItemImportant(localId, !isImportant);
       const freshItem = await itemsDb.getItem(localId);
       if (freshItem?.serverId !== null && freshItem?.serverId !== undefined
           && activeServerId !== null && activeLocalId !== null) {
-        const serverDescription = isImportant ? `!${freshItem.description}` : freshItem.description;
+        const serverDescription = !isImportant ? `!${freshItem.description}` : freshItem.description;
         await syncManager.enqueue(
           { opType: 'UPDATE_ITEM_DESC', listServerId: activeServerId,
             itemServerId: freshItem.serverId, description: serverDescription },
           activeLocalId
         );
       }
-      set({ items: items.map((i) => i.localId === localId ? { ...i, isImportant } : i) });
+      set({ items: items.map((i) => i.localId === localId ? { ...i, isImportant: !isImportant } : i) });
     },
 
     deleteItem: async (localId) => {
