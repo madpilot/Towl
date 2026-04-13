@@ -9,6 +9,7 @@ import {
 import KitchenOwlIcon from '@/components/KitchenOwlIcon';
 import CameraIcon from '@/components/icons/CameraIcon';
 import { useItemSuggestions } from '@/hooks/useItemSuggestions';
+import { suggestIcons } from '@/data/foodMatcher';
 import { useHouseholdStore } from '@/store/householdStore';
 import { useAuthStore } from '@/store/authStore';
 import { Colors, Spacing, Radii, FontSize } from '@/theme';
@@ -36,6 +37,11 @@ export default function AddItemBar({ onAdd }: AddItemBarProps) {
   const suggestions = useItemSuggestions(value, 5, searchFn);
   const showSuggestions = value.trim().length >= 2 && suggestions.length > 0;
 
+  // Best icon match for whatever the user has typed, used for the "add as typed" row.
+  const typedIconKey = value.trim().length >= 2
+    ? (suggestIcons(value.trim(), 1)[0]?.iconKey ?? null)
+    : null;
+
   function commit(name: string, iconKey: string | null, category: string) {
     const trimmed = name.trim();
     if (!trimmed) return;
@@ -45,7 +51,7 @@ export default function AddItemBar({ onAdd }: AddItemBarProps) {
   }
 
   function handleAdd() {
-    commit(value, null, 'Other');
+    commit(value, typedIconKey, 'Other');
   }
 
   function handleSuggestion(s: ItemSuggestion) {
@@ -80,14 +86,18 @@ export default function AddItemBar({ onAdd }: AddItemBarProps) {
       {/* Suggestions */}
       {showSuggestions && (
         <View style={styles.suggestions}>
-          {/* Add-as-typed row */}
+          {/* Add-as-typed row — always first, icon matched via Fuse.js */}
           <TouchableOpacity
             style={styles.suggestTyped}
             onPress={handleAdd}
             activeOpacity={0.8}
           >
             <View style={styles.suggestTypedIcon}>
-              <Text style={styles.suggestTypedPlus}>+</Text>
+              {typedIconKey ? (
+                <KitchenOwlIcon iconKey={typedIconKey} size={18} style={{ color: Colors.white }} />
+              ) : (
+                <Text style={styles.suggestTypedPlus}>+</Text>
+              )}
             </View>
             <Text style={styles.suggestName} numberOfLines={1}>{value.trim()}</Text>
             <Text style={styles.suggestArrow}>→</Text>
