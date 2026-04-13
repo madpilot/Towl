@@ -12,6 +12,7 @@ jest.mock('@/db/items', () => ({
   markItemSynced: jest.fn(),
   hardDeleteItem: jest.fn(),
   markItemCheckSynced: jest.fn(),
+  getItem: jest.fn(),
 }));
 
 jest.mock('@/db/lists', () => ({
@@ -83,6 +84,8 @@ beforeEach(() => {
   (syncQueue.getAll as jest.Mock).mockResolvedValue([]);
   (syncQueue.remove as jest.Mock).mockResolvedValue(undefined);
   (syncQueue.incrementAttempts as jest.Mock).mockResolvedValue(undefined);
+  // Default: item is not important (matches most test scenarios)
+  (itemsDb.getItem as jest.Mock).mockResolvedValue({ isImportant: false, description: '' });
 });
 
 afterEach(() => {
@@ -200,6 +203,88 @@ describe('drain()', () => {
 
     expect(mockApi.updateItem).toHaveBeenCalledWith(12, 'Almond Milk', '2 bunches', 'milk_carton', { id: 9, name: '🥛 Dairy', ordering: 0 });
     expect(syncQueue.remove).toHaveBeenCalledWith('op-upd');
+  });
+
+  it('ADD_ITEM: prepends ! to description when item isImportant=true', async () => {
+    const op = makeAddOp();
+    (syncQueue.getAll as jest.Mock)
+      .mockResolvedValueOnce([op])
+      .mockResolvedValue([]);
+    (itemsDb.getItem as jest.Mock).mockResolvedValue({ isImportant: true, description: '' });
+    mockApi.addItemByName.mockResolvedValue({ id: 99, name: 'Milk', description: '!' });
+
+    await drain();
+
+    expect(mockApi.addItemByName).toHaveBeenCalledWith(5, 'Milk', '!');
+  });
+
+  it('ADD_ITEM: does not prepend ! when item isImportant=false', async () => {
+    const op = makeAddOp();
+    (syncQueue.getAll as jest.Mock)
+      .mockResolvedValueOnce([op])
+      .mockResolvedValue([]);
+    (itemsDb.getItem as jest.Mock).mockResolvedValue({ isImportant: false, description: '' });
+    mockApi.addItemByName.mockResolvedValue({ id: 99, name: 'Milk', description: '' });
+
+    await drain();
+
+    expect(mockApi.addItemByName).toHaveBeenCalledWith(5, 'Milk', '');
+  });
+
+  it('UPDATE_ITEM: prepends ! to description when item isImportant=true', async () => {
+    const op = {
+      id: 'op-upd-imp',
+      attempts: 0,
+      listLocalId: 'list-local-1',
+      createdAt: Date.now(),
+      payload: {
+        opType: 'UPDATE_ITEM' as const,
+        listServerId: 5,
+        itemServerId: 12,
+        itemLocalId: 'item-local-1',
+        name: 'Almond Milk',
+        description: 'two pints',
+        iconKey: 'milk_carton',
+        category: null,
+      },
+    };
+    (syncQueue.getAll as jest.Mock)
+      .mockResolvedValueOnce([op])
+      .mockResolvedValue([]);
+    (itemsDb.getItem as jest.Mock).mockResolvedValue({ isImportant: true, description: 'two pints' });
+    mockApi.updateItem.mockResolvedValue(undefined);
+
+    await drain();
+
+    expect(mockApi.updateItem).toHaveBeenCalledWith(12, 'Almond Milk', '!two pints', 'milk_carton', null);
+  });
+
+  it('UPDATE_ITEM: does not prepend ! when item isImportant=false', async () => {
+    const op = {
+      id: 'op-upd-noimp',
+      attempts: 0,
+      listLocalId: 'list-local-1',
+      createdAt: Date.now(),
+      payload: {
+        opType: 'UPDATE_ITEM' as const,
+        listServerId: 5,
+        itemServerId: 12,
+        itemLocalId: 'item-local-1',
+        name: 'Almond Milk',
+        description: 'two pints',
+        iconKey: null,
+        category: null,
+      },
+    };
+    (syncQueue.getAll as jest.Mock)
+      .mockResolvedValueOnce([op])
+      .mockResolvedValue([]);
+    (itemsDb.getItem as jest.Mock).mockResolvedValue({ isImportant: false, description: 'two pints' });
+    mockApi.updateItem.mockResolvedValue(undefined);
+
+    await drain();
+
+    expect(mockApi.updateItem).toHaveBeenCalledWith(12, 'Almond Milk', 'two pints', null, null);
   });
 
   it('drops ops that have exceeded MAX_SYNC_RETRIES', async () => {
