@@ -82,14 +82,16 @@ function IconCheck({ color, size }: IconProps) {
 function IconUndo({ color, size }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      {/* Counterclockwise arc from right side, over the top, to left side */}
       <Path
-        d="M4 10 C4 10 4 4 12 4 C17 4 20 8 20 13"
+        d="M19 11 C19 7 16 4 12 4 C8 4 5 7 5 11"
         stroke={color}
         strokeWidth={2.5}
         strokeLinecap="round"
       />
+      {/* Arrowhead at the left end pointing downward */}
       <Path
-        d="M8 6 L4 10 L8 14"
+        d="M3 9 L5 11 L7 9"
         stroke={color}
         strokeWidth={2.5}
         strokeLinecap="round"
