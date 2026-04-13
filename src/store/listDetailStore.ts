@@ -242,7 +242,7 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
       const freshItem = await itemsDb.getItem(localId);
       if (freshItem?.serverId !== null && freshItem?.serverId !== undefined
           && activeServerId !== null && activeLocalId !== null) {
-        const serverDescription = !isImportant ? `!${freshItem.description}` : freshItem.description;
+        const serverDescription = freshItem.isImportant ? `!${freshItem.description}` : freshItem.description;
         await syncManager.enqueue(
           { opType: 'UPDATE_ITEM_DESC', listServerId: activeServerId,
             itemServerId: freshItem.serverId, description: serverDescription },
