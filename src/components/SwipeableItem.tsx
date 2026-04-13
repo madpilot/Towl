@@ -41,8 +41,8 @@ const SWIPE_STAR_PX = 36;
 const DOUBLE_TAP_MS = 280;
 
 // Maximum card travel distances (clamped in onUpdate).
-const LEFT_TRAVEL_MAX = (SWIPE_DELETE_PX + 30) * 2;          // 420 px
-const RIGHT_TRAVEL_MAX = Math.round((SWIPE_STAR_PX + 10) / 2); // 23 px
+const LEFT_TRAVEL_MAX = 48;
+const RIGHT_TRAVEL_MAX = 96;
 
 const SPRING = { damping: 20, stiffness: 200 } as const;
 
