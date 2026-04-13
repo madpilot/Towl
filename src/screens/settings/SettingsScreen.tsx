@@ -16,7 +16,6 @@ import { useAuthStore } from '@/store/authStore';
 import { TokenStore } from '@/auth/tokenStore';
 import BottomNav from '@/components/BottomNav';
 import { useHouseholdStore } from '@/store/householdStore';
-import TommyOwl from '@/components/TommyOwl';
 import {
   SectionLabel,
   Card,
@@ -269,7 +268,6 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Settings</Text>
-        <TommyOwl size={40} />
       </View>
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>

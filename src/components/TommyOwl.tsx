@@ -28,11 +28,12 @@ type TommyOwlProps = {
 export default function TommyOwl({ size = 90 }: TommyOwlProps) {
   const isOnline = useNetworkStore((s) => s.isOnline);
   const syncStatus = useSyncStore((s) => s.status);
+  const requestCount = useSyncStore((s) => s.requestCount);
   const errorMessage = useSyncStore((s) => s.errorMessage);
 
   const mode: OwlMode = !isOnline
     ? 'sleeping'
-    : syncStatus === 'syncing'
+    : requestCount > 0
     ? 'active'
     : syncStatus === 'error'
     ? 'error'
@@ -52,15 +53,9 @@ export default function TommyOwl({ size = 90 }: TommyOwlProps) {
 
   // ─── Animated values (overlay — native driver OK) ─────────────────────────
   const bubbleAnim = useRef(new Animated.Value(0)).current;
-  const zzzValues = [
-    useRef(new Animated.Value(0)).current,
-    useRef(new Animated.Value(0)).current,
-    useRef(new Animated.Value(0)).current,
-  ];
 
   // ─── Refs for controlling loops ───────────────────────────────────────────
   const shouldLoop = useRef(false);
-  const zzzLoops = useRef<Animated.CompositeAnimation[]>([]);
 
   // ─── Derived interpolations ───────────────────────────────────────────────
 
@@ -136,33 +131,6 @@ export default function TommyOwl({ size = 90 }: TommyOwlProps) {
     runCycle();
   }
 
-  // ─── ZZZ loops ────────────────────────────────────────────────────────────
-
-  function startZzzLoops() {
-    zzzLoops.current.forEach((a) => a.stop());
-    zzzLoops.current = [];
-    zzzValues.forEach((z) => z.setValue(0));
-
-    zzzValues.forEach((z, i) => {
-      // Each Z cycles 0→1 (fade-in + float) then resets to 0; staggered by delay
-      const loop = Animated.loop(
-        Animated.sequence([
-          Animated.timing(z, { toValue: 1, duration: 1800, useNativeDriver: true }),
-          Animated.timing(z, { toValue: 0, duration: 0, useNativeDriver: true }),
-        ])
-      );
-      const staggered = Animated.sequence([Animated.delay(i * 650), loop]);
-      zzzLoops.current.push(staggered);
-      staggered.start();
-    });
-  }
-
-  function stopZzzLoops() {
-    zzzLoops.current.forEach((a) => a.stop());
-    zzzLoops.current = [];
-    zzzValues.forEach((z) => z.setValue(0));
-  }
-
   // ─── Mode effect ──────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -175,9 +143,7 @@ export default function TommyOwl({ size = 90 }: TommyOwlProps) {
       Animated.timing(bubbleAnim, { toValue: 0, duration: 150, useNativeDriver: true }).start(() =>
         setBubbleVisible(false)
       );
-      startZzzLoops();
     } else if (mode === 'active') {
-      stopZzzLoops();
       Animated.parallel([
         Animated.timing(eyeRy, { toValue: 16, duration: 300, useNativeDriver: false }),
         Animated.timing(worryBrow, { toValue: 0, duration: 200, useNativeDriver: false }),
@@ -188,7 +154,6 @@ export default function TommyOwl({ size = 90 }: TommyOwlProps) {
       startActiveLoop();
     } else if (mode === 'error') {
       shouldLoop.current = false;
-      stopZzzLoops();
       Animated.parallel([
         Animated.timing(eyeRy, { toValue: 16, duration: 300, useNativeDriver: false }),
         Animated.timing(worryBrow, { toValue: 1, duration: 400, useNativeDriver: false }),
@@ -198,7 +163,6 @@ export default function TommyOwl({ size = 90 }: TommyOwlProps) {
     } else {
       // idle
       shouldLoop.current = false;
-      stopZzzLoops();
       Animated.parallel([
         Animated.timing(eyeRy, { toValue: 16, duration: 300, useNativeDriver: false }),
         Animated.timing(leftCx, { toValue: 70, duration: 200, useNativeDriver: false }),
@@ -218,14 +182,6 @@ export default function TommyOwl({ size = 90 }: TommyOwlProps) {
     useSyncStore.getState().setStatus('idle');
     useSyncStore.getState().setErrorMessage(null);
   }
-
-  // ─── ZZZ render props ─────────────────────────────────────────────────────
-
-  const ZZZ_CONFIGS = [
-    { fontSize: 10, left: size * 0.58, top: size * 0.24 },
-    { fontSize: 13, left: size * 0.64, top: size * 0.14 },
-    { fontSize: 16, left: size * 0.69, top: size * 0.06 },
-  ] as const;
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
@@ -265,36 +221,6 @@ export default function TommyOwl({ size = 90 }: TommyOwlProps) {
           <View style={styles.bubbleTail} />
         </Animated.View>
       )}
-
-      {/* ── ZZZ overlay ───────────────────────────────────────────────────── */}
-      {ZZZ_CONFIGS.map((cfg, i) => (
-        <Animated.Text
-          key={i}
-          style={[
-            styles.zzz,
-            {
-              position: 'absolute',
-              top: cfg.top,
-              left: cfg.left,
-              fontSize: cfg.fontSize,
-              opacity: zzzValues[i].interpolate({
-                inputRange: [0, 0.15, 0.55, 0.85, 1],
-                outputRange: [0, 0, 1, 1, 0],
-              }),
-              transform: [
-                {
-                  translateY: zzzValues[i].interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0, -size * 0.55],
-                  }),
-                },
-              ],
-            },
-          ]}
-        >
-          z
-        </Animated.Text>
-      ))}
 
       {/* ── Owl SVG ───────────────────────────────────────────────────────── */}
       <Svg width={size} height={size} viewBox="0 0 176 176" fill="none">
@@ -425,10 +351,6 @@ export default function TommyOwl({ size = 90 }: TommyOwlProps) {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  zzz: {
-    fontWeight: '800',
-    color: MINT,
-  },
   bubble: {
     position: 'absolute',
     left: -56,

@@ -137,30 +137,48 @@ export const OnboardingTommy = React.memo(function OnboardingTommy({
 
   return (
     <Animated.View style={{ transform: [{ translateY }] }}>
-      <Svg width={size} height={size} viewBox="0 0 100 100" fill="none">
+      <Svg width={size} height={size} viewBox="0 0 176 176" fill="none">
         {/* Ear tufts */}
-        <Path d="M28 34 L22 18 L36 28" stroke={Colors.mint} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-        <Path d="M72 34 L78 18 L64 28" stroke={Colors.mint} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-        {/* Outer body */}
-        <Ellipse cx="50" cy="56" rx="30" ry="28" stroke={Colors.mint} strokeWidth="2.2" fill="white" />
-        {/* Belly */}
-        <Ellipse cx="50" cy="57" rx="22" ry="20" stroke={Colors.mintPale} strokeWidth="1.4" fill={Colors.mintBg} />
+        <Path
+          d="M70 68 Q64 50 72 44 Q76 58 78 66Z"
+          fill={Colors.mintBg}
+          stroke={Colors.mint}
+          strokeWidth="2.5"
+          strokeLinejoin="round"
+        />
+        <Path
+          d="M106 68 Q112 50 104 44 Q100 58 98 66Z"
+          fill={Colors.mintBg}
+          stroke={Colors.mint}
+          strokeWidth="2.5"
+          strokeLinejoin="round"
+        />
+        {/* Body */}
+        <Circle cx="88" cy="100" r="62" fill={Colors.mintBg} stroke={Colors.mint} strokeWidth="3" />
+        {/* Chest feathers */}
+        <Ellipse
+          cx="88" cy="103" rx="44" ry="40"
+          fill="none" stroke={Colors.mint} strokeWidth="1.8" opacity="0.35"
+        />
+        {/* Eyebrows */}
+        <Path d="M 60 79 Q 70 74 80 77" stroke={Colors.mint} strokeWidth="2.2" strokeLinecap="round" fill="none" opacity="0.45" />
+        <Path d="M 96 77 Q 106 74 116 79" stroke={Colors.mint} strokeWidth="2.2" strokeLinecap="round" fill="none" opacity="0.45" />
         {/* Left eye */}
-        <Circle cx="38" cy="52" r="9" stroke={Colors.mint} strokeWidth="2" fill="white" />
-        <Circle cx="38" cy="52" r="6" fill={Colors.mintLight} />
-        <Circle cx="38" cy="52" r="3.5" fill={Colors.mint} />
-        <Circle cx="40" cy="50" r="1.5" fill="white" />
+        <Ellipse cx="70" cy="97" rx="16" ry="16" fill="white" stroke={Colors.mint} strokeWidth="2.6" />
+        <Circle cx="70" cy="97" r="9" fill={Colors.mint} />
+        <Circle cx="73" cy="93" r="3" fill="white" />
         {/* Right eye */}
-        <Circle cx="62" cy="52" r="9" stroke={Colors.mint} strokeWidth="2" fill="white" />
-        <Circle cx="62" cy="52" r="6" fill={Colors.mintLight} />
-        <Circle cx="62" cy="52" r="3.5" fill={Colors.mint} />
-        <Circle cx="64" cy="50" r="1.5" fill="white" />
+        <Ellipse cx="106" cy="97" rx="16" ry="16" fill="white" stroke={Colors.mint} strokeWidth="2.6" />
+        <Circle cx="106" cy="97" r="9" fill={Colors.mint} />
+        <Circle cx="109" cy="93" r="3" fill="white" />
         {/* Beak */}
-        <Path d="M44 62 Q50 70 56 62 Q50 65 44 62Z" fill={Colors.yellow} stroke={Colors.yellow} strokeWidth="0.5" strokeLinejoin="round" />
-        {/* Feather collar — 3 layers */}
-        <Path d="M22 38 Q50 28 78 38" stroke={Colors.mintPale} strokeWidth="6" strokeLinecap="round" />
-        <Path d="M22 38 Q50 30 78 38" stroke="white" strokeWidth="3.5" strokeLinecap="round" />
-        <Path d="M22 38 Q50 28 78 38" stroke={Colors.mint} strokeWidth="1.6" strokeLinecap="round" fill="none" />
+        <Path
+          d="M82 113 Q88 124 94 113 Q88 109 82 113Z"
+          fill={Colors.yellow}
+          stroke={Colors.mint}
+          strokeWidth="2.2"
+          strokeLinejoin="round"
+        />
       </Svg>
     </Animated.View>
   );
