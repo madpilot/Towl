@@ -9,7 +9,6 @@ import {
 import KitchenOwlIcon from '@/components/KitchenOwlIcon';
 import CameraIcon from '@/components/icons/CameraIcon';
 import { useItemSuggestions } from '@/hooks/useItemSuggestions';
-import { suggestIcons } from '@/data/foodMatcher';
 import { useHouseholdStore } from '@/store/householdStore';
 import { useAuthStore } from '@/store/authStore';
 import { Colors, Spacing, Radii, FontSize } from '@/theme';
@@ -35,12 +34,11 @@ export default function AddItemBar({ onAdd }: AddItemBarProps) {
   );
 
   const suggestions = useItemSuggestions(value, 5, searchFn);
-  const showSuggestions = value.trim().length >= 2 && suggestions.length > 0;
-
-  // Best icon match for whatever the user has typed, used for the "add as typed" row.
-  const typedIconKey = value.trim().length >= 2
-    ? (suggestIcons(value.trim(), 1)[0]?.iconKey ?? null)
+  const trimmedValue = value.trim();
+  const exactMatch = trimmedValue.length >= 2
+    ? (suggestions.find((s) => s.displayName.toLowerCase() === trimmedValue.toLowerCase()) ?? null)
     : null;
+  const showSuggestions = trimmedValue.length >= 2 && suggestions.length > 0;
 
   function commit(name: string, iconKey: string | null, category: string) {
     const trimmed = name.trim();
@@ -51,7 +49,11 @@ export default function AddItemBar({ onAdd }: AddItemBarProps) {
   }
 
   function handleAdd() {
-    commit(value, typedIconKey, 'Other');
+    if (exactMatch) {
+      commit(exactMatch.displayName, exactMatch.iconKey, exactMatch.category);
+    } else {
+      commit(value, null, 'Other');
+    }
   }
 
   function handleSuggestion(s: ItemSuggestion) {
@@ -86,22 +88,20 @@ export default function AddItemBar({ onAdd }: AddItemBarProps) {
       {/* Suggestions */}
       {showSuggestions && (
         <View style={styles.suggestions}>
-          {/* Add-as-typed row — always first, icon matched via Fuse.js */}
-          <TouchableOpacity
-            style={styles.suggestTyped}
-            onPress={handleAdd}
-            activeOpacity={0.8}
-          >
-            <View style={styles.suggestTypedIcon}>
-              {typedIconKey ? (
-                <KitchenOwlIcon iconKey={typedIconKey} size={18} style={{ color: Colors.white }} />
-              ) : (
+          {/* Add-as-typed row — hidden when the typed value exactly matches a suggestion */}
+          {!exactMatch && (
+            <TouchableOpacity
+              style={styles.suggestTyped}
+              onPress={handleAdd}
+              activeOpacity={0.8}
+            >
+              <View style={styles.suggestTypedIcon}>
                 <Text style={styles.suggestTypedPlus}>+</Text>
-              )}
-            </View>
-            <Text style={styles.suggestName} numberOfLines={1}>{value.trim()}</Text>
-            <Text style={styles.suggestArrow}>→</Text>
-          </TouchableOpacity>
+              </View>
+              <Text style={styles.suggestName} numberOfLines={1}>{trimmedValue}</Text>
+              <Text style={styles.suggestArrow}>→</Text>
+            </TouchableOpacity>
+          )}
 
           {suggestions.map((s, i) => (
             <TouchableOpacity
