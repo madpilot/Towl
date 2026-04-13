@@ -70,7 +70,7 @@ describe('useItemSuggestions', () => {
     expect(result.current[0].category).toBe('Fruits and vegetables');
   });
 
-  it('uses "Other" category when server item has no category', async () => {
+  it('uses "Uncategorised" when server item has no category', async () => {
     const searchFn = makeSearchFn([makeServerItem({ name: 'Mystery', icon: null, category: null })]);
     const { result } = renderHook(() => useItemSuggestions('mys', 8, searchFn));
 
