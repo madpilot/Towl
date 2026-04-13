@@ -199,6 +199,7 @@ describe('drain()', () => {
     await drain();
 
     expect(mockApi.updateItem).toHaveBeenCalledWith(12, 'Almond Milk', '2 bunches', 'milk_carton', { id: 9, name: '🥛 Dairy', ordering: 0 });
+    expect(itemsDb.markItemCheckSynced).toHaveBeenCalledWith('item-local-1');
     expect(syncQueue.remove).toHaveBeenCalledWith('op-upd');
   });
 
