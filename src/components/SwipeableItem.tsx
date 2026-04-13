@@ -339,6 +339,9 @@ function SwipeRowContent({
     const drag = Gesture.Pan()
       // Activate after a 500 ms hold.
       .activateAfterLongPress(500)
+      // Fail on vertical movement so pull-to-refresh still works: if the user
+      // pulls down, this gesture fails immediately and the ScrollView takes over.
+      .failOffsetY([-10, 10])
       .onStart((e) => {
         runOnJS(dragDrop.startDrag)(item, e.absoluteX, e.absoluteY);
       })
