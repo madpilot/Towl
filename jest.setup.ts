@@ -17,10 +17,39 @@ jest.mock('expo-font', () => ({
   useFonts: jest.fn(() => [true, null]),
 }));
 
+// react-native-worklets must be mocked before react-native-reanimated/mock
+// is required, because Reanimated 4's mock.ts imports from ./index which
+// transitively loads the native Worklets module.
+jest.mock('react-native-worklets', () =>
+  require('react-native-worklets/src/mock')
+);
+
 // react-native-reanimated — use the official RN mock.
 jest.mock('react-native-reanimated', () =>
   require('react-native-reanimated/mock')
 );
+
+// react-native-gesture-handler — mock Gesture API so that components using
+// GestureDetector / Gesture.Pan() render without native initialisation.
+// Individual test files override this mock to capture gesture callbacks.
+jest.mock('react-native-gesture-handler', () => {
+  const React = require('react');
+
+  function GestureDetector({ children }: { children: React.ReactNode }) {
+    return children;
+  }
+
+  const pan = {
+    activeOffsetX: function () { return pan; },
+    failOffsetY: function () { return pan; },
+    onUpdate: function () { return pan; },
+    onEnd: function () { return pan; },
+  };
+
+  const Gesture = { Pan: () => pan };
+
+  return { Gesture, GestureDetector };
+});
 
 // @gorhom/bottom-sheet — requires Reanimated + Gesture Handler.
 jest.mock('@gorhom/bottom-sheet', () => {

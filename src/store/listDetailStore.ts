@@ -114,7 +114,23 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
     bootstrap: async (householdId, restoreLastList) => {
       set({ loading: true, items: [], activeLocalId: null, activeServerId: null, activeName: '' });
 
-      const lists = await listsDb.getAllLists(householdId);
+      let lists = await listsDb.getAllLists(householdId);
+
+      // Fresh install — SQLite is empty. Seed lists from the server before
+      // proceeding so the rest of bootstrap has something to work with.
+      if (lists.length === 0) {
+        const api = useAuthStore.getState().shoppingListsApi;
+        try {
+          const serverLists = await api?.getShoppingLists(householdId) ?? [];
+          for (const sl of serverLists) {
+            await listsDb.upsertListFromServer(sl.id, householdId, sl.name);
+          }
+          lists = await listsDb.getAllLists(householdId);
+        } catch {
+          // Offline on first launch — nothing to show yet.
+        }
+      }
+
       set({ allLists: lists });
 
       if (lists.length === 0) {
