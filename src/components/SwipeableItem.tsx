@@ -37,9 +37,12 @@ import type { LocalItem } from '@/db/items';
 // ─── Thresholds ───────────────────────────────────────────────────
 const SWIPE_DONE_PX = 72;
 const SWIPE_DELETE_PX = 180;
-// Right-swipe (star) uses half the distance of left-swipe.
 const SWIPE_STAR_PX = 36;
 const DOUBLE_TAP_MS = 280;
+
+// Maximum card travel distances (clamped in onUpdate).
+const LEFT_TRAVEL_MAX = (SWIPE_DELETE_PX + 30) * 2;          // 420 px
+const RIGHT_TRAVEL_MAX = Math.round((SWIPE_STAR_PX + 10) / 2); // 23 px
 
 const SPRING = { damping: 20, stiffness: 200 } as const;
 
@@ -283,8 +286,8 @@ function SwipeRowContent({
     .failOffsetY([-15, 15])
     .onUpdate((e) => {
       const x = Math.max(
-        -(SWIPE_DELETE_PX + 30),
-        Math.min(SWIPE_STAR_PX + 10, e.translationX)
+        -LEFT_TRAVEL_MAX,
+        Math.min(RIGHT_TRAVEL_MAX, e.translationX)
       );
       translateX.value = x;
 
@@ -353,19 +356,19 @@ function SwipeRowContent({
       >
         {backZone === 'star' && (
           <View style={backStyles.leftZone}>
-            <IconStar color={Colors.yellow} size={28} filled={item.isImportant} />
+            <IconStar color={Colors.yellow} size={24} filled={item.isImportant} />
           </View>
         )}
         {(backZone === 'done' || backZone === 'delete') && (
           <View style={backStyles.rightZone}>
             {backZone === 'delete' && (
-              <IconTrash color={Colors.deleteRedStrong} size={28} />
+              <IconTrash color={Colors.deleteRedStrong} size={24} />
             )}
             {backZone === 'done' && item.isChecked && (
-              <IconUndo color={Colors.mint} size={28} />
+              <IconUndo color={Colors.mint} size={24} />
             )}
             {backZone === 'done' && !item.isChecked && (
-              <IconCheck color={Colors.mint} size={28} />
+              <IconCheck color={Colors.mint} size={24} />
             )}
           </View>
         )}
