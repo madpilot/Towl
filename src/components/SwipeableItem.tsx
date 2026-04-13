@@ -5,12 +5,16 @@
  *   Swipe left ≥ 36px   → toggle done
  *   Swipe right ≥ 36px  → toggle important (or undo if item is checked)
  *   Swipe right ≥ 108px → delete
+ *   Hold ≥ 500ms        → start category drag (when inside DragDropProvider)
  *   Double-tap card      → enter edit mode
  *   Tap check button     → toggle done
  *
  * Uses react-native-gesture-handler's Gesture.Pan() for reliable gesture
  * handling inside ScrollView (activeOffsetX / failOffsetY prevent conflicts)
  * and Reanimated for native-thread animation with worklet-computed colours.
+ * When inside a DragDropProvider, Gesture.Race(drag, pan) is used so a quick
+ * horizontal swipe (<500 ms) still triggers the swipe actions and a long hold
+ * activates the drag.
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -31,6 +35,7 @@ import Animated, {
 import Svg, { Path } from 'react-native-svg';
 import KitchenOwlIcon from '@/components/KitchenOwlIcon';
 import IconPicker from '@/components/IconPicker';
+import { useDragDrop } from '@/components/DragDropContext';
 import { Colors, FontSize, Radii, Spacing } from '@/theme';
 import type { LocalItem } from '@/db/items';
 
@@ -272,6 +277,8 @@ function SwipeRowContent({
   const [backZone, setBackZone] = useState<BackZone>('none');
   const lastTapRef = useRef(0);
 
+  const dragDrop = useDragDrop();
+
   const updateZone = useCallback(
     (zone: BackZone) => setBackZone(zone),
     []
@@ -279,6 +286,7 @@ function SwipeRowContent({
 
   // ── Gesture ───────────────────────────────────────────────────
 
+  // Swipe pan — activates after horizontal movement; drives swipe actions.
   const pan = Gesture.Pan()
     // Activate only after 10 px of horizontal movement.
     .activeOffsetX([-10, 10])
@@ -323,6 +331,30 @@ function SwipeRowContent({
       currentZone.value = 0;
       runOnJS(updateZone)('none');
     });
+
+  // Compose gestures: when inside a DragDropProvider, Race lets whichever
+  // gesture activates first (swipe or long-press drag) win.
+  let gesture: ReturnType<typeof Gesture.Pan> | ReturnType<typeof Gesture.Race>;
+  if (dragDrop) {
+    const drag = Gesture.Pan()
+      // Activate after a 500 ms hold.
+      .activateAfterLongPress(500)
+      .onStart((e) => {
+        runOnJS(dragDrop.startDrag)(item, e.absoluteX, e.absoluteY);
+      })
+      .onUpdate((e) => {
+        runOnJS(dragDrop.updateDragPosition)(e.absoluteX, e.absoluteY);
+      })
+      .onEnd(() => {
+        runOnJS(dragDrop.commitDrop)();
+      })
+      .onFinalize(() => {
+        runOnJS(dragDrop.cancelDrag)();
+      });
+    gesture = Gesture.Race(drag, pan);
+  } else {
+    gesture = pan;
+  }
 
   // ── Animated styles ───────────────────────────────────────────
 
@@ -384,7 +416,7 @@ function SwipeRowContent({
       </Animated.View>
 
       {/* ── Front card ── */}
-      <GestureDetector gesture={pan}>
+      <GestureDetector gesture={gesture}>
         <Animated.View style={[rowStyles.card, frontStyle]} testID="swipeable-card">
           <View style={[rowStyles.iconWrap, item.isChecked && rowStyles.iconFaded]}>
             <KitchenOwlIcon iconKey={item.iconKey} size={28} style={{ color: Colors.mint }} />

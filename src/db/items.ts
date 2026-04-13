@@ -284,6 +284,23 @@ export async function updateItemNameAndIcon(
   );
 }
 
+export async function updateItemCategory(
+  localId: string,
+  categoryName: string,
+  serverCategoryId: number | null,
+  serverCategoryName: string | null,
+  serverCategoryOrdering: number | null
+): Promise<void> {
+  const db = await getDb();
+  await db.runAsync(
+    `UPDATE local_items
+     SET category = ?, server_category_id = ?, server_category_name = ?,
+         server_category_ordering = ?, is_dirty = 1
+     WHERE local_id = ?`,
+    [categoryName, serverCategoryId, serverCategoryName, serverCategoryOrdering, localId]
+  );
+}
+
 /**
  * Hard-deletes local items that were removed on the server.
  *
