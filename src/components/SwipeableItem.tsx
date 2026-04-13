@@ -310,7 +310,13 @@ function SwipeRowContent({
       } else if (e.translationX < -SWIPE_DONE_PX) {
         runOnJS(onToggleDone)();
       } else if (e.translationX > SWIPE_STAR_PX) {
-        runOnJS(onToggleImportant)();
+        // Checked (trolley) items: right-swipe = undo back to list.
+        // Unchecked items: right-swipe = toggle important.
+        if (item.isChecked) {
+          runOnJS(onToggleDone)();
+        } else {
+          runOnJS(onToggleImportant)();
+        }
       }
 
       translateX.value = withSpring(0, SPRING);
@@ -329,7 +335,7 @@ function SwipeRowContent({
     const bg =
       x < -SWIPE_DELETE_PX ? Colors.deleteRed
       : x < -SWIPE_DONE_PX ? (item.isChecked ? '#ffe8cc' : Colors.mintLight)
-      : x > SWIPE_STAR_PX  ? '#fffae8'
+      : x > SWIPE_STAR_PX  ? (item.isChecked ? '#ffe8cc' : '#fffae8')
       : 'transparent';
     return { backgroundColor: bg };
   });
@@ -356,7 +362,10 @@ function SwipeRowContent({
       >
         {backZone === 'star' && (
           <View style={backStyles.leftZone}>
-            <IconStar color={Colors.yellow} size={24} filled={item.isImportant} />
+            {item.isChecked
+              ? <IconUndo color={Colors.mint} size={24} />
+              : <IconStar color={Colors.yellow} size={24} filled={item.isImportant} />
+            }
           </View>
         )}
         {(backZone === 'done' || backZone === 'delete') && (
