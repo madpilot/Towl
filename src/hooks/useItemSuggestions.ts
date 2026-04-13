@@ -71,7 +71,7 @@ export function useItemSuggestions(
               key: `server:${item.name}`,
               displayName: item.name,
               iconKey: item.icon ?? null,
-              category: item.category?.name ?? 'Other',
+              category: item.category?.name ?? 'Uncategorised',
             }))
           );
         })

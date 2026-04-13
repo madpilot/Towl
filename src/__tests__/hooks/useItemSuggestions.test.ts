@@ -77,7 +77,7 @@ describe('useItemSuggestions', () => {
     await act(async () => { jest.runAllTimers(); });
     await waitFor(() => expect(result.current.length).toBeGreaterThan(0));
 
-    expect(result.current[0].category).toBe('Other');
+    expect(result.current[0].category).toBe('Uncategorised');
   });
 
   it('sets iconKey to null when server item has no icon', async () => {
