@@ -94,13 +94,9 @@ const AddItemSheet = forwardRef<AddItemSheetHandle, AddItemSheetProps>(
                 {suggestions.map((s) => (
                   <TouchableOpacity
                     key={s.key}
-                    style={[
-                      styles.suggestionChip,
-                      s.fromHistory ? styles.suggestionChipHistory : undefined,
-                    ]}
+                    style={styles.suggestionChip}
                     onPress={() => handleSuggestionPress(s.displayName)}
                   >
-                    <Text style={styles.suggestionEmoji}>{s.emoji}</Text>
                     <Text style={styles.suggestionLabel}>{s.displayName}</Text>
                   </TouchableOpacity>
                 ))}
@@ -182,10 +178,6 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 12,
   },
-  suggestionChipHistory: {
-    backgroundColor: '#f0fdf4',
-  },
-  suggestionEmoji: { fontSize: 16 },
   suggestionLabel: { fontSize: 13, color: '#2563eb' },
   addButton: {
     backgroundColor: '#2563eb',

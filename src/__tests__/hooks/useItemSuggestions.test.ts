@@ -2,125 +2,144 @@
  * Tests for useItemSuggestions hook.
  */
 
-jest.mock('@/db/history', () => ({
-  searchHistory: jest.fn(),
-}));
-
-jest.mock('@/data/foodMatcher', () => ({
-  suggestIcons: jest.fn(),
-}));
-
-jest.mock('@/data/iconMetadata', () => ({
-  getIconMeta: jest.fn(() => ({ emoji: '🍎', category: 'Produce' })),
-}));
-
 import { renderHook, act, waitFor } from '@testing-library/react-native';
 import { useItemSuggestions } from '@/hooks/useItemSuggestions';
-import * as history from '@/db/history';
-import * as foodMatcher from '@/data/foodMatcher';
+import type { ServerItem } from '@/hooks/useItemSuggestions';
 
 beforeEach(() => {
   jest.clearAllMocks();
   jest.useFakeTimers();
-  (history.searchHistory as jest.Mock).mockResolvedValue([]);
-  (foodMatcher.suggestIcons as jest.Mock).mockReturnValue([]);
 });
 
 afterEach(() => {
   jest.useRealTimers();
 });
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function makeServerItem(overrides: Partial<ServerItem> = {}): ServerItem {
+  return {
+    name: 'Avocado',
+    icon: 'avocado',
+    category: { name: 'Fruits and vegetables' },
+    ...overrides,
+  };
+}
+
+function makeSearchFn(items: ServerItem[]) {
+  return jest.fn().mockResolvedValue(items);
+}
+
+// ── Tests ─────────────────────────────────────────────────────────────────────
+
 describe('useItemSuggestions', () => {
   it('returns empty array when input is less than 2 chars', async () => {
-    const { result } = renderHook(() => useItemSuggestions('a'));
+    const searchFn = makeSearchFn([makeServerItem()]);
+    const { result } = renderHook(() => useItemSuggestions('a', 8, searchFn));
     expect(result.current).toEqual([]);
-    expect(history.searchHistory).not.toHaveBeenCalled();
+    expect(searchFn).not.toHaveBeenCalled();
   });
 
-  it('debounces the query and returns combined results', async () => {
-    const historyEntry = {
-      id: 1,
-      name: 'milk',
-      displayName: 'Milk',
-      iconKey: 'milk',
-      category: 'Dairy & Eggs',
-      useCount: 5,
-      lastUsedAt: Date.now(),
-    };
-    (history.searchHistory as jest.Mock).mockResolvedValue([historyEntry]);
-    (foodMatcher.suggestIcons as jest.Mock).mockReturnValue([
-      { iconKey: 'milk_carton', emoji: '🥛', category: 'Dairy & Eggs' },
-    ]);
-
-    const { result } = renderHook(() => useItemSuggestions('mil'));
-
-    // Before debounce fires
+  it('returns empty array when searchFn is null (offline)', async () => {
+    const { result } = renderHook(() => useItemSuggestions('avo', 8, null));
+    await act(async () => { jest.runAllTimers(); });
     expect(result.current).toEqual([]);
+  });
 
-    // Fire debounce timer
+  it('debounces the query before calling searchFn', async () => {
+    const searchFn = makeSearchFn([makeServerItem()]);
+    renderHook(() => useItemSuggestions('avo', 8, searchFn));
+
+    // Not called before debounce fires
+    expect(searchFn).not.toHaveBeenCalled();
+
+    await act(async () => { jest.runAllTimers(); });
+    expect(searchFn).toHaveBeenCalledWith('avo');
+  });
+
+  it('returns mapped server results after debounce', async () => {
+    const searchFn = makeSearchFn([makeServerItem()]);
+    const { result } = renderHook(() => useItemSuggestions('avo', 8, searchFn));
+
     await act(async () => { jest.runAllTimers(); });
     await waitFor(() => expect(result.current.length).toBeGreaterThan(0));
 
-    // History result comes first
-    expect(result.current[0].fromHistory).toBe(true);
-    expect(result.current[0].displayName).toBe('Milk');
-    expect(result.current[0].key).toBe('history:milk');
+    expect(result.current[0].key).toBe('server:Avocado');
+    expect(result.current[0].displayName).toBe('Avocado');
+    expect(result.current[0].iconKey).toBe('avocado');
+    expect(result.current[0].category).toBe('Fruits and vegetables');
   });
 
-  it('deduplicates icon suggestions already in history', async () => {
-    const historyEntry = {
-      id: 1,
-      name: 'milk',
-      displayName: 'Milk',
-      iconKey: 'milk',
-      category: 'Dairy & Eggs',
-      useCount: 3,
-      lastUsedAt: Date.now(),
-    };
-    (history.searchHistory as jest.Mock).mockResolvedValue([historyEntry]);
-    // suggestIcons returns an entry whose label matches the history name
-    (foodMatcher.suggestIcons as jest.Mock).mockReturnValue([
-      { iconKey: 'milk', emoji: '🥛', category: 'Dairy & Eggs' },
-    ]);
+  it('uses "Uncategorised" when server item has no category', async () => {
+    const searchFn = makeSearchFn([makeServerItem({ name: 'Mystery', icon: null, category: null })]);
+    const { result } = renderHook(() => useItemSuggestions('mys', 8, searchFn));
 
-    const { result } = renderHook(() => useItemSuggestions('mil'));
     await act(async () => { jest.runAllTimers(); });
     await waitFor(() => expect(result.current.length).toBeGreaterThan(0));
 
-    // Only one entry — the icon duplicate is filtered out
-    const milkEntries = result.current.filter((s) =>
-      s.displayName.toLowerCase() === 'milk'
+    expect(result.current[0].category).toBe('Uncategorised');
+  });
+
+  it('sets iconKey to null when server item has no icon', async () => {
+    const searchFn = makeSearchFn([makeServerItem({ icon: null })]);
+    const { result } = renderHook(() => useItemSuggestions('avo', 8, searchFn));
+
+    await act(async () => { jest.runAllTimers(); });
+    await waitFor(() => expect(result.current.length).toBeGreaterThan(0));
+
+    expect(result.current[0].iconKey).toBeNull();
+  });
+
+  it('respects the limit', async () => {
+    const manyItems = Array.from({ length: 10 }, (_, i) =>
+      makeServerItem({ name: `Item ${i}` })
     );
-    expect(milkEntries).toHaveLength(1);
-  });
+    const searchFn = makeSearchFn(manyItems);
+    const { result } = renderHook(() => useItemSuggestions('it', 4, searchFn));
 
-  it('returns only icon suggestions when history is empty', async () => {
-    (history.searchHistory as jest.Mock).mockResolvedValue([]);
-    (foodMatcher.suggestIcons as jest.Mock).mockReturnValue([
-      { iconKey: 'apple', emoji: '🍎', category: 'Produce' },
-    ]);
-
-    const { result } = renderHook(() => useItemSuggestions('app'));
     await act(async () => { jest.runAllTimers(); });
-    await waitFor(() => expect(result.current.length).toBeGreaterThan(0));
-
-    expect(result.current[0].fromHistory).toBe(false);
-    expect(result.current[0].key).toBe('icon:apple');
+    await waitFor(() => expect(result.current.length).toBe(4));
   });
 
-  it('cancels pending debounce when input changes', async () => {
+  it('returns empty array when server call fails', async () => {
+    const searchFn = jest.fn().mockRejectedValue(new Error('offline'));
+    const { result } = renderHook(() => useItemSuggestions('avo', 8, searchFn));
+
+    await act(async () => { jest.runAllTimers(); });
+    await waitFor(() => expect(searchFn).toHaveBeenCalled());
+
+    expect(result.current).toEqual([]);
+  });
+
+  it('cancels stale request when input changes before debounce fires', async () => {
+    const searchFn = makeSearchFn([makeServerItem()]);
     const { rerender } = renderHook(
-      ({ input }: { input: string }) => useItemSuggestions(input),
-      { initialProps: { input: 'mi' } }
+      ({ input }: { input: string }) => useItemSuggestions(input, 8, searchFn),
+      { initialProps: { input: 'av' } }
     );
 
-    // Change input before debounce fires
-    rerender({ input: 'mil' });
+    rerender({ input: 'avo' });
 
     await act(async () => { jest.runAllTimers(); });
 
-    // searchHistory should only be called once (for the final input)
-    expect(history.searchHistory).toHaveBeenCalledTimes(1);
-    expect(history.searchHistory).toHaveBeenCalledWith('mil', 8);
+    // Only called once — for the final input
+    expect(searchFn).toHaveBeenCalledTimes(1);
+    expect(searchFn).toHaveBeenCalledWith('avo');
+  });
+
+  it('clears suggestions when input drops below 2 chars', async () => {
+    const searchFn = makeSearchFn([makeServerItem()]);
+    const { result, rerender } = renderHook(
+      ({ input }: { input: string }) => useItemSuggestions(input, 8, searchFn),
+      { initialProps: { input: 'avo' } }
+    );
+
+    await act(async () => { jest.runAllTimers(); });
+    await waitFor(() => expect(result.current.length).toBeGreaterThan(0));
+
+    rerender({ input: 'a' });
+    await act(async () => { jest.runAllTimers(); });
+
+    expect(result.current).toEqual([]);
   });
 });

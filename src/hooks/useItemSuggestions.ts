@@ -1,101 +1,91 @@
 import { useEffect, useRef, useState } from 'react';
-import { searchHistory } from '@/db/history';
-import { suggestIcons } from '@/data/foodMatcher';
-import { getIconMeta } from '@/data/iconMetadata';
-import type { HistoryEntry } from '@/db/history';
-import type { IconMeta } from '@/data/iconMetadata';
 
 export type ItemSuggestion = {
   /** Unique key for React lists. */
   key: string;
   /** Display name shown to the user. */
   displayName: string;
-  /** Emoji fallback for the icon. */
-  emoji: string;
   /** KitchenOwl icon key (null if not matched). */
   iconKey: string | null;
   /** Item category. */
   category: string;
-  /** True when this suggestion came from the user's history. */
-  fromHistory: boolean;
-}
+};
+
+/** Minimal shape the hook requires from a server search result. */
+export type ServerItem = {
+  name: string;
+  icon?: string | null;
+  category?: { name: string } | null;
+};
 
 const DEBOUNCE_MS = 180;
 
 /**
- * Returns a combined, deduplicated suggestion list for a given input string.
- * History matches are ranked first; icon fuzzy matches fill the remainder.
- * Results are debounced to avoid excessive SQLite queries while typing.
+ * Returns a debounced suggestion list from the server catalog for a given
+ * input string.  Requires a `searchFn` to fire network requests; returns an
+ * empty array when `searchFn` is null (e.g. while unauthenticated or offline).
+ *
+ * @param searchFn  Async function that queries the server catalog.
+ *                  Pass null to produce no suggestions.
  */
-export function useItemSuggestions(input: string, limit = 8): ItemSuggestion[] {
+export function useItemSuggestions(
+  input: string,
+  limit = 8,
+  searchFn: ((query: string) => Promise<ServerItem[]>) | null = null
+): ItemSuggestion[] {
   const [suggestions, setSuggestions] = useState<ItemSuggestion[]>([]);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Each effect run gets its own cancellable token so stale callbacks are no-ops.
+  const cancelRef = useRef<{ cancelled: boolean }>({ cancelled: false });
+  // Stable ref keeps searchFn out of effect deps while staying current.
+  const searchFnRef = useRef(searchFn);
+  useEffect(() => { searchFnRef.current = searchFn; });
 
   useEffect(() => {
     const trimmed = input.trim();
 
     if (timerRef.current) clearTimeout(timerRef.current);
 
-    // Use 0ms delay for clearing so setState never fires synchronously in the effect.
+    cancelRef.current.cancelled = true;
+    const run = { cancelled: false };
+    cancelRef.current = run;
+
     const delay = trimmed.length < 2 ? 0 : DEBOUNCE_MS;
     timerRef.current = setTimeout(() => {
       if (trimmed.length < 2) {
         setSuggestions([]);
         return;
       }
-      buildSuggestions(trimmed, limit).then(setSuggestions).catch(() => {
+
+      const fn = searchFnRef.current;
+      if (!fn) {
         setSuggestions([]);
-      });
+        return;
+      }
+
+      void (async () => {
+        try {
+          const items = await fn(trimmed);
+          if (run.cancelled) return;
+          setSuggestions(
+            items.slice(0, limit).map((item) => ({
+              key: `server:${item.name}`,
+              displayName: item.name,
+              iconKey: item.icon ?? null,
+              category: item.category?.name ?? 'Uncategorised',
+            }))
+          );
+        } catch {
+          if (!run.cancelled) setSuggestions([]);
+        }
+      })();
     }, delay);
 
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
+      run.cancelled = true;
     };
-  }, [input, limit]);
+  }, [input, limit]); // searchFnRef is a stable ref — safe to omit from deps
 
   return suggestions;
-}
-
-async function buildSuggestions(
-  query: string,
-  limit: number
-): Promise<ItemSuggestion[]> {
-  // 1. History matches (from SQLite, ranked by frequency + recency)
-  const historyEntries = await searchHistory(query, limit);
-  const historySuggestions: ItemSuggestion[] = historyEntries.map(
-    (entry: HistoryEntry) => ({
-      key: `history:${entry.name}`,
-      displayName: entry.displayName,
-      emoji: entry.iconKey ? iconToEmoji(entry.iconKey) : '🛒',
-      iconKey: entry.iconKey,
-      category: entry.category,
-      fromHistory: true,
-    })
-  );
-
-  // 2. Icon fuzzy matches (fill remaining slots)
-  const seenNames = new Set(historyEntries.map((e: HistoryEntry) => e.name));
-  const remaining = limit - historySuggestions.length;
-  const iconSuggestions: ItemSuggestion[] =
-    remaining > 0
-      ? suggestIcons(query, remaining + seenNames.size)
-          .filter((s) => !seenNames.has(s.iconKey.replaceAll('_', ' ')))
-          .slice(0, remaining)
-          .map((s) => ({
-            key: `icon:${s.iconKey}`,
-            displayName: s.iconKey.replaceAll('_', ' '),
-            emoji: s.emoji,
-            iconKey: s.iconKey,
-            category: s.category,
-            fromHistory: false,
-          }))
-      : [];
-
-  return [...historySuggestions, ...iconSuggestions];
-}
-
-/** Returns the emoji for a given icon key via iconMetadata. */
-function iconToEmoji(iconKey: string): string {
-  const meta: IconMeta = getIconMeta(iconKey);
-  return meta.emoji;
 }
