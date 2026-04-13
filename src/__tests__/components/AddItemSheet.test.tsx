@@ -69,8 +69,8 @@ describe('AddItemSheet', () => {
 
   it('renders suggestion chips from the hook', async () => {
     (useItemSuggestions as jest.Mock).mockReturnValue([
-      { key: 'server:Milk', displayName: 'Milk', emoji: '🥛', iconKey: 'milk', category: 'Dairy & Eggs' },
-      { key: 'server:Apple', displayName: 'Apple', emoji: '🍎', iconKey: 'apple', category: 'Produce' },
+      { key: 'server:Milk', displayName: 'Milk', iconKey: 'milk', category: 'Dairy & Eggs' },
+      { key: 'server:Apple', displayName: 'Apple', iconKey: 'apple', category: 'Produce' },
     ]);
 
     const { getByText } = render(<AddItemSheet {...makeProps()} />);
@@ -80,7 +80,7 @@ describe('AddItemSheet', () => {
 
   it('fills name field when a suggestion chip is pressed', async () => {
     (useItemSuggestions as jest.Mock).mockReturnValue([
-      { key: 'server:Milk', displayName: 'Milk', emoji: '🥛', iconKey: 'milk', category: 'Dairy & Eggs' },
+      { key: 'server:Milk', displayName: 'Milk', iconKey: 'milk', category: 'Dairy & Eggs' },
     ]);
 
     const { getByText, getByTestId } = render(<AddItemSheet {...makeProps()} />);

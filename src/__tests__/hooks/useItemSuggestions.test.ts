@@ -2,10 +2,6 @@
  * Tests for useItemSuggestions hook.
  */
 
-jest.mock('@/data/iconMetadata', () => ({
-  getIconMeta: jest.fn(() => ({ emoji: '🍎', category: 'Produce' })),
-}));
-
 import { renderHook, act, waitFor } from '@testing-library/react-native';
 import { useItemSuggestions } from '@/hooks/useItemSuggestions';
 import type { ServerItem } from '@/hooks/useItemSuggestions';

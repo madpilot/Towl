@@ -97,7 +97,6 @@ const AddItemSheet = forwardRef<AddItemSheetHandle, AddItemSheetProps>(
                     style={styles.suggestionChip}
                     onPress={() => handleSuggestionPress(s.displayName)}
                   >
-                    <Text style={styles.suggestionEmoji}>{s.emoji}</Text>
                     <Text style={styles.suggestionLabel}>{s.displayName}</Text>
                   </TouchableOpacity>
                 ))}
@@ -179,7 +178,6 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 12,
   },
-  suggestionEmoji: { fontSize: 16 },
   suggestionLabel: { fontSize: 13, color: '#2563eb' },
   addButton: {
     backgroundColor: '#2563eb',

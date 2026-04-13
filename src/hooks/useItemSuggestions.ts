@@ -1,14 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { getIconMeta } from '@/data/iconMetadata';
-import type { IconMeta } from '@/data/iconMetadata';
 
 export type ItemSuggestion = {
   /** Unique key for React lists. */
   key: string;
   /** Display name shown to the user. */
   displayName: string;
-  /** Emoji fallback for the icon. */
-  emoji: string;
   /** KitchenOwl icon key (null if not matched). */
   iconKey: string | null;
   /** Item category. */
@@ -74,7 +70,6 @@ export function useItemSuggestions(
             items.slice(0, limit).map((item) => ({
               key: `server:${item.name}`,
               displayName: item.name,
-              emoji: item.icon ? iconToEmoji(item.icon) : '🛒',
               iconKey: item.icon ?? null,
               category: item.category?.name ?? 'Other',
             }))
@@ -92,9 +87,4 @@ export function useItemSuggestions(
   }, [input, limit]); // searchFnRef is a stable ref — safe to omit from deps
 
   return suggestions;
-}
-
-function iconToEmoji(iconKey: string): string {
-  const meta: IconMeta = getIconMeta(iconKey);
-  return meta.emoji;
 }
