@@ -594,9 +594,9 @@ const styles = StyleSheet.create({
     right: 4,
     top: 0,
     bottom: 0,
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 1,
+    paddingVertical: 4,
   },
   alphaLetter: {
     fontSize: 10,
