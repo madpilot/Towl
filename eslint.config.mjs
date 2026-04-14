@@ -33,6 +33,8 @@ export default [
       '@typescript-eslint/no-non-null-assertion': 'error',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
       'react/react-in-jsx-scope': 'off',
+      // TypeScript provides superior prop-type safety; this rule is redundant in TS projects.
+      'react/prop-types': 'off',
     },
   },
   {

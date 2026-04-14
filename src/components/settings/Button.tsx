@@ -7,15 +7,16 @@ type PrimaryBtnProps = {
   onPress: () => void;
   loading?: boolean;
   danger?: boolean;
+  disabled?: boolean;
 };
 
-export function PrimaryBtn({ label, onPress, loading = false, danger = false }: PrimaryBtnProps) {
+export function PrimaryBtn({ label, onPress, loading = false, danger = false, disabled = false }: PrimaryBtnProps) {
   return (
     <TouchableOpacity
-      style={[styles.btn, danger && styles.dangerBtn]}
+      style={[styles.btn, danger && styles.dangerBtn, (disabled || loading) && styles.btnDisabled]}
       onPress={onPress}
       activeOpacity={0.8}
-      disabled={loading}
+      disabled={loading || disabled}
     >
       {loading ? <ActivityIndicator color={Colors.white} /> : <Text style={styles.label}>{label}</Text>}
     </TouchableOpacity>
@@ -40,6 +41,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   dangerBtn: { backgroundColor: '#e05555' },
+  btnDisabled: { opacity: 0.5 },
   label: { fontSize: FontSize.body, fontWeight: '800', color: Colors.white },
   secondaryBtn: {
     margin: Spacing.xl,

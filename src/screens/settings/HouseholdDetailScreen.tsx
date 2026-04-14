@@ -87,6 +87,18 @@ export default function HouseholdDetailScreen({ navigation, route }: HouseholdDe
             <ListsSection />
             <CategoriesSection onDragScrollLock={(locked) => setScrollEnabled(!locked)} />
 
+            <SectionLabel label="Items" />
+            <Card>
+              <TouchableOpacity
+                style={styles.navRow}
+                onPress={() => navigation.navigate('HouseholdItems', { householdId, householdName })}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.navLabel}>Manage items</Text>
+                <Text style={styles.navChevron}>›</Text>
+              </TouchableOpacity>
+            </Card>
+
             <SectionLabel label="Danger Zone" />
             <Card>
               <TouchableOpacity
@@ -147,6 +159,9 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: 100 },
   center: { padding: Spacing.xxl, alignItems: 'center' },
+  navRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md + 2 },
+  navLabel: { flex: 1, fontSize: FontSize.body, fontWeight: '700', color: Colors.textDark },
+  navChevron: { fontSize: 20, color: Colors.mintPale, fontWeight: '700' },
   dangerRow: { paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md + 2 },
   dangerLabel: { fontSize: FontSize.body, fontWeight: '700', color: '#e05555' },
   sheetBody: { padding: Spacing.xl, paddingBottom: Spacing.sm },

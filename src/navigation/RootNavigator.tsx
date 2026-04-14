@@ -20,6 +20,7 @@ import HouseholdPickerScreen from "@/screens/households/HouseholdPickerScreen";
 import ListDetailScreen from "@/screens/lists/ListDetailScreen";
 import SettingsScreen from "@/screens/settings/SettingsScreen";
 import HouseholdDetailScreen from "@/screens/settings/HouseholdDetailScreen";
+import HouseholdItemsScreen from "@/screens/settings/HouseholdItemsScreen";
 
 import type { AuthStackParamList, MainStackParamList } from "./types";
 
@@ -78,6 +79,10 @@ function MainNavigator() {
           <MainStack.Screen
             name="HouseholdDetail"
             component={HouseholdDetailScreen}
+          />
+          <MainStack.Screen
+            name="HouseholdItems"
+            component={HouseholdItemsScreen}
           />
         </>
       )}
