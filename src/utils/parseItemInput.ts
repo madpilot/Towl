@@ -8,34 +8,48 @@ export type ParseResult = {
 };
 
 /**
- * Splits a free-text input (e.g. "500g Chicken Mince") into a canonical
- * name and a description prefix by querying the server catalog one token at
- * a time and scanning the returned result list for an exact suffix match.
+ * Common function words that indicate a description prefix rather than the
+ * start of an item name. Only applied to leading tokens — once a non-filtered
+ * token is encountered, filtering stops.
+ */
+const STOP_WORDS = new Set([
+  'a', 'an', 'the',
+  'of', 'for', 'with', 'and', 'or', 'to', 'in', 'on', 'at', 'by',
+  'some', 'x',
+]);
+
+/**
+ * Returns true for tokens that are almost certainly description words rather
+ * than the start of a catalog item name:
+ *   - Tokens whose first character is a digit ("500g", "1L", "10", "2x")
+ *   - Common English function words unlikely to be catalog item names
+ */
+function isDescriptionToken(token: string): boolean {
+  return /^\d/.test(token) || STOP_WORDS.has(token.toLowerCase());
+}
+
+/**
+ * Splits a free-text input (e.g. "500g of Chicken Mince") into a canonical
+ * name and a description prefix by first filtering obvious description words
+ * then querying the server catalog one token at a time.
  *
  * Algorithm:
- *   For i = 0 … tokens.length − 1:
- *     results = await searchFn(tokens[i])      ← single-token query
- *     if results is empty: tokens[i] is a description word → continue
- *     suffix      = tokens[i … end].join(' ')
- *     description = tokens[0 … i-1].join(' ')
- *     exactMatch  = results.find(r => r.name ≅ suffix)   ← case-insensitive
- *     if exactMatch:
- *       → return { name: exactMatch.name, description, … }
- *     else:
- *       → return { name: suffix, description, icon/category from anchor result }
- *   Fallback: name = raw input, description = ''
- *
- * Examples (catalog: "Chicken", "Chicken Mince"):
- *   "500g Chicken Mince" → search "500g"→[], "Chicken"→["Chicken","Chicken Mince"]
- *                          suffix "Chicken Mince" found in results
- *                          → name="Chicken Mince", desc="500g"
- *   "500g Chicken Tenders" → search "Chicken"→["Chicken","Chicken Mince"]
- *                            suffix "Chicken Tenders" NOT in results
- *                            → name="Chicken Tenders" (new), desc="500g"
- *
- * The icon and category for a newly-created item are taken from the result
- * that exactly matches the anchor token (tokens[i]), or from results[0] if
- * no such result exists.
+ *   1. Pre-filter: advance past leading digit-tokens and stop words without
+ *      any API calls — they are never catalog item names.
+ *      Stop as soon as the first non-filtered token is reached.
+ *        "500g of Chicken Mince" → skip "500g", "of"; start at "Chicken"
+ *        "10 fillets of fish"   → skip "10" only; "of"/"fish" stay in suffix
+ *   2. From the first non-filtered token, search one token at a time:
+ *        results = await searchFn(tokens[i])
+ *        if results is empty: token is a description word → continue
+ *        otherwise: anchor found — item name starts here
+ *          suffix      = tokens[i … end].join(' ')
+ *          description = tokens[0 … i-1].join(' ')
+ *          exactMatch  = results.find(r.name ≅ suffix)
+ *          if found   → use that catalog entry's name/icon/category
+ *          if not     → suffix becomes a new item name; icon/category from
+ *                        the result matching tokens[i] alone, or results[0]
+ *   3. Fallback: name = raw input, description = ''
  */
 export async function parseItemInput(
   raw: string,
@@ -44,7 +58,14 @@ export async function parseItemInput(
   const trimmed = raw.trim();
   const tokens = trimmed.split(/\s+/);
 
-  for (let i = 0; i < tokens.length; i++) {
+  // Step 1 — pre-filter: skip obvious description tokens from the left.
+  let startIndex = 0;
+  while (startIndex < tokens.length && isDescriptionToken(tokens[startIndex])) {
+    startIndex++;
+  }
+
+  // Step 2 — search loop starting from the first non-filtered token.
+  for (let i = startIndex; i < tokens.length; i++) {
     let results: ServerItem[];
     try {
       results = await searchFn(tokens[i]);

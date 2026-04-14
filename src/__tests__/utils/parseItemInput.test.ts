@@ -15,17 +15,57 @@ function catalogSearch(items: ServerItem[]) {
 }
 
 describe('parseItemInput', () => {
+  // ── Pre-filter ───────────────────────────────────────────────────────────────
+
+  it('pre-filters digit tokens at the start without making API calls', async () => {
+    const searchFn = catalogSearch([
+      { name: 'Chicken', icon: 'chicken', category: { name: 'Meat' } },
+    ]);
+    const result = await parseItemInput('500g Chicken', searchFn);
+    expect(result).toEqual({ name: 'Chicken', description: '500g', iconKey: 'chicken', category: 'Meat' });
+    expect(searchFn).not.toHaveBeenCalledWith('500g');
+    expect(searchFn).toHaveBeenCalledWith('Chicken');
+  });
+
+  it('pre-filters stop words at the start without making API calls', async () => {
+    const searchFn = catalogSearch([
+      { name: 'Chicken Mince', icon: 'chicken', category: { name: 'Meat' } },
+    ]);
+    const result = await parseItemInput('some Chicken Mince', searchFn);
+    expect(result).toEqual({ name: 'Chicken Mince', description: 'some', iconKey: 'chicken', category: 'Meat' });
+    expect(searchFn).not.toHaveBeenCalledWith('some');
+  });
+
+  it('pre-filters a mix of digit and stop word tokens before the item name', async () => {
+    const searchFn = catalogSearch([
+      { name: 'Chicken Mince', icon: 'chicken', category: { name: 'Meat' } },
+    ]);
+    const result = await parseItemInput('500g of Chicken Mince', searchFn);
+    expect(result).toEqual({ name: 'Chicken Mince', description: '500g of', iconKey: 'chicken', category: 'Meat' });
+    expect(searchFn).not.toHaveBeenCalledWith('500g');
+    expect(searchFn).not.toHaveBeenCalledWith('of');
+    expect(searchFn).toHaveBeenCalledWith('Chicken');
+  });
+
+  it('stops pre-filtering at the first non-descriptor token', async () => {
+    // "10" is filtered (digit); "fillets" is not → filtering stops.
+    // "of" and "fish" after "fillets" are NOT pre-filtered — they stay in the suffix.
+    const searchFn = catalogSearch([
+      { name: 'Fillets', icon: null, category: { name: 'Fish' } },
+    ]);
+    const result = await parseItemInput('10 fillets of fish', searchFn);
+    expect(result.description).toBe('10');
+    expect(result.name).toBe('fillets of fish');
+    expect(searchFn).not.toHaveBeenCalledWith('10');
+    expect(searchFn).toHaveBeenCalledWith('fillets');
+  });
+
+  // ── Search loop ──────────────────────────────────────────────────────────────
+
   it('returns the full input as name when every token search returns no results', async () => {
     const searchFn = jest.fn().mockResolvedValue([]);
     const result = await parseItemInput('oat milk', searchFn);
     expect(result).toEqual({ name: 'oat milk', description: '', iconKey: null, category: 'Other' });
-  });
-
-  it('returns the full input with empty description when results contain no exact suffix match', async () => {
-    // Every search returns something, but no result matches any suffix of the input.
-    const searchFn = jest.fn().mockResolvedValue([{ name: 'something else' }]);
-    const result = await parseItemInput('500g Beef Mince', searchFn);
-    expect(result).toEqual({ name: '500g Beef Mince', description: '', iconKey: null, category: 'Other' });
   });
 
   it('uses a catalog result that exactly matches the full suffix', async () => {
@@ -37,8 +77,9 @@ describe('parseItemInput', () => {
     expect(result).toEqual({ name: 'Beef Mince', description: '500g', iconKey: 'beef', category: 'Meat' });
   });
 
-  it('strips a multi-token description prefix', async () => {
-    // "Stuff" and "for" return nothing; "Salad" returns a result.
+  it('strips a multi-token non-filterable description prefix via the search loop', async () => {
+    // "Stuff" is not a stop word, so pre-filter stops at index 0.
+    // The loop skips "Stuff" and "for" (empty results) and anchors on "Salad".
     const searchFn = catalogSearch([
       { name: 'Salad', icon: null, category: { name: 'Produce' } },
     ]);
@@ -81,15 +122,15 @@ describe('parseItemInput', () => {
     let callCount = 0;
     const searchFn = jest.fn().mockImplementation((q: string) => {
       callCount++;
-      // Throw on the first call; return a match for "Beef" on subsequent calls.
+      // Throw on the first search call (for "Organic"); succeed for "Chicken".
       if (callCount === 1) return Promise.reject(new Error('network'));
-      return q.toLowerCase() === 'beef'
-        ? Promise.resolve([{ name: 'Beef' }])
+      return q.toLowerCase() === 'chicken'
+        ? Promise.resolve([{ name: 'Chicken' }])
         : Promise.resolve([]);
     });
-    const result = await parseItemInput('500g Beef', searchFn);
-    expect(result.name).toBe('Beef');
-    expect(result.description).toBe('500g');
+    const result = await parseItemInput('Organic Chicken', searchFn);
+    expect(result.name).toBe('Chicken');
+    expect(result.description).toBe('Organic');
   });
 
   it('searches one token at a time, not the full multi-token input', async () => {
