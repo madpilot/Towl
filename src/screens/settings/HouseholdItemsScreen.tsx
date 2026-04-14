@@ -28,7 +28,7 @@ type ActionKind = 'create' | 'update' | 'delete' | null;
 type ItemSection = { title: string; data: HouseholdItem[] };
 type ListRow = { kind: 'header'; title: string } | { kind: 'item'; item: HouseholdItem };
 
-const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'.split('');
+const ALPHABET = '#ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
 // Matches the BottomNav overlay height so the list content and index bar
 // both clear the nav bar rather than disappearing behind it.
@@ -47,8 +47,8 @@ const buildSections = (items: HouseholdItem[]): ItemSection[] => {
   }
   return [...map.entries()]
     .sort(([a], [b]) => {
-      if (a === '#') return 1;
-      if (b === '#') return -1;
+      if (a === '#') return -1;
+      if (b === '#') return 1;
       return a.localeCompare(b);
     })
     .map(([title, data]) => ({ title, data }));
