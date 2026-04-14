@@ -43,6 +43,25 @@ export const HouseholdDetailSchema = z.object({
 
 export type HouseholdDetail = z.infer<typeof HouseholdDetailSchema>;
 
+// ── Household item (catalog-level) ────────────────────────────────────────────
+
+export const HouseholdItemCategorySchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  ordering: z.number().default(0),
+});
+
+export const HouseholdItemSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  description: z.string().default(''),
+  icon: z.string().nullable().optional(),
+  category: HouseholdItemCategorySchema.nullable().optional(),
+});
+
+export type HouseholdItem = z.infer<typeof HouseholdItemSchema>;
+export type HouseholdItemCategory = z.infer<typeof HouseholdItemCategorySchema>;
+
 export class HouseholdsApi {
   constructor(private client: ApiClientManager) {}
 
@@ -104,5 +123,49 @@ export class HouseholdsApi {
 
   async leaveHousehold(_householdId: number): Promise<void> {
     throw new Error('leaveHousehold: KitchenOwl API endpoint not yet confirmed');
+  }
+
+  // ── Household items (catalog) ───────────────────────────────────────────────
+
+  async getHouseholdItems(householdId: number): Promise<HouseholdItem[]> {
+    const res = await this.client.get<unknown>(`/household/${householdId}/item`);
+    return z.array(HouseholdItemSchema).parse(res.data);
+  }
+
+  async createHouseholdItem(
+    householdId: number,
+    name: string,
+    iconKey: string | null,
+    category: { id: number; name: string; ordering: number } | null
+  ): Promise<HouseholdItem> {
+    const res = await this.client.post<unknown>(`/household/${householdId}/item`, {
+      name,
+      icon: iconKey,
+      category,
+    });
+    return HouseholdItemSchema.parse(res.data);
+  }
+
+  async updateHouseholdItem(
+    itemId: number,
+    name: string,
+    iconKey: string | null,
+    category: { id: number; name: string; ordering: number } | null
+  ): Promise<void> {
+    await this.client.post(`/item/${itemId}`, {
+      id: itemId,
+      name,
+      icon: iconKey,
+      category,
+      ordering: 0,
+      default: false,
+      default_key: null,
+      created_at: null,
+      created_by: null,
+    });
+  }
+
+  async deleteHouseholdItem(itemId: number): Promise<void> {
+    await this.client.delete(`/item/${itemId}`);
   }
 }
