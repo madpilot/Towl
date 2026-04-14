@@ -42,7 +42,7 @@ type ListDetailState = {
   toggleDone: (localId: string) => Promise<void>;
   toggleImportant: (localId: string) => Promise<void>;
   deleteItem: (localId: string) => Promise<void>;
-  saveItem: (localId: string, name: string, iconKey: string | null) => Promise<void>;
+  saveItem: (localId: string, name: string, description: string, iconKey: string | null) => Promise<void>;
   addItem: (name: string, description: string, iconKey: string | null, category: string) => Promise<void>;
   clearTrolley: () => Promise<void>;
   moveItemToCategory: (localId: string, categoryId: number | null) => Promise<void>;
@@ -278,9 +278,9 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
       set({ items: items.filter((i) => i.localId !== localId) });
     },
 
-    saveItem: async (localId, name, iconKey) => {
+    saveItem: async (localId, name, description, iconKey) => {
       const { activeLocalId, activeServerId, items } = get();
-      await itemsDb.updateItemNameAndIcon(localId, name, iconKey);
+      await itemsDb.updateItemNameAndIcon(localId, name, description, iconKey);
       const freshItem = await itemsDb.getItem(localId);
       if (freshItem?.serverId !== null && freshItem?.serverId !== undefined
           && activeServerId !== null && activeLocalId !== null) {
@@ -290,11 +290,11 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
           : null;
         await syncManager.enqueue(
           { opType: 'UPDATE_ITEM', listServerId: activeServerId, itemServerId: freshItem.serverId,
-            itemLocalId: localId, name, description: freshItem.description, iconKey, category },
+            itemLocalId: localId, name, description, iconKey, category },
           activeLocalId
         );
       }
-      set({ items: items.map((i) => i.localId === localId ? { ...i, name, iconKey } : i) });
+      set({ items: items.map((i) => i.localId === localId ? { ...i, name, description, iconKey } : i) });
     },
 
     addItem: async (name, description, iconKey, category) => {
