@@ -30,6 +30,9 @@ type ListRow = { kind: 'header'; title: string } | { kind: 'item'; item: Househo
 
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'.split('');
 
+// Matches the BottomNav overlay height so the list content and index bar
+// both clear the nav bar rather than disappearing behind it.
+const BOTTOM_NAV_CLEARANCE = 100;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -535,7 +538,7 @@ const styles = StyleSheet.create({
   // List
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   listWrap: { flex: 1 },
-  listContent: { paddingBottom: 100 },
+  listContent: { paddingBottom: BOTTOM_NAV_CLEARANCE },
   emptyRow: { padding: Spacing.xl, alignItems: 'center' },
   emptyText: { fontSize: FontSize.body, color: Colors.textFaded, textAlign: 'center' },
 
@@ -593,11 +596,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 4,
     top: 0,
-    bottom: 0,
+    bottom: BOTTOM_NAV_CLEARANCE,
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 4,
-    paddingBottom: 28,
+    paddingVertical: 4,
   },
   alphaLetter: {
     fontSize: 10,
