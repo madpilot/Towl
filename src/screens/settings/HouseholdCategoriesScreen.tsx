@@ -26,6 +26,8 @@ type ActionKind = 'create' | 'update' | 'delete' | null;
 
 const BOTTOM_NAV_CLEARANCE = 100;
 const ITEM_HEIGHT_EST = 50;
+const SCROLL_EDGE_ZONE = 80; // px from top/bottom edge that triggers auto-scroll
+const SCROLL_SPEED = 6;      // px per frame during auto-scroll
 
 // ─── DragRow ──────────────────────────────────────────────────────────────────
 
@@ -34,7 +36,8 @@ type DragRowProps = {
   index: number;
   isDragging: boolean;
   onDragStart: (index: number) => void;
-  onDragMove: (index: number, dy: number) => void;
+  // pageY is the touch's current Y position in screen coordinates
+  onDragMove: (index: number, dy: number, pageY: number) => void;
   onDragEnd: (index: number, dy: number) => void;
   onEditPress: () => void;
   onHeightMeasured?: (height: number) => void;
@@ -56,7 +59,7 @@ function DragRow({
         onStartShouldSetPanResponder: () => true,
         onMoveShouldSetPanResponder: () => true,
         onPanResponderGrant: () => onDragStart(index),
-        onPanResponderMove: (_, g) => onDragMove(index, g.dy),
+        onPanResponderMove: (_, g) => onDragMove(index, g.dy, g.moveY),
         onPanResponderRelease: (_, g) => onDragEnd(index, g.dy),
         onPanResponderTerminate: () => onDragEnd(index, 0),
       }).panHandlers,
@@ -122,6 +125,50 @@ export default function HouseholdCategoriesScreen({ navigation, route }: Househo
     next.splice(targetIndex, 0, item);
     return next;
   }, [categories, draggingIndex, targetIndex]);
+
+  // ── Scroll & auto-scroll refs ──────────────────────────────────────────────
+
+  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollContainerRef = useRef<View>(null); // used for measure() — ScrollView doesn't expose it
+  const scrollOffsetRef = useRef(0);        // current scroll Y
+  const scrollViewTopRef = useRef(0);       // screen Y of scroll view top
+  const scrollViewHeightRef = useRef(0);    // visible height of scroll view
+
+  // Drag context needed by the auto-scroll interval to recalculate target
+  const dragStartScrollOffsetRef = useRef(0);
+  const dragFromIndexRef = useRef(0);
+  const dragDyRef = useRef(0);
+
+  const autoScrollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  function stopAutoScroll() {
+    if (autoScrollTimerRef.current !== null) {
+      clearInterval(autoScrollTimerRef.current);
+      autoScrollTimerRef.current = null;
+    }
+  }
+
+  function startAutoScroll(direction: 'up' | 'down') {
+    // Don't restart if already scrolling in the same direction
+    if (autoScrollTimerRef.current !== null) return;
+
+    autoScrollTimerRef.current = setInterval(() => {
+      const delta = direction === 'up' ? -SCROLL_SPEED : SCROLL_SPEED;
+      const newOffset = Math.max(0, scrollOffsetRef.current + delta);
+      scrollViewRef.current?.scrollTo({ y: newOffset, animated: false });
+      scrollOffsetRef.current = newOffset;
+
+      // Recalculate target to reflect the list having scrolled under the finger
+      const h = itemHeightRef.current;
+      const scrollDelta = newOffset - dragStartScrollOffsetRef.current;
+      const centerY = dragFromIndexRef.current * h + h / 2 + dragDyRef.current + scrollDelta;
+      const target = Math.max(
+        0,
+        Math.min(categoriesRef.current.length - 1, Math.floor(centerY / h))
+      );
+      setTargetIndex(target);
+    }, 16);
+  }
 
   // ── Load ───────────────────────────────────────────────────────────────────
 
@@ -208,25 +255,46 @@ export default function HouseholdCategoriesScreen({ navigation, route }: Househo
 
   const handleDragStart = useCallback((idx: number) => {
     isDraggingRef.current = true;
+    dragStartScrollOffsetRef.current = scrollOffsetRef.current;
     setScrollEnabled(false);
     setDraggingIndex(idx);
     setTargetIndex(idx);
   }, []);
 
-  const handleDragMove = useCallback((fromIndex: number, dy: number) => {
+  const handleDragMove = useCallback((fromIndex: number, dy: number, pageY: number) => {
+    // Store for use by the auto-scroll interval
+    dragFromIndexRef.current = fromIndex;
+    dragDyRef.current = dy;
+
+    // Target index adjusted for any scroll that has occurred since drag start
     const h = itemHeightRef.current;
-    const centerY = fromIndex * h + h / 2 + dy;
+    const scrollDelta = scrollOffsetRef.current - dragStartScrollOffsetRef.current;
+    const centerY = fromIndex * h + h / 2 + dy + scrollDelta;
     const target = Math.max(
       0,
       Math.min(categoriesRef.current.length - 1, Math.floor(centerY / h))
     );
     setTargetIndex(target);
+
+    // Start or stop auto-scroll based on proximity to the scroll view edges
+    const top = scrollViewTopRef.current;
+    const bottom = top + scrollViewHeightRef.current;
+    if (pageY < top + SCROLL_EDGE_ZONE) {
+      startAutoScroll('up');
+    } else if (pageY > bottom - SCROLL_EDGE_ZONE) {
+      startAutoScroll('down');
+    } else {
+      stopAutoScroll();
+    }
   }, []);
 
   const handleDragEnd = useCallback((fromIndex: number, dy: number) => {
+    stopAutoScroll();
+
     const cats = categoriesRef.current;
     const h = itemHeightRef.current;
-    const centerY = fromIndex * h + h / 2 + dy;
+    const scrollDelta = scrollOffsetRef.current - dragStartScrollOffsetRef.current;
+    const centerY = fromIndex * h + h / 2 + dy + scrollDelta;
     const target = Math.max(0, Math.min(cats.length - 1, Math.floor(centerY / h)));
 
     if (target !== fromIndex) {
@@ -269,18 +337,31 @@ export default function HouseholdCategoriesScreen({ navigation, route }: Househo
           <ActivityIndicator color={Colors.mint} />
         </View>
       ) : (
-        <ScrollView
+        <View
+          ref={scrollContainerRef}
           style={styles.scroll}
+          onLayout={() => {
+            scrollContainerRef.current?.measureInWindow((_x, y, _w, h) => {
+              scrollViewTopRef.current = y;
+              scrollViewHeightRef.current = h;
+            });
+          }}
+        >
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.fill}
           contentContainerStyle={styles.scrollContent}
           scrollEnabled={scrollEnabled}
+          scrollEventThrottle={16}
+          onScroll={(e) => { scrollOffsetRef.current = e.nativeEvent.contentOffset.y; }}
         >
-          <Card>
-            {categories.length === 0 ? (
-              <View style={styles.emptyRow}>
-                <Text style={styles.emptyText}>{'No categories yet. Tap "+ New" to add one.'}</Text>
-              </View>
-            ) : (
-              displayCats.map((cat, displayIdx) => {
+          {categories.length === 0 ? (
+            <View style={styles.emptyRow}>
+              <Text style={styles.emptyText}>{'No categories yet. Tap "+ New" to add one.'}</Text>
+            </View>
+          ) : (
+            <Card>
+              {displayCats.map((cat, displayIdx) => {
                 const stableIndex = categoriesRef.current.findIndex((c) => c.id === cat.id);
                 return (
                   <View key={cat.id}>
@@ -297,10 +378,11 @@ export default function HouseholdCategoriesScreen({ navigation, route }: Househo
                     {displayIdx < displayCats.length - 1 && <Sep />}
                   </View>
                 );
-              })
-            )}
-          </Card>
+              })}
+            </Card>
+          )}
         </ScrollView>
+        </View>
       )}
 
       <BottomNav active="settings" />
@@ -391,7 +473,8 @@ const styles = StyleSheet.create({
 
   // List
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  scroll: { flex: 1 },
+  scroll: { flex: 1 },        // outer View used for measureInWindow
+  fill: { flex: 1 },          // ScrollView inside the wrapper
   scrollContent: { paddingBottom: BOTTOM_NAV_CLEARANCE },
   emptyRow: { padding: Spacing.xl, alignItems: 'center' },
   emptyText: { fontSize: FontSize.body, color: Colors.textFaded, textAlign: 'center' },
