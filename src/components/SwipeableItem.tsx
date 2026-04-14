@@ -448,7 +448,7 @@ function SwipeRowContent({
             style={[rowStyles.name, item.isChecked && rowStyles.nameDone]}
             numberOfLines={1}
           >
-            {item.name}
+            {item.description ? `${item.description} ${item.name}` : item.name}
           </Text>
 
           {item.isDirty && !item.isChecked && <View style={rowStyles.dirtyDot} />}

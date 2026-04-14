@@ -86,7 +86,9 @@ function DragGhost() {
       pointerEvents="none"
     >
       <KitchenOwlIcon iconKey={draggingItem.iconKey} size={20} style={{ color: Colors.mint }} />
-      <Text style={ghostStyles.name} numberOfLines={1}>{draggingItem.name}</Text>
+      <Text style={ghostStyles.name} numberOfLines={1}>
+        {draggingItem.description ? `${draggingItem.description} ${draggingItem.name}` : draggingItem.name}
+      </Text>
     </Animated.View>
   );
 }

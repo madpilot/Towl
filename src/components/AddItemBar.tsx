@@ -5,12 +5,14 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
+  ActivityIndicator,
 } from 'react-native';
 import KitchenOwlIcon from '@/components/KitchenOwlIcon';
 import CameraIcon from '@/components/icons/CameraIcon';
 import { useItemSuggestions } from '@/hooks/useItemSuggestions';
 import { useHouseholdStore } from '@/store/householdStore';
 import { useAuthStore } from '@/store/authStore';
+import { parseItemInput } from '@/utils/parseItemInput';
 import { Colors, Spacing, Radii, FontSize } from '@/theme';
 import type { ItemSuggestion } from '@/hooks/useItemSuggestions';
 
@@ -18,8 +20,21 @@ type AddItemBarProps = {
   onAdd: (name: string, description: string, iconKey: string | null, category: string) => void;
 }
 
+/**
+ * Returns the text in `input` that precedes `matchedName` (case-insensitive).
+ * Used to capture a quantity or modifier prefix when the user selects a
+ * suggestion chip — e.g. typing "500g Beef Mince" then tapping "Beef Mince"
+ * gives description = "500g".
+ */
+function extractPrefix(input: string, matchedName: string): string {
+  const idx = input.toLowerCase().indexOf(matchedName.toLowerCase());
+  if (idx <= 0) return '';
+  return input.slice(0, idx).trim();
+}
+
 export default function AddItemBar({ onAdd }: AddItemBarProps) {
   const [value, setValue] = useState('');
+  const [parsing, setParsing] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
   const householdId = useHouseholdStore((s) => s.selectedHousehold?.id ?? null);
@@ -40,25 +55,49 @@ export default function AddItemBar({ onAdd }: AddItemBarProps) {
     : null;
   const showSuggestions = trimmedValue.length >= 2 && suggestions.length > 0;
 
-  function commit(name: string, iconKey: string | null, category: string) {
+  function commit(name: string, description: string, iconKey: string | null, category: string) {
     const trimmed = name.trim();
     if (!trimmed) return;
-    onAdd(trimmed, '', iconKey, category);
+    onAdd(trimmed, description.trim(), iconKey, category);
     setValue('');
     inputRef.current?.blur();
   }
 
-  function handleAdd() {
+  async function handleAdd() {
+    const trimmed = trimmedValue;
+    if (!trimmed || parsing) return;
+
     if (exactMatch) {
-      commit(exactMatch.displayName, exactMatch.iconKey, exactMatch.category);
-    } else {
-      commit(value, null, 'Other');
+      // User typed the item name exactly — no prefix to extract.
+      commit(exactMatch.displayName, '', exactMatch.iconKey, exactMatch.category);
+      return;
+    }
+
+    if (!searchFn) {
+      // Offline / unauthenticated — skip parse, add raw input.
+      commit(trimmed, '', null, 'Other');
+      return;
+    }
+
+    // Run the progressive-token-stripping parser to split the free-text input
+    // into a canonical catalog name + quantity/modifier description prefix.
+    setParsing(true);
+    try {
+      const result = await parseItemInput(trimmed, searchFn);
+      commit(result.name, result.description, result.iconKey, result.category);
+    } finally {
+      setParsing(false);
     }
   }
 
   function handleSuggestion(s: ItemSuggestion) {
-    commit(s.displayName, s.iconKey, s.category);
+    // Capture any prefix the user typed before the suggestion's name so that
+    // e.g. "500g Beef Mince" + tap "Beef Mince" → description = "500g".
+    const description = extractPrefix(value.trim(), s.displayName);
+    commit(s.displayName, description, s.iconKey, s.category);
   }
+
+  const busy = parsing;
 
   return (
     <View style={styles.wrapper}>
@@ -76,8 +115,16 @@ export default function AddItemBar({ onAdd }: AddItemBarProps) {
           blurOnSubmit={false}
           testID="add-item-input"
         />
-        <TouchableOpacity style={styles.addBtn} onPress={handleAdd} activeOpacity={0.85} testID="add-item-submit">
-          {value.trim() ? (
+        <TouchableOpacity
+          style={[styles.addBtn, busy && styles.addBtnBusy]}
+          onPress={handleAdd}
+          activeOpacity={0.85}
+          disabled={busy}
+          testID="add-item-submit"
+        >
+          {busy ? (
+            <ActivityIndicator size="small" color={Colors.white} />
+          ) : value.trim() ? (
             <Text style={styles.addBtnPlus}>+</Text>
           ) : (
             <CameraIcon size={20} color={Colors.white} />
@@ -180,6 +227,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.mint,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  addBtnBusy: {
+    opacity: 0.6,
   },
   addBtnPlus: {
     color: Colors.white,
