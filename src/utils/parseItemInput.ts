@@ -18,17 +18,26 @@ function isStrongMatch(candidate: string, result: ServerItem): boolean {
 }
 
 /**
- * Splits a free-text input (e.g. "500g Beef Mince") into a canonical catalog
- * name ("Beef Mince") and a description prefix ("500g") by progressively
- * stripping leading tokens and querying the server catalog.
+ * Splits a free-text input (e.g. "500g Chicken Mince") into a canonical
+ * name and a description prefix by querying the server catalog.
  *
  * Algorithm:
- *   For i = 0 … tokens.length − 1:
- *     candidate = tokens[i…].join(' ')
- *     results   = await searchFn(candidate)
- *     if results[0] strongly matches candidate:
- *       → name = results[0].name, description = tokens[0…i-1].join(' ')
+ *   For i = 0 … tokens.length − 1  (description prefix length):
+ *     For j = tokens.length … i + 1  (match span end, longest first):
+ *       candidate = tokens[i … j-1].join(' ')
+ *       results   = await searchFn(candidate)
+ *       if results[0] strongly matches candidate:
+ *         → description = tokens[0 … i-1].join(' ')
+ *         → name = results[0].name + tokens[j…].join(' ')  (catalog name + trailing tokens)
  *   Fallback: name = raw input, description = ''
+ *
+ * Examples:
+ *   "500g Beef Mince"   → catalog has "Beef Mince" → name="Beef Mince", desc="500g"
+ *   "500g Chicken Mince"→ catalog has "Chicken"   → name="Chicken Mince", desc="500g"
+ *
+ * Trying longer spans before shorter ones for a given prefix ensures that a
+ * multi-word catalog entry (e.g. "Chicken Mince") beats a shorter entry
+ * ("Chicken") when both are present in the catalog.
  *
  * "Strong match" means the top result's name equals the candidate after
  * case-insensitive normalisation. The search API handles fuzzy lookup
@@ -43,19 +52,25 @@ export async function parseItemInput(
   const tokens = trimmed.split(/\s+/);
 
   for (let i = 0; i < tokens.length; i++) {
-    const candidate = tokens.slice(i).join(' ');
-    try {
-      const results = await searchFn(candidate);
-      if (results.length > 0 && isStrongMatch(candidate, results[0])) {
-        return {
-          name: results[0].name,
-          description: tokens.slice(0, i).join(' '),
-          iconKey: results[0].icon ?? null,
-          category: results[0].category?.name ?? 'Other',
-        };
+    for (let j = tokens.length; j > i; j--) {
+      const candidate = tokens.slice(i, j).join(' ');
+      try {
+        const results = await searchFn(candidate);
+        if (results.length > 0 && isStrongMatch(candidate, results[0])) {
+          const trailing = tokens.slice(j);
+          const name = trailing.length > 0
+            ? `${results[0].name} ${trailing.join(' ')}`
+            : results[0].name;
+          return {
+            name,
+            description: tokens.slice(0, i).join(' '),
+            iconKey: results[0].icon ?? null,
+            category: results[0].category?.name ?? 'Other',
+          };
+        }
+      } catch {
+        // Search failed for this candidate — try the next split point
       }
-    } catch {
-      // Search failed for this candidate — try the next split point
     }
   }
 

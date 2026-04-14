@@ -67,7 +67,7 @@ describe('parseItemInput', () => {
     let callCount = 0;
     const searchFn = jest.fn().mockImplementation((q: string) => {
       callCount++;
-      // Fail for first call ("500g Beef"), succeed for second ("Beef").
+      // Fail on the first call; return a match for "Beef" on subsequent calls.
       if (callCount === 1) return Promise.reject(new Error('network'));
       return q.toLowerCase() === 'beef'
         ? Promise.resolve([{ name: 'Beef' }])
@@ -86,5 +86,34 @@ describe('parseItemInput', () => {
     // searchFn should have been called once with the full input.
     expect(searchFn).toHaveBeenCalledWith('Beef Mince');
     expect(searchFn).toHaveBeenCalledTimes(1);
+  });
+
+  it('appends trailing tokens to the catalog name when only a sub-span matches', async () => {
+    // Catalog has "Chicken" but not "Chicken Mince". The trailing "Mince" is
+    // folded into the item name so the user gets "Chicken Mince", not just "Chicken".
+    const searchFn = matchOnly('Chicken', { name: 'Chicken', icon: 'chicken', category: { name: 'Meat' } });
+    const result = await parseItemInput('500g Chicken Mince', searchFn);
+    expect(result).toEqual({ name: 'Chicken Mince', description: '500g', iconKey: 'chicken', category: 'Meat' });
+  });
+
+  it('prefers a longer-span catalog match over a shorter one for the same prefix', async () => {
+    // Catalog has both "Chicken" and "Chicken Mince". The longer match wins because
+    // longer spans are tried first within each prefix position.
+    const searchFn = jest.fn().mockImplementation((q: string) => {
+      if (q.toLowerCase() === 'chicken mince')
+        return Promise.resolve([{ name: 'Chicken Mince', icon: 'chicken', category: { name: 'Meat' } }]);
+      if (q.toLowerCase() === 'chicken')
+        return Promise.resolve([{ name: 'Chicken', icon: 'chicken', category: { name: 'Meat' } }]);
+      return Promise.resolve([]);
+    });
+    const result = await parseItemInput('500g Chicken Mince', searchFn);
+    expect(result).toEqual({ name: 'Chicken Mince', description: '500g', iconKey: 'chicken', category: 'Meat' });
+  });
+
+  it('appends multiple trailing tokens to the matched catalog name', async () => {
+    // "Chicken" matches; two trailing tokens "Mince Spicy" become part of the name.
+    const searchFn = matchOnly('Chicken', { name: 'Chicken', icon: 'chicken', category: { name: 'Meat' } });
+    const result = await parseItemInput('500g Chicken Mince Spicy', searchFn);
+    expect(result).toEqual({ name: 'Chicken Mince Spicy', description: '500g', iconKey: 'chicken', category: 'Meat' });
   });
 });
