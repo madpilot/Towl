@@ -293,6 +293,14 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
             itemLocalId: localId, name, description, iconKey, category },
           activeLocalId
         );
+        // description is a per-list-instance field; the catalog endpoint (UPDATE_ITEM) does not
+        // persist it to the shoppinglist. Sync via the dedicated per-list endpoint as well.
+        const serverDescription = freshItem.isImportant ? `!${description}` : description;
+        await syncManager.enqueue(
+          { opType: 'UPDATE_ITEM_DESC', listServerId: activeServerId,
+            itemServerId: freshItem.serverId, description: serverDescription },
+          activeLocalId
+        );
       }
       set({ items: items.map((i) => i.localId === localId ? { ...i, name, description, iconKey } : i) });
     },

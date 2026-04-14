@@ -390,6 +390,28 @@ describe('saveItem', () => {
     );
   });
 
+  it('also enqueues UPDATE_ITEM_DESC to sync the per-list description', async () => {
+    (itemsDb.getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: 100, isImportant: false }));
+
+    await useListDetailStore.getState().saveItem('item-1', 'Beef Mince', '500g', 'beef');
+
+    expect(syncManager.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({ opType: 'UPDATE_ITEM_DESC', itemServerId: 100, description: '500g' }),
+      'list-local-1'
+    );
+  });
+
+  it('prepends ! to description in UPDATE_ITEM_DESC when item is important', async () => {
+    (itemsDb.getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: 100, isImportant: true }));
+
+    await useListDetailStore.getState().saveItem('item-1', 'Beef Mince', '500g', 'beef');
+
+    expect(syncManager.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({ opType: 'UPDATE_ITEM_DESC', description: '!500g' }),
+      'list-local-1'
+    );
+  });
+
   it('skips enqueue when item has no serverId', async () => {
     (itemsDb.getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: null }));
 
