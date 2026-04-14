@@ -8,41 +8,34 @@ export type ParseResult = {
 };
 
 /**
- * Returns true when the top search result's name exactly matches the candidate
- * (case-insensitive, trimmed). This is a "strong match" — the server found an
- * exact catalog item for the candidate tokens, so those tokens are the item name
- * and everything before them is the description prefix.
- */
-function isStrongMatch(candidate: string, result: ServerItem): boolean {
-  return result.name.trim().toLowerCase() === candidate.trim().toLowerCase();
-}
-
-/**
  * Splits a free-text input (e.g. "500g Chicken Mince") into a canonical
- * name and a description prefix by querying the server catalog.
+ * name and a description prefix by querying the server catalog one token at
+ * a time and scanning the returned result list for an exact suffix match.
  *
  * Algorithm:
- *   For i = 0 … tokens.length − 1  (description prefix length):
- *     For j = tokens.length … i + 1  (match span end, longest first):
- *       candidate = tokens[i … j-1].join(' ')
- *       results   = await searchFn(candidate)
- *       if results[0] strongly matches candidate:
- *         → description = tokens[0 … i-1].join(' ')
- *         → name = results[0].name + tokens[j…].join(' ')  (catalog name + trailing tokens)
+ *   For i = 0 … tokens.length − 1:
+ *     results = await searchFn(tokens[i])      ← single-token query
+ *     if results is empty: tokens[i] is a description word → continue
+ *     suffix      = tokens[i … end].join(' ')
+ *     description = tokens[0 … i-1].join(' ')
+ *     exactMatch  = results.find(r => r.name ≅ suffix)   ← case-insensitive
+ *     if exactMatch:
+ *       → return { name: exactMatch.name, description, … }
+ *     else:
+ *       → return { name: suffix, description, icon/category from anchor result }
  *   Fallback: name = raw input, description = ''
  *
- * Examples:
- *   "500g Beef Mince"   → catalog has "Beef Mince" → name="Beef Mince", desc="500g"
- *   "500g Chicken Mince"→ catalog has "Chicken"   → name="Chicken Mince", desc="500g"
+ * Examples (catalog: "Chicken", "Chicken Mince"):
+ *   "500g Chicken Mince" → search "500g"→[], "Chicken"→["Chicken","Chicken Mince"]
+ *                          suffix "Chicken Mince" found in results
+ *                          → name="Chicken Mince", desc="500g"
+ *   "500g Chicken Tenders" → search "Chicken"→["Chicken","Chicken Mince"]
+ *                            suffix "Chicken Tenders" NOT in results
+ *                            → name="Chicken Tenders" (new), desc="500g"
  *
- * Trying longer spans before shorter ones for a given prefix ensures that a
- * multi-word catalog entry (e.g. "Chicken Mince") beats a shorter entry
- * ("Chicken") when both are present in the catalog.
- *
- * "Strong match" means the top result's name equals the candidate after
- * case-insensitive normalisation. The search API handles fuzzy lookup
- * internally, so if the user typed a recognised catalog item name the server
- * will return it as the first result.
+ * The icon and category for a newly-created item are taken from the result
+ * that exactly matches the anchor token (tokens[i]), or from results[0] if
+ * no such result exists.
  */
 export async function parseItemInput(
   raw: string,
@@ -52,26 +45,42 @@ export async function parseItemInput(
   const tokens = trimmed.split(/\s+/);
 
   for (let i = 0; i < tokens.length; i++) {
-    for (let j = tokens.length; j > i; j--) {
-      const candidate = tokens.slice(i, j).join(' ');
-      try {
-        const results = await searchFn(candidate);
-        if (results.length > 0 && isStrongMatch(candidate, results[0])) {
-          const trailing = tokens.slice(j);
-          const name = trailing.length > 0
-            ? `${results[0].name} ${trailing.join(' ')}`
-            : results[0].name;
-          return {
-            name,
-            description: tokens.slice(0, i).join(' '),
-            iconKey: results[0].icon ?? null,
-            category: results[0].category?.name ?? 'Other',
-          };
-        }
-      } catch {
-        // Search failed for this candidate — try the next split point
-      }
+    let results: ServerItem[];
+    try {
+      results = await searchFn(tokens[i]);
+    } catch {
+      continue;
     }
+    if (results.length === 0) continue;
+
+    const suffix = tokens.slice(i).join(' ');
+    const description = tokens.slice(0, i).join(' ');
+    const suffixLower = suffix.toLowerCase();
+
+    // Check if any catalog result exactly matches the full remaining input.
+    const exactMatch = results.find(
+      (r) => r.name.trim().toLowerCase() === suffixLower
+    );
+    if (exactMatch) {
+      return {
+        name: exactMatch.name,
+        description,
+        iconKey: exactMatch.icon ?? null,
+        category: exactMatch.category?.name ?? 'Other',
+      };
+    }
+
+    // No exact match — the remaining input becomes a new item name.
+    // Prefer icon/category from the result that matches the anchor token alone.
+    const anchorResult =
+      results.find((r) => r.name.trim().toLowerCase() === tokens[i].toLowerCase())
+      ?? results[0];
+    return {
+      name: suffix,
+      description,
+      iconKey: anchorResult.icon ?? null,
+      category: anchorResult.category?.name ?? 'Other',
+    };
   }
 
   return { name: trimmed, description: '', iconKey: null, category: 'Other' };
