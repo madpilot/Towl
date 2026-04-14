@@ -597,7 +597,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingTop: 4,
-    paddingBottom: 14,
+    paddingBottom: 28,
   },
   alphaLetter: {
     fontSize: 10,
