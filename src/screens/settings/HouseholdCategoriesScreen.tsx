@@ -9,7 +9,6 @@ import {
   StyleSheet,
   TextInput,
   ScrollView,
-  PanResponder,
 } from 'react-native';
 import Sheet from '@/components/Sheet';
 import BottomNav from '@/components/BottomNav';
@@ -53,25 +52,37 @@ function DragRow({
   onEditPress,
   onHeightMeasured,
 }: DragRowProps) {
-  const panHandlers = useMemo(
-    () =>
-      PanResponder.create({
-        onStartShouldSetPanResponder: () => true,
-        onMoveShouldSetPanResponder: () => true,
-        onPanResponderGrant: () => onDragStart(index),
-        onPanResponderMove: (_, g) => onDragMove(index, g.dy, g.moveY),
-        onPanResponderRelease: (_, g) => onDragEnd(index, g.dy),
-        onPanResponderTerminate: () => onDragEnd(index, 0),
-      }).panHandlers,
-    [index, onDragStart, onDragMove, onDragEnd]
-  );
+  // Track the finger's starting Y so we can compute dy from raw responder events.
+  const startYRef = useRef(0);
+  const lastDyRef = useRef(0);
 
   return (
     <View
       style={[styles.dragRow, isDragging && styles.dragRowLifted]}
       onLayout={onHeightMeasured ? (e) => onHeightMeasured(e.nativeEvent.layout.height) : undefined}
     >
-      <View style={styles.handle} {...panHandlers}>
+      {/* Use raw responder props instead of PanResponder so we can set
+          onResponderTerminationRequest to false — this prevents SafeAreaView /
+          ScrollView from stealing the gesture when the finger drags above the
+          scroll area's top edge. */}
+      <View
+        style={styles.handle}
+        onStartShouldSetResponder={() => true}
+        onMoveShouldSetResponder={() => true}
+        onResponderTerminationRequest={() => false}
+        onResponderGrant={(e) => {
+          startYRef.current = e.nativeEvent.pageY;
+          lastDyRef.current = 0;
+          onDragStart(index);
+        }}
+        onResponderMove={(e) => {
+          const dy = e.nativeEvent.pageY - startYRef.current;
+          lastDyRef.current = dy;
+          onDragMove(index, dy, e.nativeEvent.pageY);
+        }}
+        onResponderRelease={() => onDragEnd(index, lastDyRef.current)}
+        onResponderTerminate={() => onDragEnd(index, lastDyRef.current)}
+      >
         <Text style={styles.handleText}>≡</Text>
       </View>
       <TouchableOpacity
