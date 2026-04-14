@@ -206,7 +206,7 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
         ) {
           await syncManager.enqueue(
             { opType: 'CHECK_ITEM', listServerId: activeServerId,
-              itemServerId: freshItem.serverId, itemLocalId: localId },
+              itemServerId: freshItem.serverId, itemLocalId: localId, removedAt: checkedAt },
             activeLocalId
           );
         }
@@ -269,7 +269,7 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
           && activeServerId !== null && activeLocalId !== null) {
         await syncManager.enqueue(
           { opType: 'REMOVE_ITEM', listServerId: activeServerId,
-            itemServerId: freshItem.serverId, itemLocalId: localId },
+            itemServerId: freshItem.serverId, itemLocalId: localId, removedAt: Date.now() },
           activeLocalId
         );
       } else {

@@ -41,6 +41,7 @@ jest.mock('@/store/syncStore', () => ({
 
 const mockApi = {
   addItemByName: jest.fn(),
+  removeItemFromList: jest.fn(),
   deleteItem: jest.fn(),
   createShoppingList: jest.fn(),
   deleteShoppingList: jest.fn(),
@@ -362,7 +363,7 @@ describe('drain()', () => {
     });
   });
 
-  it('processes REMOVE_ITEM op: calls deleteItem and hard-deletes local item', async () => {
+  it('processes REMOVE_ITEM op: calls removeItemFromList and hard-deletes local item', async () => {
     const op = {
       id: 'op-remove',
       attempts: 0,
@@ -373,16 +374,17 @@ describe('drain()', () => {
         listServerId: 5,
         itemServerId: 77,
         itemLocalId: 'item-local-1',
+        removedAt: 1700000000000,
       },
     };
     (syncQueue.getAll as jest.Mock)
       .mockResolvedValueOnce([op])
       .mockResolvedValue([]);
-    mockApi.deleteItem.mockResolvedValue(undefined);
+    mockApi.removeItemFromList.mockResolvedValue(undefined);
 
     await drain();
 
-    expect(mockApi.deleteItem).toHaveBeenCalledWith(77);
+    expect(mockApi.removeItemFromList).toHaveBeenCalledWith(5, 77, 1700000000000);
     expect(itemsDb.hardDeleteItem).toHaveBeenCalledWith('item-local-1');
     expect(syncQueue.remove).toHaveBeenCalledWith('op-remove');
   });
@@ -398,6 +400,7 @@ describe('drain()', () => {
         listServerId: 5,
         itemServerId: 77,
         itemLocalId: 'item-local-1',
+        removedAt: 1700000000000,
       },
     };
     (syncQueue.getAll as jest.Mock)
@@ -407,7 +410,7 @@ describe('drain()', () => {
       isAxiosError: true,
       response: { status: 404 },
     });
-    mockApi.deleteItem.mockRejectedValue(notFound);
+    mockApi.removeItemFromList.mockRejectedValue(notFound);
 
     await drain();
 
@@ -415,7 +418,7 @@ describe('drain()', () => {
     expect(itemsDb.hardDeleteItem).not.toHaveBeenCalled();
   });
 
-  it('processes CHECK_ITEM op: calls deleteItem and marks item check-synced', async () => {
+  it('processes CHECK_ITEM op: calls removeItemFromList and marks item check-synced', async () => {
     const op = {
       id: 'op-check',
       attempts: 0,
@@ -426,16 +429,17 @@ describe('drain()', () => {
         listServerId: 5,
         itemServerId: 77,
         itemLocalId: 'item-local-1',
+        removedAt: 1700000000000,
       },
     };
     (syncQueue.getAll as jest.Mock)
       .mockResolvedValueOnce([op])
       .mockResolvedValue([]);
-    mockApi.deleteItem.mockResolvedValue(undefined);
+    mockApi.removeItemFromList.mockResolvedValue(undefined);
 
     await drain();
 
-    expect(mockApi.deleteItem).toHaveBeenCalledWith(77);
+    expect(mockApi.removeItemFromList).toHaveBeenCalledWith(5, 77, 1700000000000);
     expect(itemsDb.markItemCheckSynced).toHaveBeenCalledWith('item-local-1');
     expect(itemsDb.hardDeleteItem).not.toHaveBeenCalled();
     expect(syncQueue.remove).toHaveBeenCalledWith('op-check');
@@ -452,6 +456,7 @@ describe('drain()', () => {
         listServerId: 5,
         itemServerId: 77,
         itemLocalId: 'item-local-1',
+        removedAt: 1700000000000,
       },
     };
     (syncQueue.getAll as jest.Mock)
@@ -461,7 +466,7 @@ describe('drain()', () => {
       isAxiosError: true,
       response: { status: 404 },
     });
-    mockApi.deleteItem.mockRejectedValue(notFound);
+    mockApi.removeItemFromList.mockRejectedValue(notFound);
 
     await drain();
 
