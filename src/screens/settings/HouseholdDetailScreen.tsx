@@ -8,15 +8,15 @@ import {
   ActivityIndicator,
   Alert,
   StyleSheet,
+  TextInput,
 } from 'react-native';
 import Sheet from '@/components/Sheet';
 import BottomNav from '@/components/BottomNav';
-import { SectionLabel, Card, Field, PrimaryBtn, SecondaryBtn } from '@/components/settings';
+import { SectionLabel, Card, PrimaryBtn } from '@/components/settings';
 import { MembersSection } from './MembersSection';
 import { ListsSection } from './ListsSection';
-import { CategoriesSection } from './CategoriesSection';
 import { useHouseholdDetail } from '@/store/householdDetailStore';
-import { Colors, Spacing, FontSize } from '@/theme';
+import { Colors, Spacing, Radii, FontSize } from '@/theme';
 import type { HouseholdDetailScreenProps } from '@/navigation/types';
 
 type ModalKind = 'rename' | 'leave' | null;
@@ -28,8 +28,8 @@ export default function HouseholdDetailScreen({ navigation, route }: HouseholdDe
 
   const [modal, setModal] = useState<ModalKind>(null);
   const [renameValue, setRenameValue] = useState('');
-  const [scrollEnabled, setScrollEnabled] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [action, setAction] = useState<ModalKind>(null);
+  const saving = action !== null;
 
   useEffect(() => {
     initialize(householdId, initialName);
@@ -38,26 +38,26 @@ export default function HouseholdDetailScreen({ navigation, route }: HouseholdDe
 
   async function handleRename() {
     if (!renameValue.trim()) return;
-    setSaving(true);
+    setAction('rename');
     try {
       await renameHousehold(renameValue.trim());
       setModal(null);
     } catch (e: unknown) {
       Alert.alert('Not yet available', e instanceof Error ? e.message : 'Failed to rename household.');
     } finally {
-      setSaving(false);
+      setAction(null);
     }
   }
 
   async function handleLeave() {
-    setSaving(true);
+    setAction('leave');
     try {
       await leaveHousehold();
       navigation.goBack();
     } catch (e: unknown) {
       Alert.alert('Not yet available', e instanceof Error ? e.message : 'Failed to leave household.');
     } finally {
-      setSaving(false);
+      setAction(null);
     }
   }
 
@@ -76,7 +76,7 @@ export default function HouseholdDetailScreen({ navigation, route }: HouseholdDe
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} scrollEnabled={scrollEnabled}>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
         {loading ? (
           <View style={styles.center}>
             <ActivityIndicator color={Colors.mint} />
@@ -85,7 +85,18 @@ export default function HouseholdDetailScreen({ navigation, route }: HouseholdDe
           <>
             <MembersSection />
             <ListsSection />
-            <CategoriesSection onDragScrollLock={(locked) => setScrollEnabled(!locked)} />
+
+            <SectionLabel label="Categories" />
+            <Card>
+              <TouchableOpacity
+                style={styles.navRow}
+                onPress={() => navigation.navigate('HouseholdCategories', { householdId, householdName })}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.navLabel}>Manage categories</Text>
+                <Text style={styles.navChevron}>›</Text>
+              </TouchableOpacity>
+            </Card>
 
             <SectionLabel label="Items" />
             <Card>
@@ -116,9 +127,19 @@ export default function HouseholdDetailScreen({ navigation, route }: HouseholdDe
       <BottomNav active="settings" />
 
       <Sheet visible={modal === 'rename'} title="Rename household" onClose={() => setModal(null)}>
-        <Field label="Household name" value={renameValue} onChangeText={setRenameValue} placeholder="e.g. Home" />
-        <PrimaryBtn label="Save" onPress={handleRename} loading={saving} />
-        <SecondaryBtn label="Cancel" onPress={() => setModal(null)} />
+        <View style={styles.nameRow}>
+          <TextInput
+            style={styles.nameInput}
+            value={renameValue}
+            onChangeText={setRenameValue}
+            placeholder="e.g. Home"
+            placeholderTextColor={Colors.textFaded}
+            autoCapitalize="words"
+            autoCorrect={false}
+            returnKeyType="done"
+          />
+        </View>
+        <PrimaryBtn label="Save" onPress={handleRename} loading={action === 'rename'} disabled={saving} />
         <View style={{ height: Spacing.xl }} />
       </Sheet>
 
@@ -128,8 +149,7 @@ export default function HouseholdDetailScreen({ navigation, route }: HouseholdDe
             {"You'll lose access to this household's lists and data. This can't be undone."}
           </Text>
         </View>
-        <PrimaryBtn label="Leave household" onPress={handleLeave} loading={saving} danger />
-        <SecondaryBtn label="Cancel" onPress={() => setModal(null)} />
+        <PrimaryBtn label="Leave household" onPress={handleLeave} loading={action === 'leave'} disabled={saving} danger />
         <View style={{ height: Spacing.xl }} />
       </Sheet>
     </SafeAreaView>
@@ -166,4 +186,21 @@ const styles = StyleSheet.create({
   dangerLabel: { fontSize: FontSize.body, fontWeight: '700', color: '#e05555' },
   sheetBody: { padding: Spacing.xl, paddingBottom: Spacing.sm },
   sheetBodyText: { fontSize: FontSize.body, color: Colors.textFaded, lineHeight: 22 },
+
+  // Sheet — name input
+  nameRow: {
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.sm,
+  },
+  nameInput: {
+    fontSize: FontSize.body,
+    fontWeight: '600',
+    color: Colors.textDark,
+    borderWidth: 1.5,
+    borderColor: Colors.mintPale,
+    borderRadius: Radii.md,
+    padding: Spacing.md,
+    backgroundColor: Colors.mintBg,
+  },
 });
