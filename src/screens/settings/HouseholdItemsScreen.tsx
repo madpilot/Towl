@@ -230,7 +230,31 @@ export default function HouseholdItemsScreen({ navigation, route }: HouseholdIte
     [sections]
   );
 
-  // ── Alphabet scrubber ──────────────────────────────────────────────────────
+  // ── Section index bar ─────────────────────────────────────────────────────
+  // Responds to touch-and-drag so the user can slide their finger across all
+  // letters without lifting — matching the native contacts-list behaviour.
+
+  const indexBarRef = useRef<View>(null);
+  const indexBarTopRef = useRef(0);
+  const indexBarHeightRef = useRef(0);
+  const lastScrolledLetterRef = useRef<string | null>(null);
+
+  function measureIndexBar() {
+    indexBarRef.current?.measure((_fx, _fy, _w, h, _px, py) => {
+      indexBarTopRef.current = py;
+      indexBarHeightRef.current = h;
+    });
+  }
+
+  function handleIndexBarTouch(pageY: number) {
+    const relY = pageY - indexBarTopRef.current;
+    const perLetter = indexBarHeightRef.current / ALPHABET.length;
+    const idx = Math.max(0, Math.min(ALPHABET.length - 1, Math.floor(relY / perLetter)));
+    const letter = ALPHABET[idx];
+    if (letter === lastScrolledLetterRef.current) return;
+    lastScrolledLetterRef.current = letter;
+    scrollToLetter(letter);
+  }
 
   function scrollToLetter(letter: string) {
     const sectionIndex = sections.findIndex((s) => s.title === letter);
@@ -239,6 +263,8 @@ export default function HouseholdItemsScreen({ navigation, route }: HouseholdIte
       sectionIndex,
       itemIndex: 0,
       animated: false,
+      // Push the first item below the sticky header so it isn't hidden underneath it.
+      viewOffset: HEADER_HEIGHT,
     });
   }
 
@@ -310,7 +336,7 @@ export default function HouseholdItemsScreen({ navigation, route }: HouseholdIte
               </View>
             )}
             ItemSeparatorComponent={() => <Sep />}
-            stickySectionHeadersEnabled={false}
+            stickySectionHeadersEnabled={true}
             contentContainerStyle={filteredItems.length === 0 ? styles.emptyContainer : styles.listContent}
             ListEmptyComponent={
               <View style={styles.emptyRow}>
@@ -325,20 +351,25 @@ export default function HouseholdItemsScreen({ navigation, route }: HouseholdIte
 
           {/* Alphabet scrubber — hidden during search */}
           {!query && sections.length > 0 && (
-            <View style={styles.alphaSidebar} pointerEvents="box-none">
+            <View
+              ref={indexBarRef}
+              style={styles.alphaSidebar}
+              onLayout={measureIndexBar}
+              onStartShouldSetResponder={() => true}
+              onMoveShouldSetResponder={() => true}
+              onResponderGrant={(e) => {
+                lastScrolledLetterRef.current = null;
+                handleIndexBarTouch(e.nativeEvent.pageY);
+              }}
+              onResponderMove={(e) => handleIndexBarTouch(e.nativeEvent.pageY)}
+              onResponderRelease={() => { lastScrolledLetterRef.current = null; }}
+            >
               {ALPHABET.map((letter) => {
                 const active = sections.some((s) => s.title === letter);
                 return (
-                  <TouchableOpacity
-                    key={letter}
-                    onPress={() => scrollToLetter(letter)}
-                    disabled={!active}
-                    hitSlop={4}
-                  >
-                    <Text style={[styles.alphaLetter, !active && styles.alphaLetterInactive]}>
-                      {letter}
-                    </Text>
-                  </TouchableOpacity>
+                  <Text key={letter} style={[styles.alphaLetter, !active && styles.alphaLetterInactive]}>
+                    {letter}
+                  </Text>
                 );
               })}
             </View>
