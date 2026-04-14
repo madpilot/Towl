@@ -1,38 +1,67 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
-  FlatList,
+  SectionList,
   TouchableOpacity,
   SafeAreaView,
   ActivityIndicator,
   Alert,
   StyleSheet,
-  ListRenderItemInfo,
+  TextInput,
 } from 'react-native';
 import Sheet from '@/components/Sheet';
 import IconPicker from '@/components/IconPicker';
 import KitchenOwlIcon from '@/components/KitchenOwlIcon';
 import BottomNav from '@/components/BottomNav';
-import { SectionLabel, Card, Sep, Field, PrimaryBtn, SecondaryBtn } from '@/components/settings';
+import { Card, Sep, PrimaryBtn } from '@/components/settings';
 import { useAuthStore } from '@/store/authStore';
 import { Colors, Spacing, Radii, FontSize } from '@/theme';
 import type { HouseholdItemsScreenProps } from '@/navigation/types';
 import type { HouseholdItem, HouseholdCategory } from '@/api/households';
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 type SheetMode = 'new' | 'edit' | 'pick-category' | null;
+type ActionKind = 'create' | 'update' | 'delete' | null;
+type ItemSection = { title: string; data: HouseholdItem[] };
+
+const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'.split('');
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const buildSections = (items: HouseholdItem[]): ItemSection[] => {
+  const map = new Map<string, HouseholdItem[]>();
+  for (const item of items) {
+    const letter = item.name.charAt(0).toUpperCase();
+    const key = /[A-Z]/.test(letter) ? letter : '#';
+    const bucket = map.get(key) ?? [];
+    bucket.push(item);
+    map.set(key, bucket);
+  }
+  return [...map.entries()]
+    .sort(([a], [b]) => {
+      if (a === '#') return 1;
+      if (b === '#') return -1;
+      return a.localeCompare(b);
+    })
+    .map(([title, data]) => ({ title, data }));
+};
+
+// ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function HouseholdItemsScreen({ navigation, route }: HouseholdItemsScreenProps) {
   const { householdId, householdName } = route.params;
   const { householdsApi } = useAuthStore();
 
-  // ── Data state ──────────────────────────────────────────────────────────────
+  // ── Data ───────────────────────────────────────────────────────────────────
 
   const [items, setItems] = useState<HouseholdItem[]>([]);
   const [categories, setCategories] = useState<HouseholdCategory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState('');
 
-  // ── Sheet / editor state ────────────────────────────────────────────────────
+  // ── Sheet state ────────────────────────────────────────────────────────────
 
   const [sheet, setSheet] = useState<SheetMode>(null);
   const [editingItem, setEditingItem] = useState<HouseholdItem | null>(null);
@@ -40,9 +69,16 @@ export default function HouseholdItemsScreen({ navigation, route }: HouseholdIte
   const [iconKey, setIconKey] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<HouseholdCategory | null>(null);
   const [iconPickerVisible, setIconPickerVisible] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [action, setAction] = useState<ActionKind>(null);
+  const saving = action !== null;
 
-  // ── Load data ───────────────────────────────────────────────────────────────
+  // Direction to return to after category / icon picker closes
+  const backMode: 'new' | 'edit' = editingItem ? 'edit' : 'new';
+
+  // SectionList infers ItemSection from the sections prop — no explicit generic needed on the ref
+  const sectionListRef = useRef<SectionList>(null);
+
+  // ── Load ───────────────────────────────────────────────────────────────────
 
   const load = useCallback(async () => {
     if (!householdsApi) return;
@@ -62,13 +98,24 @@ export default function HouseholdItemsScreen({ navigation, route }: HouseholdIte
     void load().finally(() => setLoading(false));
   }, [load]);
 
-  // ── Sheet helpers ───────────────────────────────────────────────────────────
+  // ── Derived: filtered + sectioned ─────────────────────────────────────────
+
+  const filteredItems = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter((i) => i.name.toLowerCase().includes(q));
+  }, [items, query]);
+
+  const sections = useMemo(() => buildSections(filteredItems), [filteredItems]);
+
+  // ── Sheet helpers ──────────────────────────────────────────────────────────
 
   function openNew() {
     setEditingItem(null);
     setName('');
     setIconKey(null);
     setSelectedCategory(null);
+    setIconPickerVisible(false);
     setSheet('new');
   }
 
@@ -77,6 +124,7 @@ export default function HouseholdItemsScreen({ navigation, route }: HouseholdIte
     setName(item.name);
     setIconKey(item.icon ?? null);
     setSelectedCategory(item.category ?? null);
+    setIconPickerVisible(false);
     setSheet('edit');
   }
 
@@ -85,39 +133,33 @@ export default function HouseholdItemsScreen({ navigation, route }: HouseholdIte
     setIconPickerVisible(false);
   }
 
-  // ── CRUD ────────────────────────────────────────────────────────────────────
+  // ── CRUD ───────────────────────────────────────────────────────────────────
 
   async function handleCreate() {
     if (!name.trim() || !householdsApi) return;
-    setSaving(true);
+    setAction('create');
     try {
-      const created = await householdsApi.createHouseholdItem(
-        householdId,
-        name.trim(),
-        iconKey,
-        selectedCategory ? { id: selectedCategory.id, name: selectedCategory.name, ordering: selectedCategory.ordering } : null
-      );
-      setItems((prev) =>
-        [...prev, created].sort((a, b) => a.name.localeCompare(b.name))
-      );
+      const cat = selectedCategory
+        ? { id: selectedCategory.id, name: selectedCategory.name, ordering: selectedCategory.ordering }
+        : null;
+      const created = await householdsApi.createHouseholdItem(householdId, name.trim(), iconKey, cat);
+      setItems((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
       closeSheet();
     } catch (e: unknown) {
       Alert.alert('Error', e instanceof Error ? e.message : 'Failed to create item.');
     } finally {
-      setSaving(false);
+      setAction(null);
     }
   }
 
   async function handleUpdate() {
     if (!name.trim() || !editingItem || !householdsApi) return;
-    setSaving(true);
+    setAction('update');
     try {
-      await householdsApi.updateHouseholdItem(
-        editingItem.id,
-        name.trim(),
-        iconKey,
-        selectedCategory ? { id: selectedCategory.id, name: selectedCategory.name, ordering: selectedCategory.ordering } : null
-      );
+      const cat = selectedCategory
+        ? { id: selectedCategory.id, name: selectedCategory.name, ordering: selectedCategory.ordering }
+        : null;
+      await householdsApi.updateHouseholdItem(editingItem.id, name.trim(), iconKey, cat);
       setItems((prev) =>
         prev
           .map((i) =>
@@ -131,13 +173,13 @@ export default function HouseholdItemsScreen({ navigation, route }: HouseholdIte
     } catch (e: unknown) {
       Alert.alert('Error', e instanceof Error ? e.message : 'Failed to update item.');
     } finally {
-      setSaving(false);
+      setAction(null);
     }
   }
 
   async function handleDelete() {
     if (!editingItem || !householdsApi) return;
-    setSaving(true);
+    setAction('delete');
     try {
       await householdsApi.deleteHouseholdItem(editingItem.id);
       setItems((prev) => prev.filter((i) => i.id !== editingItem.id));
@@ -145,42 +187,23 @@ export default function HouseholdItemsScreen({ navigation, route }: HouseholdIte
     } catch (e: unknown) {
       Alert.alert('Error', e instanceof Error ? e.message : 'Failed to delete item.');
     } finally {
-      setSaving(false);
+      setAction(null);
     }
   }
 
-  // ── Render item ─────────────────────────────────────────────────────────────
+  // ── Alphabet scrubber ──────────────────────────────────────────────────────
 
-  function renderItem({ item }: ListRenderItemInfo<HouseholdItem>) {
-    return (
-      <TouchableOpacity
-        style={styles.itemRow}
-        onPress={() => openEdit(item)}
-        activeOpacity={0.7}
-      >
-        <View style={styles.iconWrap}>
-          {item.icon ? (
-            <KitchenOwlIcon iconKey={item.icon} size={22} style={{ color: Colors.mint }} />
-          ) : (
-            <View style={styles.iconPlaceholder} />
-          )}
-        </View>
-        <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
-        {item.category ? (
-          <Text style={styles.itemCategory} numberOfLines={1}>{item.category.name}</Text>
-        ) : null}
-        <Text style={styles.itemChevron}>›</Text>
-      </TouchableOpacity>
-    );
+  function scrollToLetter(letter: string) {
+    const sectionIndex = sections.findIndex((s) => s.title === letter);
+    if (sectionIndex === -1 || !sectionListRef.current) return;
+    sectionListRef.current.scrollToLocation({
+      sectionIndex,
+      itemIndex: 0,
+      animated: false,
+    });
   }
 
-  function renderSeparator() {
-    return <Sep />;
-  }
-
-  // ── Category picker inside sheet ────────────────────────────────────────────
-
-  const categoryLabel = selectedCategory ? selectedCategory.name : 'None';
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <SafeAreaView style={styles.root}>
@@ -195,29 +218,91 @@ export default function HouseholdItemsScreen({ navigation, route }: HouseholdIte
         </TouchableOpacity>
       </View>
 
-      {/* List */}
+      {/* Search */}
+      <View style={styles.searchWrap}>
+        <TextInput
+          style={styles.searchInput}
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Search items…"
+          placeholderTextColor={Colors.textFaded}
+          autoCorrect={false}
+          autoCapitalize="none"
+          clearButtonMode="while-editing"
+        />
+      </View>
+
+      {/* List + alphabet scrubber */}
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator color={Colors.mint} />
         </View>
       ) : (
-        <FlatList
-          data={items}
-          keyExtractor={(item) => String(item.id)}
-          renderItem={renderItem}
-          ItemSeparatorComponent={renderSeparator}
-          contentContainerStyle={items.length === 0 ? styles.emptyContainer : styles.listContent}
-          ListEmptyComponent={
-            <View style={styles.emptyRow}>
-              <Text style={styles.emptyText}>{'No items yet. Tap "+ New" to add one.'}</Text>
+        <View style={styles.listWrap}>
+          <SectionList
+            ref={sectionListRef}
+            sections={sections}
+            keyExtractor={(item: HouseholdItem) => String(item.id)}
+            renderItem={({ item }: { item: HouseholdItem }) => (
+              <TouchableOpacity
+                style={styles.itemRow}
+                onPress={() => openEdit(item)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.iconWrap}>
+                  {item.icon ? (
+                    <KitchenOwlIcon iconKey={item.icon} size={22} style={{ color: Colors.mint }} />
+                  ) : (
+                    <View style={styles.iconPlaceholder} />
+                  )}
+                </View>
+                <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
+                {item.category ? (
+                  <Text style={styles.itemCategory} numberOfLines={1}>{item.category.name}</Text>
+                ) : null}
+                <Text style={styles.itemChevron}>›</Text>
+              </TouchableOpacity>
+            )}
+            renderSectionHeader={({ section }) => (
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionHeaderText}>{section.title}</Text>
+              </View>
+            )}
+            ItemSeparatorComponent={() => <Sep />}
+            stickySectionHeadersEnabled={false}
+            contentContainerStyle={filteredItems.length === 0 ? styles.emptyContainer : styles.listContent}
+            ListEmptyComponent={
+              <View style={styles.emptyRow}>
+                <Text style={styles.emptyText}>
+                  {query
+                    ? 'No items match your search.'
+                    : 'No items yet. Tap "+ New" to add one.'}
+                </Text>
+              </View>
+            }
+          />
+
+          {/* Alphabet scrubber — hidden during search */}
+          {!query && sections.length > 0 && (
+            <View style={styles.alphaSidebar} pointerEvents="box-none">
+              {ALPHABET.map((letter) => {
+                const active = sections.some((s) => s.title === letter);
+                return (
+                  <TouchableOpacity
+                    key={letter}
+                    onPress={() => scrollToLetter(letter)}
+                    disabled={!active}
+                    hitSlop={4}
+                  >
+                    <Text style={[styles.alphaLetter, !active && styles.alphaLetterInactive]}>
+                      {letter}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
-          }
-          ListHeaderComponent={
-            items.length > 0 ? (
-              <SectionLabel label={`${items.length} item${items.length === 1 ? '' : 's'}`} />
-            ) : null
-          }
-        />
+          )}
+        </View>
       )}
 
       <BottomNav active="settings" />
@@ -228,75 +313,100 @@ export default function HouseholdItemsScreen({ navigation, route }: HouseholdIte
         title={sheet === 'new' ? 'New item' : 'Edit item'}
         onClose={closeSheet}
       >
-        <View style={styles.sheetBody}>
-          <Field
-            label="Name"
-            value={name}
-            onChangeText={setName}
-            placeholder="e.g. Oat milk"
-          />
-
-          {/* Icon row */}
-          <Text style={styles.fieldLabel}>Icon</Text>
+        {/* Icon button + name input inline */}
+        <View style={styles.nameRow}>
           <TouchableOpacity
-            style={styles.iconRow}
+            style={styles.iconBtn}
             onPress={() => setIconPickerVisible(true)}
             activeOpacity={0.7}
           >
-            <View style={styles.iconPreview}>
-              {iconKey ? (
-                <KitchenOwlIcon iconKey={iconKey} size={24} style={{ color: Colors.mint }} />
-              ) : (
-                <Text style={styles.iconNone}>None</Text>
-              )}
+            <KitchenOwlIcon iconKey={iconKey} size={24} style={{ color: Colors.mint }} />
+            <View style={styles.chevronBadge}>
+              <Text style={styles.chevronText}>▾</Text>
             </View>
-            <Text style={styles.iconChangeLabel}>Change icon ›</Text>
           </TouchableOpacity>
-
-          {/* Category row */}
-          <Text style={styles.fieldLabel}>Category</Text>
-          <TouchableOpacity
-            style={styles.categoryRow}
-            onPress={() => setSheet('pick-category')}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.categoryValue, !selectedCategory && styles.categoryNone]}>
-              {categoryLabel}
-            </Text>
-            <Text style={styles.iconChangeLabel}>Change ›</Text>
-          </TouchableOpacity>
+          <TextInput
+            style={styles.nameInput}
+            value={name}
+            onChangeText={setName}
+            placeholder="Item name"
+            placeholderTextColor={Colors.textFaded}
+            autoCapitalize="words"
+            autoCorrect={false}
+            returnKeyType="done"
+          />
         </View>
 
+        {/* Category row */}
+        <TouchableOpacity
+          style={styles.categoryRow}
+          onPress={() => setSheet('pick-category')}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.categoryLabel}>Category</Text>
+          <Text style={[styles.categoryValue, !selectedCategory && styles.categoryNone]}>
+            {selectedCategory ? selectedCategory.name : 'None'}
+          </Text>
+          <Text style={styles.categoryChevron}>›</Text>
+        </TouchableOpacity>
+
+        {/* Primary action */}
         {sheet === 'new' ? (
-          <PrimaryBtn label="Add item" onPress={handleCreate} loading={saving} />
+          <PrimaryBtn
+            label="Add item"
+            onPress={handleCreate}
+            loading={action === 'create'}
+            disabled={saving}
+          />
         ) : (
+          <PrimaryBtn
+            label="Save changes"
+            onPress={handleUpdate}
+            loading={action === 'update'}
+            disabled={saving}
+          />
+        )}
+
+        {/* Danger zone — edit only */}
+        {sheet === 'edit' && (
           <>
-            <PrimaryBtn label="Save changes" onPress={handleUpdate} loading={saving} />
-            <PrimaryBtn label="Delete item" onPress={handleDelete} loading={saving} danger />
+            <View style={styles.dangerDivider}>
+              <Text style={styles.dangerDividerLabel}>Danger zone</Text>
+            </View>
+            <PrimaryBtn
+              label="Delete item"
+              onPress={handleDelete}
+              loading={action === 'delete'}
+              disabled={saving}
+              danger
+            />
           </>
         )}
-        <SecondaryBtn label="Cancel" onPress={closeSheet} />
+
         <View style={{ height: Spacing.xl }} />
+
+        {/* Icon picker rendered inside the sheet modal so it stacks correctly */}
+        <IconPicker
+          visible={iconPickerVisible}
+          selected={iconKey}
+          onSelect={(key) => setIconKey(key)}
+          onClose={() => setIconPickerVisible(false)}
+        />
       </Sheet>
 
       {/* Category picker sheet */}
       <Sheet
         visible={sheet === 'pick-category'}
         title="Choose category"
-        onClose={() => setSheet(sheet === 'pick-category' ? (editingItem ? 'edit' : 'new') : sheet)}
+        onClose={() => setSheet(backMode)}
       >
         <Card>
           <TouchableOpacity
             style={styles.catPickRow}
-            onPress={() => {
-              setSelectedCategory(null);
-              setSheet(editingItem ? 'edit' : 'new');
-            }}
+            onPress={() => { setSelectedCategory(null); setSheet(backMode); }}
             activeOpacity={0.7}
           >
-            <Text style={[styles.catPickName, !selectedCategory && styles.catPickSelected]}>
-              None
-            </Text>
+            <Text style={[styles.catPickName, !selectedCategory && styles.catPickSelected]}>None</Text>
             {!selectedCategory && <Text style={styles.catTick}>✓</Text>}
           </TouchableOpacity>
           {categories.map((cat, idx) => (
@@ -304,10 +414,7 @@ export default function HouseholdItemsScreen({ navigation, route }: HouseholdIte
               {idx === 0 && <Sep />}
               <TouchableOpacity
                 style={styles.catPickRow}
-                onPress={() => {
-                  setSelectedCategory(cat);
-                  setSheet(editingItem ? 'edit' : 'new');
-                }}
+                onPress={() => { setSelectedCategory(cat); setSheet(backMode); }}
                 activeOpacity={0.7}
               >
                 <Text style={[styles.catPickName, selectedCategory?.id === cat.id && styles.catPickSelected]}>
@@ -321,20 +428,16 @@ export default function HouseholdItemsScreen({ navigation, route }: HouseholdIte
         </Card>
         <View style={{ height: Spacing.xl }} />
       </Sheet>
-
-      {/* Icon picker modal */}
-      <IconPicker
-        visible={iconPickerVisible}
-        selected={iconKey}
-        onSelect={(key) => setIconKey(key)}
-        onClose={() => setIconPickerVisible(false)}
-      />
     </SafeAreaView>
   );
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.mintBg },
+
+  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -352,12 +455,46 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
   },
   addBtn: { paddingLeft: Spacing.sm },
-  addLabel: { fontSize: FontSize.body, fontWeight: '700', color: Colors.mint },
+  addLabel: { fontSize: FontSize.body, fontWeight: '700', color: Colors.mintLight },
+
+  // Search
+  searchWrap: {
+    paddingHorizontal: Spacing.xl,
+    paddingBottom: Spacing.sm,
+  },
+  searchInput: {
+    height: 40,
+    borderRadius: Radii.lg,
+    backgroundColor: Colors.white,
+    paddingHorizontal: Spacing.md,
+    fontSize: FontSize.body,
+    color: Colors.textDark,
+    borderWidth: 1.5,
+    borderColor: Colors.mintPale,
+  },
+
+  // List
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  listWrap: { flex: 1 },
   listContent: { paddingBottom: 100 },
   emptyContainer: { flex: 1, paddingBottom: 100 },
   emptyRow: { padding: Spacing.xl, alignItems: 'center' },
   emptyText: { fontSize: FontSize.body, color: Colors.textFaded, textAlign: 'center' },
+
+  // Section header
+  sectionHeader: {
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.xs,
+    backgroundColor: Colors.mintBg,
+  },
+  sectionHeaderText: {
+    fontSize: FontSize.small,
+    fontWeight: '800',
+    color: Colors.textFaded,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
 
   // Item rows
   itemRow: {
@@ -393,53 +530,119 @@ const styles = StyleSheet.create({
   },
   itemChevron: { fontSize: 20, color: Colors.mintPale, fontWeight: '700' },
 
-  // Sheet body
-  sheetBody: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.md, paddingBottom: Spacing.sm },
-  fieldLabel: {
-    fontSize: FontSize.small,
-    fontWeight: '700',
-    color: Colors.textFaded,
-    marginTop: Spacing.md,
-    marginBottom: Spacing.xs,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+  // Alphabet scrubber
+  alphaSidebar: {
+    position: 'absolute',
+    right: 4,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 1,
   },
-  iconRow: {
+  alphaLetter: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: Colors.mint,
+    lineHeight: 14,
+    textAlign: 'center',
+    minWidth: 16,
+  },
+  alphaLetterInactive: { color: Colors.mintPale },
+
+  // Sheet — icon + name row
+  nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: Spacing.sm,
-    borderBottomWidth: 1.5,
-    borderBottomColor: Colors.mintPale,
-    marginBottom: Spacing.sm,
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.sm,
+    gap: Spacing.md,
   },
-  iconPreview: {
-    width: 36,
-    height: 36,
-    borderRadius: Radii.sm,
+  iconBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: Radii.md,
+    borderWidth: 2,
+    borderColor: Colors.mintPale,
     backgroundColor: Colors.mintBg,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: Spacing.md,
+    flexShrink: 0,
   },
-  iconNone: { fontSize: FontSize.small, color: Colors.textFaded },
-  iconChangeLabel: { fontSize: FontSize.body, color: Colors.mint, fontWeight: '700' },
+  chevronBadge: {
+    position: 'absolute',
+    bottom: -3,
+    right: -3,
+    width: 14,
+    height: 14,
+    borderRadius: Radii.full,
+    backgroundColor: Colors.mint,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chevronText: {
+    color: Colors.white,
+    fontSize: 7,
+    lineHeight: 10,
+    includeFontPadding: false,
+  },
+  nameInput: {
+    flex: 1,
+    fontSize: FontSize.body,
+    fontWeight: '600',
+    color: Colors.textDark,
+    borderWidth: 1.5,
+    borderColor: Colors.mintPale,
+    borderRadius: Radii.md,
+    padding: Spacing.md,
+    backgroundColor: Colors.mintBg,
+  },
+
+  // Sheet — category row
   categoryRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: Spacing.sm,
-    borderBottomWidth: 1.5,
-    borderBottomColor: Colors.mintPale,
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.md,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: Colors.mintPale,
     marginBottom: Spacing.sm,
+  },
+  categoryLabel: {
+    fontSize: FontSize.body,
+    fontWeight: '700',
+    color: Colors.textFaded,
+    marginRight: Spacing.md,
   },
   categoryValue: {
     flex: 1,
     fontSize: FontSize.body,
-    fontWeight: '700',
+    fontWeight: '600',
     color: Colors.textDark,
   },
   categoryNone: { color: Colors.textFaded },
+  categoryChevron: { fontSize: 20, color: Colors.mintPale, fontWeight: '700' },
 
-  // Category picker rows
+  // Sheet — danger zone
+  dangerDivider: {
+    marginHorizontal: Spacing.xl,
+    marginTop: Spacing.xl,
+    marginBottom: Spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: Colors.mintPale,
+    paddingTop: Spacing.md,
+  },
+  dangerDividerLabel: {
+    fontSize: FontSize.small,
+    fontWeight: '800',
+    color: Colors.textFaded,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+
+  // Category picker sheet
   catPickRow: {
     flexDirection: 'row',
     alignItems: 'center',
