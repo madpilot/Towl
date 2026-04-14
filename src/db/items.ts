@@ -291,12 +291,13 @@ export async function toggleItemImportant(localId: string, important: boolean): 
 export async function updateItemNameAndIcon(
   localId: string,
   name: string,
+  description: string,
   iconKey: string | null
 ): Promise<void> {
   const db = await getDb();
   await db.runAsync(
-    'UPDATE local_items SET name = ?, icon_key = ?, is_dirty = 1 WHERE local_id = ?',
-    [name, iconKey, localId]
+    'UPDATE local_items SET name = ?, description = ?, icon_key = ?, is_dirty = 1 WHERE local_id = ?',
+    [name, description, iconKey, localId]
   );
 }
 

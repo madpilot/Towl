@@ -312,7 +312,7 @@ describe('SwipeableItem', () => {
       fireEvent.changeText(getByDisplayValue('Apples'), ' Bananas ');
       fireEvent(getByDisplayValue(' Bananas '), 'submitEditing');
 
-      expect(handlers.onSave).toHaveBeenCalledWith('item-1', 'Bananas', 'apple');
+      expect(handlers.onSave).toHaveBeenCalledWith('item-1', 'Bananas', '', 'apple');
       expect(handlers.setEditingId).toHaveBeenCalledWith(null);
     });
 

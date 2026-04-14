@@ -17,8 +17,9 @@
  * activates the drag.
  */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   StyleSheet,
   Text,
   TextInput,
@@ -37,6 +38,9 @@ import Svg, { Path } from 'react-native-svg';
 import KitchenOwlIcon from '@/components/KitchenOwlIcon';
 import IconPicker from '@/components/IconPicker';
 import { useDragDrop } from '@/components/DragDropContext';
+import { useHouseholdStore } from '@/store/householdStore';
+import { useAuthStore } from '@/store/authStore';
+import { parseItemInput } from '@/utils/parseItemInput';
 import { Colors, FontSize, Radii, Spacing } from '@/theme';
 import type { LocalItem } from '@/db/items';
 
@@ -150,7 +154,7 @@ export type SwipeableItemHandlers = {
   onToggleDone: (localId: string) => void;
   onToggleImportant: (localId: string) => void;
   onDelete: (localId: string) => void;
-  onSave: (localId: string, name: string, iconKey: string | null) => void;
+  onSave: (localId: string, name: string, description: string, iconKey: string | null) => void;
   editingId: string | null;
   setEditingId: (id: string | null) => void;
 };
@@ -177,8 +181,8 @@ export default function SwipeableItem({
     return (
       <EditRow
         item={item}
-        onSave={(name, iconKey) => {
-          onSave(item.localId, name, iconKey);
+        onSave={(name, description, iconKey) => {
+          onSave(item.localId, name, description, iconKey);
           setEditingId(null);
         }}
         onCancel={() => setEditingId(null)}
@@ -201,15 +205,30 @@ export default function SwipeableItem({
 
 type EditRowProps = {
   item: LocalItem;
-  onSave: (name: string, iconKey: string | null) => void;
+  onSave: (name: string, description: string, iconKey: string | null) => void;
   onCancel: () => void;
 };
 
 function EditRow({ item, onSave, onCancel }: EditRowProps) {
-  const [name, setName] = useState(item.name);
+  // Show the full display text (description + name) so what the user sees in
+  // the list is exactly what they edit.
+  const initialText = item.description ? `${item.description} ${item.name}` : item.name;
+  const [editText, setEditText] = useState(initialText);
   const [iconKey, setIconKey] = useState<string | null>(item.iconKey);
   const [pickerVisible, setPickerVisible] = useState(false);
+  const [saving, setSaving] = useState(false);
   const inputRef = useRef<TextInput>(null);
+
+  // Build a searchFn for re-parsing (same pattern as AddItemBar).
+  const householdId = useHouseholdStore((s) => s.selectedHousehold?.id ?? null);
+  const shoppingListsApi = useAuthStore((s) => s.shoppingListsApi);
+  const searchFn = useMemo(
+    () =>
+      householdId && shoppingListsApi
+        ? (query: string) => shoppingListsApi.searchItems(householdId, query)
+        : null,
+    [householdId, shoppingListsApi]
+  );
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -218,9 +237,26 @@ function EditRow({ item, onSave, onCancel }: EditRowProps) {
     return () => clearTimeout(timer);
   }, []);
 
-  function handleSave() {
-    if (name.trim()) onSave(name.trim(), iconKey);
-    else onCancel();
+  async function handleSave() {
+    const trimmed = editText.trim();
+    if (!trimmed) { onCancel(); return; }
+
+    if (!searchFn) {
+      // Offline / unauthenticated — save raw text as name, no description.
+      onSave(trimmed, '', iconKey);
+      return;
+    }
+
+    // Re-parse using the same progressive-token-strip algorithm as AddItemBar
+    // so that edits like "500g → 1kg Beef Mince" correctly update description.
+    setSaving(true);
+    try {
+      const result = await parseItemInput(trimmed, searchFn);
+      // Keep the user-selected icon rather than overwriting with the parse result.
+      onSave(result.name, result.description, iconKey);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -230,6 +266,7 @@ function EditRow({ item, onSave, onCancel }: EditRowProps) {
           style={editStyles.iconBtn}
           onPress={() => setPickerVisible(true)}
           activeOpacity={0.7}
+          disabled={saving}
         >
           <KitchenOwlIcon iconKey={iconKey} size={24} style={{ color: Colors.mint }} />
           <View style={editStyles.chevronBadge}>
@@ -240,18 +277,27 @@ function EditRow({ item, onSave, onCancel }: EditRowProps) {
         <TextInput
           ref={inputRef}
           style={editStyles.input}
-          value={name}
-          onChangeText={setName}
+          value={editText}
+          onChangeText={setEditText}
           onSubmitEditing={handleSave}
           onKeyPress={({ nativeEvent }) => {
             if (nativeEvent.key === 'Escape') onCancel();
           }}
           returnKeyType="done"
           selectTextOnFocus
+          editable={!saving}
         />
 
-        <TouchableOpacity style={editStyles.confirmBtn} onPress={handleSave} activeOpacity={0.8}>
-          <IconCheck color={Colors.white} size={16} />
+        <TouchableOpacity
+          style={editStyles.confirmBtn}
+          onPress={handleSave}
+          activeOpacity={0.8}
+          disabled={saving}
+        >
+          {saving
+            ? <ActivityIndicator size="small" color={Colors.white} />
+            : <IconCheck color={Colors.white} size={16} />
+          }
         </TouchableOpacity>
       </View>
 
@@ -448,7 +494,7 @@ function SwipeRowContent({
             style={[rowStyles.name, item.isChecked && rowStyles.nameDone]}
             numberOfLines={1}
           >
-            {item.name}
+            {item.description ? `${item.description} ${item.name}` : item.name}
           </Text>
 
           {item.isDirty && !item.isChecked && <View style={rowStyles.dirtyDot} />}

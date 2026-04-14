@@ -382,7 +382,7 @@ describe('saveItem', () => {
   it('enqueues UPDATE_ITEM when item has a serverId', async () => {
     (itemsDb.getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: 100, serverCategoryId: null }));
 
-    await useListDetailStore.getState().saveItem('item-1', 'Almond Milk', 'milk_carton');
+    await useListDetailStore.getState().saveItem('item-1', 'Almond Milk', '', 'milk_carton');
 
     expect(syncManager.enqueue).toHaveBeenCalledWith(
       expect.objectContaining({ opType: 'UPDATE_ITEM', itemServerId: 100, name: 'Almond Milk' }),
@@ -390,10 +390,32 @@ describe('saveItem', () => {
     );
   });
 
+  it('also enqueues UPDATE_ITEM_DESC to sync the per-list description', async () => {
+    (itemsDb.getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: 100, isImportant: false }));
+
+    await useListDetailStore.getState().saveItem('item-1', 'Beef Mince', '500g', 'beef');
+
+    expect(syncManager.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({ opType: 'UPDATE_ITEM_DESC', itemServerId: 100, description: '500g' }),
+      'list-local-1'
+    );
+  });
+
+  it('prepends ! to description in UPDATE_ITEM_DESC when item is important', async () => {
+    (itemsDb.getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: 100, isImportant: true }));
+
+    await useListDetailStore.getState().saveItem('item-1', 'Beef Mince', '500g', 'beef');
+
+    expect(syncManager.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({ opType: 'UPDATE_ITEM_DESC', description: '!500g' }),
+      'list-local-1'
+    );
+  });
+
   it('skips enqueue when item has no serverId', async () => {
     (itemsDb.getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: null }));
 
-    await useListDetailStore.getState().saveItem('item-1', 'New Name', null);
+    await useListDetailStore.getState().saveItem('item-1', 'New Name', '', null);
 
     expect(syncManager.enqueue).not.toHaveBeenCalled();
   });
@@ -401,7 +423,7 @@ describe('saveItem', () => {
   it('updates item in state', async () => {
     (itemsDb.getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: null }));
 
-    await useListDetailStore.getState().saveItem('item-1', 'Butter', 'butter');
+    await useListDetailStore.getState().saveItem('item-1', 'Butter', '', 'butter');
 
     expect(useListDetailStore.getState().items[0].name).toBe('Butter');
     expect(useListDetailStore.getState().items[0].iconKey).toBe('butter');
