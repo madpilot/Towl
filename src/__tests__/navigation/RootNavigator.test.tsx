@@ -97,6 +97,13 @@ jest.mock('@/screens/settings/HouseholdItemsScreen', () => {
   return HouseholdItemsScreen;
 });
 
+jest.mock('@/screens/settings/HouseholdCategoriesScreen', () => {
+  const React = require('react');
+  const { Text } = require('react-native');
+  function HouseholdCategoriesScreen() { return React.createElement(Text, null, 'HouseholdCategories'); }
+  return HouseholdCategoriesScreen;
+});
+
 import React from 'react';
 import { render, waitFor } from '@testing-library/react-native';
 import RootNavigator from '@/navigation/RootNavigator';

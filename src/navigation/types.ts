@@ -28,6 +28,7 @@ export type MainStackParamList = {
   Settings: undefined;
   HouseholdDetail: { householdId: number; householdName: string };
   HouseholdItems: { householdId: number; householdName: string };
+  HouseholdCategories: { householdId: number; householdName: string };
 };
 
 export type HouseholdPickerScreenProps = NativeStackScreenProps<MainStackParamList, 'HouseholdPicker'>;
@@ -35,3 +36,4 @@ export type ListDetailScreenProps = NativeStackScreenProps<MainStackParamList, '
 export type SettingsScreenProps = NativeStackScreenProps<MainStackParamList, 'Settings'>;
 export type HouseholdDetailScreenProps = NativeStackScreenProps<MainStackParamList, 'HouseholdDetail'>;
 export type HouseholdItemsScreenProps = NativeStackScreenProps<MainStackParamList, 'HouseholdItems'>;
+export type HouseholdCategoriesScreenProps = NativeStackScreenProps<MainStackParamList, 'HouseholdCategories'>;
