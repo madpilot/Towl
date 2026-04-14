@@ -223,7 +223,9 @@ export default function HouseholdCategoriesScreen({ navigation, route }: Househo
     try {
       const ordering = categories.length;
       const created = await householdsApi.createCategory(householdId, name.trim(), ordering);
-      setCategories((prev) => [...prev, created]);
+      // Override the server-echoed ordering with the value we sent — the server may
+      // return a different ordering value in its response.
+      setCategories((prev) => [...prev, { ...created, ordering }]);
       closeSheet();
     } catch (e: unknown) {
       Alert.alert('Error', e instanceof Error ? e.message : 'Failed to create category.');
