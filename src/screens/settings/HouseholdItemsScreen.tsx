@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   View,
   Text,
-  SectionList,
   TouchableOpacity,
   SafeAreaView,
   ActivityIndicator,
@@ -10,6 +9,8 @@ import {
   StyleSheet,
   TextInput,
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
+import type { FlashListRef } from '@shopify/flash-list';
 import Sheet from '@/components/Sheet';
 import IconPicker from '@/components/IconPicker';
 import KitchenOwlIcon from '@/components/KitchenOwlIcon';
@@ -25,13 +26,10 @@ import type { HouseholdItem, HouseholdCategory } from '@/api/households';
 type SheetMode = 'new' | 'edit' | 'pick-category' | null;
 type ActionKind = 'create' | 'update' | 'delete' | null;
 type ItemSection = { title: string; data: HouseholdItem[] };
+type ListRow = { kind: 'header'; title: string } | { kind: 'item'; item: HouseholdItem };
 
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'.split('');
 
-// Row heights must match the StyleSheet values below so getItemLayout is accurate.
-const ITEM_HEIGHT = 50;    // paddingVertical 14×2 + icon/text content ~22px
-const HEADER_HEIGHT = 34;  // paddingTop 12 + text ~18 + paddingBottom 4
-const SEP_HEIGHT = 1;      // Sep component
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -80,8 +78,7 @@ export default function HouseholdItemsScreen({ navigation, route }: HouseholdIte
   // Direction to return to after category / icon picker closes
   const backMode: 'new' | 'edit' = editingItem ? 'edit' : 'new';
 
-  // SectionList infers ItemSection from the sections prop — no explicit generic needed on the ref
-  const sectionListRef = useRef<SectionList>(null);
+  const flashListRef = useRef<FlashListRef<ListRow>>(null);
 
   // ── Load ───────────────────────────────────────────────────────────────────
 
@@ -112,6 +109,27 @@ export default function HouseholdItemsScreen({ navigation, route }: HouseholdIte
   }, [items, query]);
 
   const sections = useMemo(() => buildSections(filteredItems), [filteredItems]);
+
+  // Flat array for FlashList — section headers interleaved as regular rows
+  const flatData = useMemo<ListRow[]>(() => {
+    const rows: ListRow[] = [];
+    for (const section of sections) {
+      rows.push({ kind: 'header', title: section.title });
+      for (const item of section.data) {
+        rows.push({ kind: 'item', item });
+      }
+    }
+    return rows;
+  }, [sections]);
+
+  // Indices of header rows passed to FlashList so it pins them natively while scrolling
+  const stickyHeaderIndices = useMemo(
+    () => flatData.reduce<number[]>((acc, row, idx) => {
+      if (row.kind === 'header') acc.push(idx);
+      return acc;
+    }, []),
+    [flatData]
+  );
 
   // ── Sheet helpers ──────────────────────────────────────────────────────────
 
@@ -196,40 +214,6 @@ export default function HouseholdItemsScreen({ navigation, route }: HouseholdIte
     }
   }
 
-  // ── getItemLayout ──────────────────────────────────────────────────────────
-  // Provides pre-computed item positions so scrollToLocation works for offscreen
-  // items without throwing the "scrollToIndex without getItemLayout" invariant.
-
-  const getItemLayout = useCallback(
-    (_data: unknown, index: number): { length: number; offset: number; index: number } => {
-      let offset = 0;
-      let flatIndex = 0;
-
-      for (const section of sections) {
-        // Section header occupies one flat index
-        if (flatIndex === index) {
-          return { length: HEADER_HEIGHT, offset, index };
-        }
-        offset += HEADER_HEIGHT;
-        flatIndex++;
-
-        // Data items
-        for (let i = 0; i < section.data.length; i++) {
-          // Separator is rendered between items, not after the last one
-          const len = ITEM_HEIGHT + (i < section.data.length - 1 ? SEP_HEIGHT : 0);
-          if (flatIndex === index) {
-            return { length: len, offset, index };
-          }
-          offset += len;
-          flatIndex++;
-        }
-      }
-
-      return { length: ITEM_HEIGHT, offset, index };
-    },
-    [sections]
-  );
-
   // ── Section index bar ─────────────────────────────────────────────────────
   // Responds to touch-and-drag so the user can slide their finger across all
   // letters without lifting — matching the native contacts-list behaviour.
@@ -257,15 +241,9 @@ export default function HouseholdItemsScreen({ navigation, route }: HouseholdIte
   }
 
   function scrollToLetter(letter: string) {
-    const sectionIndex = sections.findIndex((s) => s.title === letter);
-    if (sectionIndex === -1 || !sectionListRef.current) return;
-    sectionListRef.current.scrollToLocation({
-      sectionIndex,
-      itemIndex: 0,
-      animated: false,
-      // Push the first item below the sticky header so it isn't hidden underneath it.
-      viewOffset: HEADER_HEIGHT,
-    });
+    const idx = flatData.findIndex((row) => row.kind === 'header' && row.title === letter);
+    if (idx === -1 || !flashListRef.current) return;
+    flashListRef.current.scrollToIndex({ index: idx, animated: false });
   }
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -304,40 +282,49 @@ export default function HouseholdItemsScreen({ navigation, route }: HouseholdIte
         </View>
       ) : (
         <View style={styles.listWrap}>
-          <SectionList
-            ref={sectionListRef}
-            sections={sections}
-            keyExtractor={(item: HouseholdItem) => String(item.id)}
-            getItemLayout={getItemLayout}
-            onScrollToIndexFailed={() => { /* getItemLayout prevents this; no-op fallback */ }}
-            renderItem={({ item }: { item: HouseholdItem }) => (
-              <TouchableOpacity
-                style={styles.itemRow}
-                onPress={() => openEdit(item)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.iconWrap}>
-                  {item.icon ? (
-                    <KitchenOwlIcon iconKey={item.icon} size={22} style={{ color: Colors.mint }} />
-                  ) : (
-                    <View style={styles.iconPlaceholder} />
-                  )}
-                </View>
-                <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
-                {item.category ? (
-                  <Text style={styles.itemCategory} numberOfLines={1}>{item.category.name}</Text>
-                ) : null}
-                <Text style={styles.itemChevron}>›</Text>
-              </TouchableOpacity>
-            )}
-            renderSectionHeader={({ section }) => (
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionHeaderText}>{section.title}</Text>
-              </View>
-            )}
-            ItemSeparatorComponent={() => <Sep />}
-            stickySectionHeadersEnabled={true}
-            contentContainerStyle={filteredItems.length === 0 ? styles.emptyContainer : styles.listContent}
+          <FlashList
+            ref={flashListRef}
+            data={flatData}
+            keyExtractor={(row: ListRow) =>
+              row.kind === 'header' ? `header-${row.title}` : `item-${row.item.id}`
+            }
+            stickyHeaderIndices={stickyHeaderIndices}
+            getItemType={(row: ListRow) => row.kind}
+            renderItem={({ item: row }: { item: ListRow }) => {
+              if (row.kind === 'header') {
+                return (
+                  <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionHeaderText}>{row.title}</Text>
+                  </View>
+                );
+              }
+              const { item } = row;
+              return (
+                <TouchableOpacity
+                  style={styles.itemRow}
+                  onPress={() => openEdit(item)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.iconWrap}>
+                    {item.icon ? (
+                      <KitchenOwlIcon iconKey={item.icon} size={22} style={{ color: Colors.mint }} />
+                    ) : (
+                      <View style={styles.iconPlaceholder} />
+                    )}
+                  </View>
+                  <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
+                  {item.category ? (
+                    <Text style={styles.itemCategory} numberOfLines={1}>{item.category.name}</Text>
+                  ) : null}
+                  <Text style={styles.itemChevron}>›</Text>
+                </TouchableOpacity>
+              );
+            }}
+            ItemSeparatorComponent={({ leadingItem, trailingItem }: { leadingItem?: ListRow; trailingItem?: ListRow }) => {
+              if (leadingItem?.kind !== 'item' || trailingItem?.kind !== 'item') return null;
+              return <Sep />;
+            }}
+            contentContainerStyle={styles.listContent}
             ListEmptyComponent={
               <View style={styles.emptyRow}>
                 <Text style={styles.emptyText}>
@@ -549,7 +536,6 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   listWrap: { flex: 1 },
   listContent: { paddingBottom: 100 },
-  emptyContainer: { flex: 1, paddingBottom: 100 },
   emptyRow: { padding: Spacing.xl, alignItems: 'center' },
   emptyText: { fontSize: FontSize.body, color: Colors.textFaded, textAlign: 'center' },
 
