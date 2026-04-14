@@ -255,7 +255,7 @@ export default function HouseholdItemsScreen({ navigation, route }: HouseholdIte
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Text style={styles.backChevron}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.title} numberOfLines={1}>{householdName} — Items</Text>
+        <Text style={styles.title} numberOfLines={1}>{householdName}: Items</Text>
         <TouchableOpacity onPress={openNew} style={styles.addBtn}>
           <Text style={styles.addLabel}>+ New</Text>
         </TouchableOpacity>
