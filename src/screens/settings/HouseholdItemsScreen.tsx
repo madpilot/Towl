@@ -28,6 +28,11 @@ type ItemSection = { title: string; data: HouseholdItem[] };
 
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'.split('');
 
+// Row heights must match the StyleSheet values below so getItemLayout is accurate.
+const ITEM_HEIGHT = 50;    // paddingVertical 14×2 + icon/text content ~22px
+const HEADER_HEIGHT = 34;  // paddingTop 12 + text ~18 + paddingBottom 4
+const SEP_HEIGHT = 1;      // Sep component
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const buildSections = (items: HouseholdItem[]): ItemSection[] => {
@@ -191,6 +196,40 @@ export default function HouseholdItemsScreen({ navigation, route }: HouseholdIte
     }
   }
 
+  // ── getItemLayout ──────────────────────────────────────────────────────────
+  // Provides pre-computed item positions so scrollToLocation works for offscreen
+  // items without throwing the "scrollToIndex without getItemLayout" invariant.
+
+  const getItemLayout = useCallback(
+    (_data: unknown, index: number): { length: number; offset: number; index: number } => {
+      let offset = 0;
+      let flatIndex = 0;
+
+      for (const section of sections) {
+        // Section header occupies one flat index
+        if (flatIndex === index) {
+          return { length: HEADER_HEIGHT, offset, index };
+        }
+        offset += HEADER_HEIGHT;
+        flatIndex++;
+
+        // Data items
+        for (let i = 0; i < section.data.length; i++) {
+          // Separator is rendered between items, not after the last one
+          const len = ITEM_HEIGHT + (i < section.data.length - 1 ? SEP_HEIGHT : 0);
+          if (flatIndex === index) {
+            return { length: len, offset, index };
+          }
+          offset += len;
+          flatIndex++;
+        }
+      }
+
+      return { length: ITEM_HEIGHT, offset, index };
+    },
+    [sections]
+  );
+
   // ── Alphabet scrubber ──────────────────────────────────────────────────────
 
   function scrollToLetter(letter: string) {
@@ -243,6 +282,8 @@ export default function HouseholdItemsScreen({ navigation, route }: HouseholdIte
             ref={sectionListRef}
             sections={sections}
             keyExtractor={(item: HouseholdItem) => String(item.id)}
+            getItemLayout={getItemLayout}
+            onScrollToIndexFailed={() => { /* getItemLayout prevents this; no-op fallback */ }}
             renderItem={({ item }: { item: HouseholdItem }) => (
               <TouchableOpacity
                 style={styles.itemRow}
