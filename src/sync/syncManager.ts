@@ -120,7 +120,7 @@ async function dispatchPayload(api: ShoppingListsApi, payload: SyncPayload): Pro
 
     case 'REMOVE_ITEM': {
       try {
-        await api.deleteItem(payload.itemServerId);
+        await api.removeItemFromList(payload.listServerId, payload.itemServerId, payload.removedAt);
       } catch (err) {
         if (isAxiosError(err) && err.response?.status === 404) break;
         throw err;
@@ -130,10 +130,10 @@ async function dispatchPayload(api: ShoppingListsApi, payload: SyncPayload): Pro
     }
 
     case 'CHECK_ITEM': {
-      // DELETE the item from the server but keep it in the local trolley —
+      // Remove the item from the server list but keep it in the local trolley —
       // it will be cleared by the user or by the 4-hour expiry.
       try {
-        await api.deleteItem(payload.itemServerId);
+        await api.removeItemFromList(payload.listServerId, payload.itemServerId, payload.removedAt);
       } catch (err) {
         if (isAxiosError(err) && err.response?.status === 404) break;
         throw err;

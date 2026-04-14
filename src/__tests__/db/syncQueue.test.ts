@@ -69,6 +69,7 @@ describe('syncQueue', () => {
         listServerId: 42,
         itemServerId: 7,
         itemLocalId: 'local-item-2',
+        removedAt: 1700000000000,
       };
 
       const op = await enqueue(payload);
@@ -168,12 +169,14 @@ describe('syncQueue', () => {
         listServerId: 1,
         itemServerId: 99,
         itemLocalId: 'local-item-1',
+        removedAt: 1700000000000,
       });
       expect(op.payload.opType).toBe('CHECK_ITEM');
       expect(op.payload).toMatchObject({
         listServerId: 1,
         itemServerId: 99,
         itemLocalId: 'local-item-1',
+        removedAt: 1700000000000,
       });
     });
 
@@ -184,6 +187,7 @@ describe('syncQueue', () => {
         listServerId: 5,
         itemServerId: 42,
         itemLocalId: 'item-abc',
+        removedAt: 1700000000000,
       };
       mockDb.getAllAsync.mockResolvedValueOnce([
         { id: 'q-id', payload: JSON.stringify(payload), list_local_id: 'l1', created_at: 1000, attempts: 0 },
@@ -206,7 +210,7 @@ describe('syncQueue', () => {
 
     it('removes matching CHECK_ITEM op and returns true', async () => {
       const { removePendingCheckItem } = getModule();
-      const payload = { opType: 'CHECK_ITEM', listServerId: 1, itemServerId: 2, itemLocalId: 'item-abc' };
+      const payload = { opType: 'CHECK_ITEM', listServerId: 1, itemServerId: 2, itemLocalId: 'item-abc', removedAt: 1700000000000 };
       mockDb.getAllAsync.mockResolvedValueOnce([
         { id: 'op-1', payload: JSON.stringify(payload), list_local_id: null, created_at: 1000, attempts: 0 },
       ]);
@@ -218,7 +222,7 @@ describe('syncQueue', () => {
 
     it('does not remove ops for different items', async () => {
       const { removePendingCheckItem } = getModule();
-      const payload = { opType: 'CHECK_ITEM', listServerId: 1, itemServerId: 2, itemLocalId: 'item-other' };
+      const payload = { opType: 'CHECK_ITEM', listServerId: 1, itemServerId: 2, itemLocalId: 'item-other', removedAt: 1700000000000 };
       mockDb.getAllAsync.mockResolvedValueOnce([
         { id: 'op-2', payload: JSON.stringify(payload), list_local_id: null, created_at: 1000, attempts: 0 },
       ]);

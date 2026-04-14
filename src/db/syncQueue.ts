@@ -19,6 +19,7 @@ export const RemoveItemPayloadSchema = z.object({
   listServerId: z.number(),
   itemServerId: z.number(),
   itemLocalId: z.string(),
+  removedAt: z.number(),
 });
 export type RemoveItemPayload = z.infer<typeof RemoveItemPayloadSchema>;
 
@@ -69,6 +70,7 @@ export const CheckItemPayloadSchema = z.object({
   listServerId: z.number(),
   itemServerId: z.number(),
   itemLocalId: z.string(),
+  removedAt: z.number(),
 });
 export type CheckItemPayload = z.infer<typeof CheckItemPayloadSchema>;
 
