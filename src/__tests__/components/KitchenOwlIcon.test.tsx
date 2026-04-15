@@ -4,7 +4,7 @@ import KitchenOwlIcon from '@/components/KitchenOwlIcon';
 
 jest.mock('@/icons/kitchenowlIcons', () => ({
   getIconChar: jest.fn((key: string | null | undefined) => {
-    if (key === 'apple') return '\u0103'; // fake codepoint char
+    if (key === 'apple') { return '\u0103'; } // fake codepoint char
     return null;
   }),
   FONT_FAMILY: 'Items',

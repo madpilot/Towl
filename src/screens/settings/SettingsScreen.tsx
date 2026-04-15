@@ -11,8 +11,13 @@ import {
   Alert,
   StyleSheet,
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
-import * as SecureStore from 'expo-secure-store';
+import {
+  requestCameraPermissionsAsync,
+  requestMediaLibraryPermissionsAsync,
+  launchCameraAsync,
+  launchImageLibraryAsync,
+} from 'expo-image-picker';
+import { getItemAsync, setItemAsync, deleteItemAsync } from 'expo-secure-store';
 import Sheet from '@/components/Sheet';
 import { logout } from '@/auth/authManager';
 import { useAuthStore } from '@/store/authStore';
@@ -348,7 +353,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
 
   useEffect(() => {
-    SecureStore.getItemAsync(SECURE_STORE_KEYS.AVATAR_URI)
+    getItemAsync(SECURE_STORE_KEYS.AVATAR_URI)
       .then((uri) => { if (uri) setAvatarUri(uri); })
       .catch(() => {});
   }, []);
@@ -358,12 +363,12 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
       {
         text: 'Take photo',
         onPress: async () => {
-          const perm = await ImagePicker.requestCameraPermissionsAsync();
+          const perm = await requestCameraPermissionsAsync();
           if (!perm.granted) {
             Alert.alert('Permission required', 'Camera access is needed to take a photo.');
             return;
           }
-          const result = await ImagePicker.launchCameraAsync({
+          const result = await launchCameraAsync({
             allowsEditing: true,
             aspect: [1, 1],
             quality: 0.7,
@@ -371,19 +376,19 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
           if (!result.canceled && result.assets[0]) {
             const uri = result.assets[0].uri;
             setAvatarUri(uri);
-            await SecureStore.setItemAsync(SECURE_STORE_KEYS.AVATAR_URI, uri);
+            await setItemAsync(SECURE_STORE_KEYS.AVATAR_URI, uri);
           }
         },
       },
       {
         text: 'Choose from library',
         onPress: async () => {
-          const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+          const perm = await requestMediaLibraryPermissionsAsync();
           if (!perm.granted) {
             Alert.alert('Permission required', 'Photo library access is needed to choose a photo.');
             return;
           }
-          const result = await ImagePicker.launchImageLibraryAsync({
+          const result = await launchImageLibraryAsync({
             allowsEditing: true,
             aspect: [1, 1],
             quality: 0.7,
@@ -391,7 +396,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
           if (!result.canceled && result.assets[0]) {
             const uri = result.assets[0].uri;
             setAvatarUri(uri);
-            await SecureStore.setItemAsync(SECURE_STORE_KEYS.AVATAR_URI, uri);
+            await setItemAsync(SECURE_STORE_KEYS.AVATAR_URI, uri);
           }
         },
       },
@@ -401,7 +406,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
             style: 'destructive' as const,
             onPress: async () => {
               setAvatarUri(null);
-              await SecureStore.deleteItemAsync(SECURE_STORE_KEYS.AVATAR_URI);
+              await deleteItemAsync(SECURE_STORE_KEYS.AVATAR_URI);
             },
           }]
         : []),

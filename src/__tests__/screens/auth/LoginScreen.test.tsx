@@ -26,8 +26,8 @@ jest.mock('@/auth/authManager', () => ({
 import React from 'react';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import LoginScreen from '@/screens/auth/LoginScreen';
-import * as authApi from '@/api/auth';
-import * as authManager from '@/auth/authManager';
+import { login, isAxiosAuthError } from '@/api/auth';
+import { onLoginSuccess } from '@/auth/authManager';
 
 const SERVER_URL = 'https://kitchen.local';
 
@@ -56,7 +56,7 @@ describe('LoginScreen', () => {
       fireEvent.press(getByTestId('login-button'));
     });
     expect(getByText('Please enter your username or email.')).toBeTruthy();
-    expect(authApi.login).not.toHaveBeenCalled();
+    expect(login).not.toHaveBeenCalled();
   });
 
   it('shows error when password is empty', async () => {
@@ -76,8 +76,8 @@ describe('LoginScreen', () => {
       refresh_token: 'ref',
       user: { id: 1, name: 'Alice', username: 'alice' },
     };
-    (authApi.login as jest.Mock).mockResolvedValue(fakeRes);
-    (authManager.onLoginSuccess as jest.Mock).mockResolvedValue(undefined);
+    (login as jest.Mock).mockResolvedValue(fakeRes);
+    (onLoginSuccess as jest.Mock).mockResolvedValue(undefined);
 
     const { getByPlaceholderText, getByTestId } = render(
       <LoginScreen {...baseProps} />,
@@ -89,7 +89,7 @@ describe('LoginScreen', () => {
     });
 
     await waitFor(() =>
-      expect(authManager.onLoginSuccess).toHaveBeenCalledWith(
+      expect(onLoginSuccess).toHaveBeenCalledWith(
         SERVER_URL,
         'acc',
         'ref',
@@ -100,8 +100,8 @@ describe('LoginScreen', () => {
 
   it('shows invalid credentials error on 401', async () => {
     const axiosErr = { response: { status: 401 } };
-    (authApi.login as jest.Mock).mockRejectedValue(axiosErr);
-    (authApi.isAxiosAuthError as unknown as jest.Mock).mockReturnValue(true);
+    (login as jest.Mock).mockRejectedValue(axiosErr);
+    (isAxiosAuthError as unknown as jest.Mock).mockReturnValue(true);
 
     const { getByText, getByPlaceholderText, getByTestId } = render(
       <LoginScreen {...baseProps} />,
@@ -118,8 +118,8 @@ describe('LoginScreen', () => {
   });
 
   it('shows network error on non-401 failure', async () => {
-    (authApi.login as jest.Mock).mockRejectedValue(new Error('Network Error'));
-    (authApi.isAxiosAuthError as unknown as jest.Mock).mockReturnValue(false);
+    (login as jest.Mock).mockRejectedValue(new Error('Network Error'));
+    (isAxiosAuthError as unknown as jest.Mock).mockReturnValue(false);
 
     const { getByText, getByPlaceholderText, getByTestId } = render(
       <LoginScreen {...baseProps} />,

@@ -25,7 +25,7 @@ jest.mock('@/auth/tokenStore', () => ({
 import React from 'react';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import ServerSetupScreen from '@/screens/auth/ServerSetupScreen';
-import * as authApi from '@/api/auth';
+import { testConnection } from '@/api/auth';
 import { TokenStore } from '@/auth/tokenStore';
 
 const mockNavigate = jest.fn();
@@ -71,7 +71,7 @@ describe('ServerSetupScreen', () => {
   });
 
   it('shows error when server is unreachable', async () => {
-    (authApi.testConnection as jest.Mock).mockResolvedValue(false);
+    (testConnection as jest.Mock).mockResolvedValue(false);
     const { getByTestId, getByText, getByPlaceholderText } = render(
       <ServerSetupScreen {...baseProps} />,
     );
@@ -90,7 +90,7 @@ describe('ServerSetupScreen', () => {
   });
 
   it('saves URL and navigates to Login on success', async () => {
-    (authApi.testConnection as jest.Mock).mockResolvedValue(true);
+    (testConnection as jest.Mock).mockResolvedValue(true);
     (TokenStore.instance.saveServerUrl as jest.Mock).mockResolvedValue(undefined);
 
     const { getByTestId, getByPlaceholderText } = render(

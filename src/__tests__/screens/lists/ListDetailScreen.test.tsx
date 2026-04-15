@@ -100,13 +100,17 @@ jest.mock('@/components/AddItemBar', () => {
 
 import React from 'react';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
-import * as SecureStore from 'expo-secure-store';
+import { getItemAsync, setItemAsync } from 'expo-secure-store';
 import { useSyncStore } from '@/store/syncStore';
 import ListDetailScreen from '@/screens/lists/ListDetailScreen';
-import * as itemsDb from '@/db/items';
-import * as listsDb from '@/db/lists';
-import * as syncManager from '@/sync/syncManager';
-import * as historyDb from '@/db/history';
+import {
+  getItemsForList, getItem, addItemLocally, softDeleteItem, hardDeleteItem,
+  upsertItemFromServer, removeItemsDeletedOnServer, toggleItemChecked,
+  toggleItemImportant, updateItemNameAndIcon,
+} from '@/db/items';
+import { getAllLists } from '@/db/lists';
+import { enqueue } from '@/sync/syncManager';
+import { recordItemUsed } from '@/db/history';
 import type { LocalItem } from '@/db/items';
 import type { LocalList } from '@/db/lists';
 
@@ -150,21 +154,21 @@ function makeItem(overrides: Partial<LocalItem> = {}): LocalItem {
 beforeEach(() => {
   jest.clearAllMocks();
   mockSyncVersion = 0;
-  (SecureStore.getItemAsync as jest.Mock).mockResolvedValue(null);
-  (SecureStore.setItemAsync as jest.Mock).mockResolvedValue(undefined);
-  (itemsDb.getItemsForList as jest.Mock).mockResolvedValue([]);
-  (itemsDb.getItem as jest.Mock).mockResolvedValue(makeItem());
-  (itemsDb.addItemLocally as jest.Mock).mockResolvedValue(makeItem({ localId: 'new-item' }));
-  (itemsDb.softDeleteItem as jest.Mock).mockResolvedValue(undefined);
-  (itemsDb.hardDeleteItem as jest.Mock).mockResolvedValue(undefined);
-  (itemsDb.upsertItemFromServer as jest.Mock).mockResolvedValue(makeItem());
-  (itemsDb.removeItemsDeletedOnServer as jest.Mock).mockResolvedValue(undefined);
-  (itemsDb.toggleItemChecked as jest.Mock).mockResolvedValue(undefined);
-  (itemsDb.toggleItemImportant as jest.Mock).mockResolvedValue(undefined);
-  (itemsDb.updateItemNameAndIcon as jest.Mock).mockResolvedValue(undefined);
-  (listsDb.getAllLists as jest.Mock).mockResolvedValue([makeList()]);
-  (syncManager.enqueue as jest.Mock).mockResolvedValue(undefined);
-  (historyDb.recordItemUsed as jest.Mock).mockResolvedValue(undefined);
+  (getItemAsync as jest.Mock).mockResolvedValue(null);
+  (setItemAsync as jest.Mock).mockResolvedValue(undefined);
+  (getItemsForList as jest.Mock).mockResolvedValue([]);
+  (getItem as jest.Mock).mockResolvedValue(makeItem());
+  (addItemLocally as jest.Mock).mockResolvedValue(makeItem({ localId: 'new-item' }));
+  (softDeleteItem as jest.Mock).mockResolvedValue(undefined);
+  (hardDeleteItem as jest.Mock).mockResolvedValue(undefined);
+  (upsertItemFromServer as jest.Mock).mockResolvedValue(makeItem());
+  (removeItemsDeletedOnServer as jest.Mock).mockResolvedValue(undefined);
+  (toggleItemChecked as jest.Mock).mockResolvedValue(undefined);
+  (toggleItemImportant as jest.Mock).mockResolvedValue(undefined);
+  (updateItemNameAndIcon as jest.Mock).mockResolvedValue(undefined);
+  (getAllLists as jest.Mock).mockResolvedValue([makeList()]);
+  (enqueue as jest.Mock).mockResolvedValue(undefined);
+  (recordItemUsed as jest.Mock).mockResolvedValue(undefined);
 });
 
 describe('ListDetailScreen', () => {
@@ -175,15 +179,15 @@ describe('ListDetailScreen', () => {
 
   it('restores the last selected list from SecureStore', async () => {
     const lists = [makeList(), makeList({ localId: 'list-local-2', name: 'Pharmacy' })];
-    (listsDb.getAllLists as jest.Mock).mockResolvedValue(lists);
-    (SecureStore.getItemAsync as jest.Mock).mockResolvedValue('list-local-2');
+    (getAllLists as jest.Mock).mockResolvedValue(lists);
+    (getItemAsync as jest.Mock).mockResolvedValue('list-local-2');
 
     const { getByText } = render(<ListDetailScreen {...baseProps} />);
     await waitFor(() => expect(getByText('Pharmacy')).toBeTruthy());
   });
 
   it('renders items from db', async () => {
-    (itemsDb.getItemsForList as jest.Mock).mockResolvedValue([
+    (getItemsForList as jest.Mock).mockResolvedValue([
       makeItem({ name: 'Milk' }),
       makeItem({ localId: 'item-2', name: 'Eggs', iconKey: 'eggs' }),
     ]);
@@ -203,11 +207,11 @@ describe('ListDetailScreen', () => {
     await act(async () => { fireEvent.press(getByTestId('add-item-submit')); });
 
     await waitFor(() => {
-      expect(itemsDb.addItemLocally).toHaveBeenCalledWith(
+      expect(addItemLocally).toHaveBeenCalledWith(
         'list-local-1', 'Bread', '', 'apple', 'Produce'
       );
-      expect(historyDb.recordItemUsed).toHaveBeenCalled();
-      expect(syncManager.enqueue).toHaveBeenCalledWith(
+      expect(recordItemUsed).toHaveBeenCalled();
+      expect(enqueue).toHaveBeenCalledWith(
         expect.objectContaining({ opType: 'ADD_ITEM', listServerId: 5 }),
         'list-local-1'
       );
@@ -215,7 +219,7 @@ describe('ListDetailScreen', () => {
   });
 
   it('does not enqueue sync op when list has no serverId', async () => {
-    (listsDb.getAllLists as jest.Mock).mockResolvedValue([
+    (getAllLists as jest.Mock).mockResolvedValue([
       makeList({ serverId: null }),
     ]);
 
@@ -225,14 +229,14 @@ describe('ListDetailScreen', () => {
     fireEvent.changeText(getByTestId('add-item-input'), 'Butter');
     await act(async () => { fireEvent.press(getByTestId('add-item-submit')); });
 
-    await waitFor(() => expect(itemsDb.addItemLocally).toHaveBeenCalled());
-    expect(syncManager.enqueue).not.toHaveBeenCalled();
+    await waitFor(() => expect(addItemLocally).toHaveBeenCalled());
+    expect(enqueue).not.toHaveBeenCalled();
   });
 
   it('reloads items from db when syncVersion increments', async () => {
     // syncVersion starts at 0; initial mount loads items once.
     const { rerender } = render(<ListDetailScreen {...baseProps} />);
-    await waitFor(() => expect(itemsDb.getItemsForList).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(getItemsForList).toHaveBeenCalledTimes(1));
 
     // Simulate a completed sync pass by bumping syncVersion.
     mockSyncVersion = 1;
@@ -241,17 +245,17 @@ describe('ListDetailScreen', () => {
     );
     rerender(<ListDetailScreen {...baseProps} />);
 
-    await waitFor(() => expect(itemsDb.getItemsForList).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(getItemsForList).toHaveBeenCalledTimes(2));
   });
 
   it('enqueues UPDATE_ITEM with fresh serverId read from db on save', async () => {
     // Item starts with serverId: null in state (newly added, not yet synced).
     // After editing, handleSave reads fresh from DB which has the real serverId.
-    (itemsDb.getItemsForList as jest.Mock).mockResolvedValue([
+    (getItemsForList as jest.Mock).mockResolvedValue([
       makeItem({ localId: 'item-new', serverId: null, isDirty: true }),
     ]);
     // DB read returns the now-synced item with a real serverId.
-    (itemsDb.getItem as jest.Mock).mockResolvedValue(makeItem({ localId: 'item-new', serverId: 42 }));
+    (getItem as jest.Mock).mockResolvedValue(makeItem({ localId: 'item-new', serverId: 42 }));
 
     // SwipeableItem edit flow is complex to exercise via testing-library, so
     // we test the handleSave path by directly invoking it through the component's
@@ -260,7 +264,7 @@ describe('ListDetailScreen', () => {
     // The easiest approach is to confirm the mock wiring; functional tests of
     // the full swipe→edit→save flow are covered in SwipeableItem.test.tsx.
     // Here we verify the contract: handleSave reads DB, not stale state.
-    expect(itemsDb.updateItemNameAndIcon).not.toHaveBeenCalled();
+    expect(updateItemNameAndIcon).not.toHaveBeenCalled();
     // Render the screen and confirm it loads without error.
     const { getByText } = render(<ListDetailScreen {...baseProps} />);
     await waitFor(() => expect(getByText('Groceries')).toBeTruthy());
@@ -276,7 +280,7 @@ describe('ListDetailScreen', () => {
     render(<ListDetailScreen {...baseProps} />);
 
     await waitFor(() =>
-      expect(itemsDb.removeItemsDeletedOnServer).toHaveBeenCalledWith(
+      expect(removeItemsDeletedOnServer).toHaveBeenCalledWith(
         'list-local-1',
         [99]
       )

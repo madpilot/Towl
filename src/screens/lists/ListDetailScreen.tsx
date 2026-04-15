@@ -10,10 +10,14 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
-import * as SecureStore from 'expo-secure-store';
-import * as itemsDb from '@/db/items';
-import * as listsDb from '@/db/lists';
-import * as syncManager from '@/sync/syncManager';
+import { getItemAsync, setItemAsync } from 'expo-secure-store';
+import {
+  getItemsForList, upsertItemFromServer, removeItemsDeletedOnServer,
+  getItem, softDeleteItem, hardDeleteItem, updateItemNameAndIcon,
+  addItemLocally, toggleItemChecked, toggleItemImportant,
+} from '@/db/items';
+import { getAllLists } from '@/db/lists';
+import { enqueue } from '@/sync/syncManager';
 import { useAuthStore } from '@/store/authStore';
 import { recordItemUsed } from '@/db/history';
 import { matchItem } from '@/data/foodMatcher';
@@ -44,8 +48,8 @@ function groupByCategory(items: LocalItem[]): { category: string; items: LocalIt
   for (const item of items) {
     const cat = item.category || 'Other';
     const existing = map.get(cat);
-    if (existing) existing.push(item);
-    else map.set(cat, [item]);
+    if (existing) { existing.push(item); }
+    else { map.set(cat, [item]); }
   }
   const ordered = CATEGORY_ORDER
     .filter((c) => map.has(c))
@@ -82,25 +86,25 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
   // ── Data loading ───────────────────────────────────────────────
 
   const loadItems = useCallback(async (localId: string) => {
-    const rows = await itemsDb.getItemsForList(localId);
+    const rows = await getItemsForList(localId);
     setItems(rows);
   }, []);
 
   const loadLists = useCallback(async () => {
-    const rows = await listsDb.getAllLists(householdId);
+    const rows = await getAllLists(householdId);
     setAllLists(rows);
     return rows;
   }, [householdId]);
 
   const syncItems = useCallback(async (localId: string, serverId: number | null) => {
-    if (serverId === null) return;
+    if (serverId === null) { return; }
     try {
       const serverLists = await shoppingListsApi?.getShoppingLists(householdId) ?? [];
       const apiList = serverLists.find((l) => l.id === serverId);
-      if (!apiList) return;
+      if (!apiList) { return; }
       for (const apiItem of apiList.items) {
         const match = matchItem(apiItem.icon ?? apiItem.name);
-        await itemsDb.upsertItemFromServer(
+        await upsertItemFromServer(
           apiItem.id,
           localId,
           apiItem.name,
@@ -114,7 +118,7 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
       }
       // Server is source of truth: remove local items that no longer exist on
       // the server (deleted via web or another device while we were offline).
-      await itemsDb.removeItemsDeletedOnServer(
+      await removeItemsDeletedOnServer(
         localId,
         apiList.items.map((i) => i.id)
       );
@@ -131,27 +135,27 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
   // and householdId-driven changes go through the list-switch flow, not re-bootstrap.
   const initializedRef = useRef(false);
   useEffect(() => {
-    if (initializedRef.current) return;
+    if (initializedRef.current) { return; }
     initializedRef.current = true;
 
     let active = true;
     async function bootstrap() {
       const lists = await loadLists();
       if (!active || lists.length === 0) {
-        if (active) setLoading(false);
+        if (active) { setLoading(false); }
         return;
       }
 
-      const lastId = await SecureStore.getItemAsync(SECURE_STORE_KEYS.LAST_LIST_LOCAL_ID);
+      const lastId = await getItemAsync(SECURE_STORE_KEYS.LAST_LIST_LOCAL_ID);
       const initial = (lastId ? lists.find((l) => l.localId === lastId) : null) ?? lists[0];
 
-      if (!active) return;
+      if (!active) { return; }
       setActiveLocalId(initial.localId);
       setActiveServerId(initial.serverId);
       setActiveName(initial.name);
 
       await loadItems(initial.localId);
-      if (active) setLoading(false);
+      if (active) { setLoading(false); }
       void syncItems(initial.localId, initial.serverId);
     }
     void bootstrap();
@@ -162,9 +166,9 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
   // Re-bootstrap when the selected household changes (user switched household).
   const prevHouseholdIdRef = useRef(householdId);
   useEffect(() => {
-    if (prevHouseholdIdRef.current === householdId) return;
+    if (prevHouseholdIdRef.current === householdId) { return; }
     prevHouseholdIdRef.current = householdId;
-    if (!householdId) return;
+    if (!householdId) { return; }
 
     setActiveLocalId(null);
     setActiveServerId(null);
@@ -190,13 +194,13 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
   // Only fires when syncVersion actually increments — guards against re-running
   // when activeLocalId or loadItems reference changes without a new sync pass.
   useEffect(() => {
-    if (syncVersion === lastSyncVersionRef.current) return;
+    if (syncVersion === lastSyncVersionRef.current) { return; }
     lastSyncVersionRef.current = syncVersion;
-    if (activeLocalId) void loadItems(activeLocalId);
+    if (activeLocalId) { void loadItems(activeLocalId); }
   }, [syncVersion, activeLocalId, loadItems]);
 
   const handleRefresh = useCallback(async () => {
-    if (!activeLocalId) return;
+    if (!activeLocalId) { return; }
     setRefreshing(true);
     await syncItems(activeLocalId, activeServerId).catch(() => {});
     setRefreshing(false);
@@ -205,7 +209,7 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
   // ── List switching ─────────────────────────────────────────────
 
   async function persistLastList(localId: string) {
-    await SecureStore.setItemAsync(SECURE_STORE_KEYS.LAST_LIST_LOCAL_ID, localId);
+    await setItemAsync(SECURE_STORE_KEYS.LAST_LIST_LOCAL_ID, localId);
   }
 
   function switchToList(list: LocalList) {
@@ -225,9 +229,9 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
 
   const handleToggleDone = useCallback(async (localId: string) => {
     const item = items.find((i) => i.localId === localId);
-    if (!item) return;
+    if (!item) { return; }
     const next = !item.isChecked;
-    await itemsDb.toggleItemChecked(localId, next);
+    await toggleItemChecked(localId, next);
     setItems((prev) =>
       prev.map((i) => (i.localId === localId ? { ...i, isChecked: next } : i))
     );
@@ -235,9 +239,9 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
 
   const handleToggleImportant = useCallback(async (localId: string) => {
     const item = items.find((i) => i.localId === localId);
-    if (!item) return;
+    if (!item) { return; }
     const next = !item.isImportant;
-    await itemsDb.toggleItemImportant(localId, next);
+    await toggleItemImportant(localId, next);
     setItems((prev) =>
       prev.map((i) => (i.localId === localId ? { ...i, isImportant: next } : i))
     );
@@ -246,11 +250,11 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
   const handleDelete = useCallback(async (localId: string) => {
     // Soft-delete first, then read fresh from DB — state.serverId may be stale
     // if markItemSynced ran asynchronously since the item was added to state.
-    await itemsDb.softDeleteItem(localId);
-    const freshItem = await itemsDb.getItem(localId);
+    await softDeleteItem(localId);
+    const freshItem = await getItem(localId);
     if (freshItem?.serverId !== null && freshItem?.serverId !== undefined
         && activeServerId !== null && activeLocalId !== null) {
-      await syncManager.enqueue(
+      await enqueue(
         {
           opType: 'REMOVE_ITEM',
           listServerId: activeServerId,
@@ -260,16 +264,16 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
         activeLocalId
       );
     } else {
-      await itemsDb.hardDeleteItem(localId);
+      await hardDeleteItem(localId);
     }
     setItems((prev) => prev.filter((i) => i.localId !== localId));
   }, [activeLocalId, activeServerId]);
 
   const handleSave = useCallback(async (localId: string, name: string, iconKey: string | null) => {
-    await itemsDb.updateItemNameAndIcon(localId, name, iconKey);
+    await updateItemNameAndIcon(localId, name, iconKey);
     // Read fresh from DB — React state serverId may be stale if markItemSynced
     // ran asynchronously since the item was added to state.
-    const freshItem = await itemsDb.getItem(localId);
+    const freshItem = await getItem(localId);
     if (freshItem?.serverId !== null && freshItem?.serverId !== undefined
         && activeServerId !== null && activeLocalId !== null) {
       const category = freshItem.serverCategoryId !== null
@@ -279,7 +283,7 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
             ordering: freshItem.serverCategoryOrdering ?? 0,
           }
         : null;
-      await syncManager.enqueue(
+      await enqueue(
         {
           opType: 'UPDATE_ITEM',
           listServerId: activeServerId,
@@ -304,14 +308,14 @@ export default function ListDetailScreen({ navigation }: ListDetailScreenProps) 
     iconKey: string | null,
     category: string,
   ) => {
-    if (!activeLocalId) return;
+    if (!activeLocalId) { return; }
     const match = iconKey ? { iconKey, category } : matchItem(name);
-    const newItem = await itemsDb.addItemLocally(
+    const newItem = await addItemLocally(
       activeLocalId, name, description, match.iconKey, match.category
     );
     await recordItemUsed(name, match.iconKey, match.category);
     if (activeServerId !== null) {
-      await syncManager.enqueue(
+      await enqueue(
         {
           opType: 'ADD_ITEM',
           listServerId: activeServerId,
