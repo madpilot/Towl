@@ -167,7 +167,7 @@ export function CategoriesSection({ onDragScrollLock }: CategoriesSectionProps =
   const [saving, setSaving] = useState(false);
 
   async function handleCreate() {
-    if (!catName.trim()) return;
+    if (!catName.trim()) { return; }
     setSaving(true);
     try {
       await createCategory(catName.trim());
@@ -181,7 +181,7 @@ export function CategoriesSection({ onDragScrollLock }: CategoriesSectionProps =
   }
 
   async function handleUpdate() {
-    if (!catName.trim() || editingCatId === null) return;
+    if (!catName.trim() || editingCatId === null) { return; }
     setSaving(true);
     try {
       await updateCategory(editingCatId, catName.trim());
@@ -194,7 +194,7 @@ export function CategoriesSection({ onDragScrollLock }: CategoriesSectionProps =
   }
 
   async function handleDelete() {
-    if (editingCatId === null) return;
+    if (editingCatId === null) { return; }
     setSaving(true);
     try {
       await deleteCategory(editingCatId);

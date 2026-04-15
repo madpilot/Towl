@@ -169,6 +169,6 @@ export async function removePendingCheckItem(itemLocalId: string): Promise<boole
   const matching = ops.filter(
     (op) => op.payload.opType === 'CHECK_ITEM' && op.payload.itemLocalId === itemLocalId
   );
-  for (const op of matching) await remove(op.id);
+  for (const op of matching) { await remove(op.id); }
   return matching.length > 0;
 }

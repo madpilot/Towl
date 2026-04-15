@@ -53,11 +53,23 @@ jest.mock('@/store/authStore', () => ({
   },
 }));
 
-import * as SecureStore from 'expo-secure-store';
-import * as itemsDb from '@/db/items';
-import * as listsDb from '@/db/lists';
-import * as syncManager from '@/sync/syncManager';
-import * as historyDb from '@/db/history';
+import { getItemAsync, setItemAsync } from 'expo-secure-store';
+import {
+  getItemsForList,
+  getItem,
+  addItemLocally,
+  softDeleteItem,
+  hardDeleteItem,
+  checkItem,
+  uncheckItem,
+  clearCheckedItems,
+  clearExpiredCheckedItems,
+  toggleItemImportant,
+  updateItemNameAndIcon,
+} from '@/db/items';
+import { getAllLists } from '@/db/lists';
+import { enqueue, removePendingCheckItem } from '@/sync/syncManager';
+import { recordItemUsed } from '@/db/history';
 import { useListDetailStore } from '@/store/listDetailStore';
 import type { LocalItem } from '@/db/items';
 import type { LocalList } from '@/db/lists';
@@ -96,11 +108,11 @@ const initialState = {
 beforeEach(() => {
   jest.clearAllMocks();
   useListDetailStore.setState(initialState);
-  (SecureStore.getItemAsync as jest.Mock).mockResolvedValue(null);
-  (SecureStore.setItemAsync as jest.Mock).mockResolvedValue(undefined);
-  (itemsDb.getItemsForList as jest.Mock).mockResolvedValue([]);
-  (itemsDb.clearExpiredCheckedItems as jest.Mock).mockResolvedValue(undefined);
-  (listsDb.getAllLists as jest.Mock).mockResolvedValue([]);
+  (getItemAsync as jest.Mock).mockResolvedValue(null);
+  (setItemAsync as jest.Mock).mockResolvedValue(undefined);
+  (getItemsForList as jest.Mock).mockResolvedValue([]);
+  (clearExpiredCheckedItems as jest.Mock).mockResolvedValue(undefined);
+  (getAllLists as jest.Mock).mockResolvedValue([]);
   (mockGetShoppingLists as jest.Mock).mockResolvedValue([]);
   (mockGetHousehold as jest.Mock).mockResolvedValue({
     id: 1, name: 'Home', photo: null, member: [], default_shopping_list: null,
@@ -112,17 +124,17 @@ beforeEach(() => {
 describe('bootstrap', () => {
   it('loads all lists and sets allLists state', async () => {
     const lists = [makeList()];
-    (listsDb.getAllLists as jest.Mock).mockResolvedValue(lists);
+    (getAllLists as jest.Mock).mockResolvedValue(lists);
 
     await useListDetailStore.getState().bootstrap(1, false);
 
-    expect(listsDb.getAllLists).toHaveBeenCalledWith(1);
+    expect(getAllLists).toHaveBeenCalledWith(1);
     expect(useListDetailStore.getState().allLists).toEqual(lists);
   });
 
   it('selects first list when restoreLastList is false', async () => {
     const lists = [makeList(), makeList({ localId: 'list-2', name: 'Pharmacy' })];
-    (listsDb.getAllLists as jest.Mock).mockResolvedValue(lists);
+    (getAllLists as jest.Mock).mockResolvedValue(lists);
 
     await useListDetailStore.getState().bootstrap(1, false);
 
@@ -133,8 +145,8 @@ describe('bootstrap', () => {
 
   it('restores last list from SecureStore when restoreLastList is true', async () => {
     const lists = [makeList(), makeList({ localId: 'list-2', name: 'Pharmacy' })];
-    (listsDb.getAllLists as jest.Mock).mockResolvedValue(lists);
-    (SecureStore.getItemAsync as jest.Mock).mockResolvedValue('list-2');
+    (getAllLists as jest.Mock).mockResolvedValue(lists);
+    (getItemAsync as jest.Mock).mockResolvedValue('list-2');
 
     await useListDetailStore.getState().bootstrap(1, true);
 
@@ -144,8 +156,8 @@ describe('bootstrap', () => {
 
   it('falls back to first list if stored key not found', async () => {
     const lists = [makeList()];
-    (listsDb.getAllLists as jest.Mock).mockResolvedValue(lists);
-    (SecureStore.getItemAsync as jest.Mock).mockResolvedValue('nonexistent-id');
+    (getAllLists as jest.Mock).mockResolvedValue(lists);
+    (getItemAsync as jest.Mock).mockResolvedValue('nonexistent-id');
 
     await useListDetailStore.getState().bootstrap(1, true);
 
@@ -154,8 +166,8 @@ describe('bootstrap', () => {
 
   it('selects server default list when no saved key exists', async () => {
     const lists = [makeList(), makeList({ localId: 'list-2', name: 'Pharmacy', serverId: 8 })];
-    (listsDb.getAllLists as jest.Mock).mockResolvedValue(lists);
-    (SecureStore.getItemAsync as jest.Mock).mockResolvedValue(null);
+    (getAllLists as jest.Mock).mockResolvedValue(lists);
+    (getItemAsync as jest.Mock).mockResolvedValue(null);
     (mockGetHousehold as jest.Mock).mockResolvedValue({
       id: 1, name: 'Home', photo: null, member: [],
       default_shopping_list: { id: 8, name: 'Pharmacy', household_id: 1 },
@@ -169,8 +181,8 @@ describe('bootstrap', () => {
 
   it('falls back to first list when server default list not found locally', async () => {
     const lists = [makeList()];
-    (listsDb.getAllLists as jest.Mock).mockResolvedValue(lists);
-    (SecureStore.getItemAsync as jest.Mock).mockResolvedValue(null);
+    (getAllLists as jest.Mock).mockResolvedValue(lists);
+    (getItemAsync as jest.Mock).mockResolvedValue(null);
     (mockGetHousehold as jest.Mock).mockResolvedValue({
       id: 1, name: 'Home', photo: null, member: [],
       default_shopping_list: { id: 99, name: 'Unknown', household_id: 1 },
@@ -182,7 +194,7 @@ describe('bootstrap', () => {
   });
 
   it('sets loading: false and no active list when no lists exist', async () => {
-    (listsDb.getAllLists as jest.Mock).mockResolvedValue([]);
+    (getAllLists as jest.Mock).mockResolvedValue([]);
 
     await useListDetailStore.getState().bootstrap(1, false);
 
@@ -192,12 +204,12 @@ describe('bootstrap', () => {
 
   it('loads items for the selected list', async () => {
     const items = [makeItem()];
-    (listsDb.getAllLists as jest.Mock).mockResolvedValue([makeList()]);
-    (itemsDb.getItemsForList as jest.Mock).mockResolvedValue(items);
+    (getAllLists as jest.Mock).mockResolvedValue([makeList()]);
+    (getItemsForList as jest.Mock).mockResolvedValue(items);
 
     await useListDetailStore.getState().bootstrap(1, false);
 
-    expect(itemsDb.getItemsForList).toHaveBeenCalledWith('list-local-1');
+    expect(getItemsForList).toHaveBeenCalledWith('list-local-1');
     expect(useListDetailStore.getState().items).toEqual(items);
   });
 });
@@ -213,17 +225,17 @@ describe('switchToList', () => {
     expect(useListDetailStore.getState().activeLocalId).toBe('list-2');
     expect(useListDetailStore.getState().activeName).toBe('Pharmacy');
     expect(useListDetailStore.getState().activeServerId).toBe(8);
-    expect(SecureStore.setItemAsync).toHaveBeenCalledWith(expect.any(String), 'list-2');
+    expect(setItemAsync).toHaveBeenCalledWith(expect.any(String), 'list-2');
   });
 
   it('loads items for the new list', async () => {
     const items = [makeItem({ listLocalId: 'list-2' })];
-    (itemsDb.getItemsForList as jest.Mock).mockResolvedValue(items);
+    (getItemsForList as jest.Mock).mockResolvedValue(items);
     const list = makeList({ localId: 'list-2', name: 'Pharmacy' });
 
     await useListDetailStore.getState().switchToList(list, 1);
 
-    expect(itemsDb.getItemsForList).toHaveBeenCalledWith('list-2');
+    expect(getItemsForList).toHaveBeenCalledWith('list-2');
     expect(useListDetailStore.getState().items).toEqual(items);
   });
 
@@ -242,17 +254,17 @@ describe('reloadAfterSync', () => {
   it('reloads items when activeLocalId is set', async () => {
     const items = [makeItem()];
     useListDetailStore.setState({ activeLocalId: 'list-local-1' });
-    (itemsDb.getItemsForList as jest.Mock).mockResolvedValue(items);
+    (getItemsForList as jest.Mock).mockResolvedValue(items);
 
     await useListDetailStore.getState().reloadAfterSync();
 
-    expect(itemsDb.getItemsForList).toHaveBeenCalledWith('list-local-1');
+    expect(getItemsForList).toHaveBeenCalledWith('list-local-1');
     expect(useListDetailStore.getState().items).toEqual(items);
   });
 
   it('does nothing when no active list', async () => {
     await useListDetailStore.getState().reloadAfterSync();
-    expect(itemsDb.getItemsForList).not.toHaveBeenCalled();
+    expect(getItemsForList).not.toHaveBeenCalled();
   });
 });
 
@@ -260,9 +272,9 @@ describe('reloadAfterSync', () => {
 
 describe('toggleDone', () => {
   beforeEach(() => {
-    (itemsDb.checkItem as jest.Mock).mockResolvedValue(undefined);
-    (itemsDb.uncheckItem as jest.Mock).mockResolvedValue(undefined);
-    (itemsDb.getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: 100 }));
+    (checkItem as jest.Mock).mockResolvedValue(undefined);
+    (uncheckItem as jest.Mock).mockResolvedValue(undefined);
+    (getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: 100 }));
     useListDetailStore.setState({ activeLocalId: 'list-local-1', activeServerId: 5 });
   });
 
@@ -272,8 +284,8 @@ describe('toggleDone', () => {
 
     await useListDetailStore.getState().toggleDone('item-1');
 
-    expect(itemsDb.checkItem).toHaveBeenCalledWith('item-1', expect.any(Number));
-    expect(syncManager.enqueue).toHaveBeenCalledWith(
+    expect(checkItem).toHaveBeenCalledWith('item-1', expect.any(Number));
+    expect(enqueue).toHaveBeenCalledWith(
       expect.objectContaining({ opType: 'CHECK_ITEM', itemServerId: 100 }),
       'list-local-1'
     );
@@ -283,23 +295,23 @@ describe('toggleDone', () => {
   it('calls uncheckItem and cancels pending op when unchecking', async () => {
     const item = makeItem({ isChecked: true });
     useListDetailStore.setState({ items: [item] });
-    (syncManager.removePendingCheckItem as jest.Mock).mockResolvedValue(true);
+    (removePendingCheckItem as jest.Mock).mockResolvedValue(true);
 
     await useListDetailStore.getState().toggleDone('item-1');
 
-    expect(itemsDb.uncheckItem).toHaveBeenCalledWith('item-1', false);
-    expect(syncManager.enqueue).not.toHaveBeenCalled();
+    expect(uncheckItem).toHaveBeenCalledWith('item-1', false);
+    expect(enqueue).not.toHaveBeenCalled();
     expect(useListDetailStore.getState().items[0].isChecked).toBe(false);
   });
 
   it('re-adds to server via ADD_ITEM when uncheck has no pending op', async () => {
     const item = makeItem({ isChecked: true });
     useListDetailStore.setState({ items: [item] });
-    (syncManager.removePendingCheckItem as jest.Mock).mockResolvedValue(false);
+    (removePendingCheckItem as jest.Mock).mockResolvedValue(false);
 
     await useListDetailStore.getState().toggleDone('item-1');
 
-    expect(syncManager.enqueue).toHaveBeenCalledWith(
+    expect(enqueue).toHaveBeenCalledWith(
       expect.objectContaining({ opType: 'ADD_ITEM' }),
       'list-local-1'
     );
@@ -308,8 +320,8 @@ describe('toggleDone', () => {
   it('does nothing for unknown localId', async () => {
     useListDetailStore.setState({ items: [] });
     await useListDetailStore.getState().toggleDone('ghost');
-    expect(itemsDb.checkItem).not.toHaveBeenCalled();
-    expect(itemsDb.uncheckItem).not.toHaveBeenCalled();
+    expect(checkItem).not.toHaveBeenCalled();
+    expect(uncheckItem).not.toHaveBeenCalled();
   });
 });
 
@@ -319,11 +331,11 @@ describe('toggleImportant', () => {
   it('toggles isImportant and calls toggleItemImportant', async () => {
     const item = makeItem({ isImportant: false });
     useListDetailStore.setState({ items: [item] });
-    (itemsDb.toggleItemImportant as jest.Mock).mockResolvedValue(undefined);
+    (toggleItemImportant as jest.Mock).mockResolvedValue(undefined);
 
     await useListDetailStore.getState().toggleImportant('item-1');
 
-    expect(itemsDb.toggleItemImportant).toHaveBeenCalledWith('item-1', true);
+    expect(toggleItemImportant).toHaveBeenCalledWith('item-1', true);
     expect(useListDetailStore.getState().items[0].isImportant).toBe(true);
   });
 });
@@ -335,33 +347,33 @@ describe('deleteItem', () => {
     useListDetailStore.setState({
       items: [makeItem()], activeLocalId: 'list-local-1', activeServerId: 5,
     });
-    (itemsDb.softDeleteItem as jest.Mock).mockResolvedValue(undefined);
-    (itemsDb.hardDeleteItem as jest.Mock).mockResolvedValue(undefined);
+    (softDeleteItem as jest.Mock).mockResolvedValue(undefined);
+    (hardDeleteItem as jest.Mock).mockResolvedValue(undefined);
   });
 
   it('enqueues REMOVE_ITEM when item has a serverId', async () => {
-    (itemsDb.getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: 100 }));
+    (getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: 100 }));
 
     await useListDetailStore.getState().deleteItem('item-1');
 
-    expect(syncManager.enqueue).toHaveBeenCalledWith(
+    expect(enqueue).toHaveBeenCalledWith(
       expect.objectContaining({ opType: 'REMOVE_ITEM', itemServerId: 100 }),
       'list-local-1'
     );
-    expect(itemsDb.hardDeleteItem).not.toHaveBeenCalled();
+    expect(hardDeleteItem).not.toHaveBeenCalled();
   });
 
   it('hard-deletes immediately when item has no serverId', async () => {
-    (itemsDb.getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: null }));
+    (getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: null }));
 
     await useListDetailStore.getState().deleteItem('item-1');
 
-    expect(itemsDb.hardDeleteItem).toHaveBeenCalledWith('item-1');
-    expect(syncManager.enqueue).not.toHaveBeenCalled();
+    expect(hardDeleteItem).toHaveBeenCalledWith('item-1');
+    expect(enqueue).not.toHaveBeenCalled();
   });
 
   it('removes item from state', async () => {
-    (itemsDb.getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: null }));
+    (getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: null }));
 
     await useListDetailStore.getState().deleteItem('item-1');
 
@@ -376,15 +388,15 @@ describe('saveItem', () => {
     useListDetailStore.setState({
       items: [makeItem()], activeLocalId: 'list-local-1', activeServerId: 5,
     });
-    (itemsDb.updateItemNameAndIcon as jest.Mock).mockResolvedValue(undefined);
+    (updateItemNameAndIcon as jest.Mock).mockResolvedValue(undefined);
   });
 
   it('enqueues UPDATE_ITEM when item has a serverId', async () => {
-    (itemsDb.getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: 100, serverCategoryId: null }));
+    (getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: 100, serverCategoryId: null }));
 
     await useListDetailStore.getState().saveItem('item-1', 'Almond Milk', '', 'milk_carton');
 
-    expect(syncManager.enqueue).toHaveBeenCalledWith(
+    expect(enqueue).toHaveBeenCalledWith(
       expect.objectContaining({ opType: 'UPDATE_ITEM', itemServerId: 100, name: 'Almond Milk' }),
       'list-local-1'
     );
@@ -413,15 +425,15 @@ describe('saveItem', () => {
   });
 
   it('skips enqueue when item has no serverId', async () => {
-    (itemsDb.getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: null }));
+    (getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: null }));
 
     await useListDetailStore.getState().saveItem('item-1', 'New Name', '', null);
 
-    expect(syncManager.enqueue).not.toHaveBeenCalled();
+    expect(enqueue).not.toHaveBeenCalled();
   });
 
   it('updates item in state', async () => {
-    (itemsDb.getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: null }));
+    (getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: null }));
 
     await useListDetailStore.getState().saveItem('item-1', 'Butter', '', 'butter');
 
@@ -437,16 +449,16 @@ describe('addItem', () => {
 
   beforeEach(() => {
     useListDetailStore.setState({ items: [], activeLocalId: 'list-local-1', activeServerId: 5 });
-    (itemsDb.addItemLocally as jest.Mock).mockResolvedValue(newItem);
-    (historyDb.recordItemUsed as jest.Mock).mockResolvedValue(undefined);
+    (addItemLocally as jest.Mock).mockResolvedValue(newItem);
+    (recordItemUsed as jest.Mock).mockResolvedValue(undefined);
   });
 
   it('adds item locally, records history, and enqueues ADD_ITEM', async () => {
     await useListDetailStore.getState().addItem('Bread', '', null, 'Other');
 
-    expect(itemsDb.addItemLocally).toHaveBeenCalledWith('list-local-1', 'Bread', '', 'apple', 'Produce');
-    expect(historyDb.recordItemUsed).toHaveBeenCalled();
-    expect(syncManager.enqueue).toHaveBeenCalledWith(
+    expect(addItemLocally).toHaveBeenCalledWith('list-local-1', 'Bread', '', 'apple', 'Produce');
+    expect(recordItemUsed).toHaveBeenCalled();
+    expect(enqueue).toHaveBeenCalledWith(
       expect.objectContaining({ opType: 'ADD_ITEM', listServerId: 5 }),
       'list-local-1'
     );
@@ -458,14 +470,14 @@ describe('addItem', () => {
 
     await useListDetailStore.getState().addItem('Bread', '', null, 'Other');
 
-    expect(itemsDb.addItemLocally).toHaveBeenCalled();
-    expect(syncManager.enqueue).not.toHaveBeenCalled();
+    expect(addItemLocally).toHaveBeenCalled();
+    expect(enqueue).not.toHaveBeenCalled();
   });
 
   it('uses provided iconKey and category instead of matching', async () => {
     await useListDetailStore.getState().addItem('Banana', '', 'banana', 'Produce');
 
-    expect(itemsDb.addItemLocally).toHaveBeenCalledWith(
+    expect(addItemLocally).toHaveBeenCalledWith(
       'list-local-1', 'Banana', '', 'banana', 'Produce'
     );
   });
@@ -475,7 +487,7 @@ describe('addItem', () => {
 
     await useListDetailStore.getState().addItem('Bread', '', null, 'Other');
 
-    expect(itemsDb.addItemLocally).not.toHaveBeenCalled();
+    expect(addItemLocally).not.toHaveBeenCalled();
   });
 });
 
@@ -486,16 +498,16 @@ describe('clearTrolley', () => {
     const checked = makeItem({ isChecked: true });
     const active = makeItem({ localId: 'item-2', isChecked: false });
     useListDetailStore.setState({ items: [checked, active], activeLocalId: 'list-local-1' });
-    (itemsDb.clearCheckedItems as jest.Mock).mockResolvedValue(undefined);
+    (clearCheckedItems as jest.Mock).mockResolvedValue(undefined);
 
     await useListDetailStore.getState().clearTrolley();
 
-    expect(itemsDb.clearCheckedItems).toHaveBeenCalledWith('list-local-1');
+    expect(clearCheckedItems).toHaveBeenCalledWith('list-local-1');
     expect(useListDetailStore.getState().items).toEqual([active]);
   });
 
   it('does nothing when no activeLocalId', async () => {
     await useListDetailStore.getState().clearTrolley();
-    expect(itemsDb.clearCheckedItems).not.toHaveBeenCalled();
+    expect(clearCheckedItems).not.toHaveBeenCalled();
   });
 });

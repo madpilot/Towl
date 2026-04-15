@@ -23,7 +23,7 @@ beforeAll(() => {
 
 afterEach(() => {
   mock.reset();
-  for (const k of Object.keys(secureStore)) delete secureStore[k];
+  for (const k of Object.keys(secureStore)) { delete secureStore[k]; }
 });
 
 afterAll(() => {

@@ -47,8 +47,8 @@ const buildSections = (items: HouseholdItem[]): ItemSection[] => {
   }
   return [...map.entries()]
     .sort(([a], [b]) => {
-      if (a === '#') return -1;
-      if (b === '#') return 1;
+      if (a === '#') { return -1; }
+      if (b === '#') { return 1; }
       return a.localeCompare(b);
     })
     .map(([title, data]) => ({ title, data }));
@@ -86,7 +86,7 @@ export default function HouseholdItemsScreen({ navigation, route }: HouseholdIte
   // ── Load ───────────────────────────────────────────────────────────────────
 
   const load = useCallback(async () => {
-    if (!householdsApi) return;
+    if (!householdsApi) { return; }
     try {
       const [fetchedItems, fetchedCategories] = await Promise.all([
         householdsApi.getHouseholdItems(householdId),
@@ -107,7 +107,7 @@ export default function HouseholdItemsScreen({ navigation, route }: HouseholdIte
 
   const filteredItems = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return items;
+    if (!q) { return items; }
     return items.filter((i) => i.name.toLowerCase().includes(q));
   }, [items, query]);
 
@@ -128,7 +128,7 @@ export default function HouseholdItemsScreen({ navigation, route }: HouseholdIte
   // Indices of header rows passed to FlashList so it pins them natively while scrolling
   const stickyHeaderIndices = useMemo(
     () => flatData.reduce<number[]>((acc, row, idx) => {
-      if (row.kind === 'header') acc.push(idx);
+      if (row.kind === 'header') { acc.push(idx); }
       return acc;
     }, []),
     [flatData]
@@ -162,7 +162,7 @@ export default function HouseholdItemsScreen({ navigation, route }: HouseholdIte
   // ── CRUD ───────────────────────────────────────────────────────────────────
 
   async function handleCreate() {
-    if (!name.trim() || !householdsApi) return;
+    if (!name.trim() || !householdsApi) { return; }
     setAction('create');
     try {
       const cat = selectedCategory
@@ -179,7 +179,7 @@ export default function HouseholdItemsScreen({ navigation, route }: HouseholdIte
   }
 
   async function handleUpdate() {
-    if (!name.trim() || !editingItem || !householdsApi) return;
+    if (!name.trim() || !editingItem || !householdsApi) { return; }
     setAction('update');
     try {
       const cat = selectedCategory
@@ -204,7 +204,7 @@ export default function HouseholdItemsScreen({ navigation, route }: HouseholdIte
   }
 
   async function handleDelete() {
-    if (!editingItem || !householdsApi) return;
+    if (!editingItem || !householdsApi) { return; }
     setAction('delete');
     try {
       await householdsApi.deleteHouseholdItem(editingItem.id);
@@ -238,14 +238,14 @@ export default function HouseholdItemsScreen({ navigation, route }: HouseholdIte
     const perLetter = indexBarHeightRef.current / ALPHABET.length;
     const idx = Math.max(0, Math.min(ALPHABET.length - 1, Math.floor(relY / perLetter)));
     const letter = ALPHABET[idx];
-    if (letter === lastScrolledLetterRef.current) return;
+    if (letter === lastScrolledLetterRef.current) { return; }
     lastScrolledLetterRef.current = letter;
     scrollToLetter(letter);
   }
 
   function scrollToLetter(letter: string) {
     const idx = flatData.findIndex((row) => row.kind === 'header' && row.title === letter);
-    if (idx === -1 || !flashListRef.current) return;
+    if (idx === -1 || !flashListRef.current) { return; }
     flashListRef.current.scrollToIndex({ index: idx, animated: false });
   }
 
@@ -324,7 +324,7 @@ export default function HouseholdItemsScreen({ navigation, route }: HouseholdIte
               );
             }}
             ItemSeparatorComponent={({ leadingItem, trailingItem }: { leadingItem?: ListRow; trailingItem?: ListRow }) => {
-              if (leadingItem?.kind !== 'item' || trailingItem?.kind !== 'item') return null;
+              if (leadingItem?.kind !== 'item' || trailingItem?.kind !== 'item') { return null; }
               return <Sep />;
             }}
             contentContainerStyle={styles.listContent}

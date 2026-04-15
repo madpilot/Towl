@@ -1,18 +1,18 @@
-import * as SQLite from 'expo-sqlite';
+import { openDatabaseAsync, type SQLiteDatabase } from 'expo-sqlite';
 
 // Promise-cache: a single in-flight open+migrate is shared across all callers,
 // preventing duplicate opens if getDb() is called concurrently before the DB is ready.
-let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
+let dbPromise: Promise<SQLiteDatabase> | null = null;
 
-export function getDb(): Promise<SQLite.SQLiteDatabase> {
-  dbPromise ??= SQLite.openDatabaseAsync('towl.db').then(async (instance) => {
+export function getDb(): Promise<SQLiteDatabase> {
+  dbPromise ??= openDatabaseAsync('towl.db').then(async (instance) => {
     await migrate(instance);
     return instance;
   });
   return dbPromise;
 }
 
-async function migrate(database: SQLite.SQLiteDatabase): Promise<void> {
+async function migrate(database: SQLiteDatabase): Promise<void> {
   await database.execAsync(`PRAGMA journal_mode = WAL;`);
 
   await database.execAsync(`

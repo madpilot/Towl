@@ -51,7 +51,7 @@ const fuse = new Fuse(corpus, {
  */
 export function matchItem(input: string): MatchResult {
   const normalised = input.toLowerCase().trim();
-  if (!normalised) return { iconKey: null, ...DEFAULT_META };
+  if (!normalised) { return { iconKey: null, ...DEFAULT_META }; }
 
   // 1. Exact match
   const exact = exactMap.get(normalised);
@@ -71,7 +71,7 @@ export function matchItem(input: string): MatchResult {
 /** Returns the top N candidate icon keys for a given input string. */
 export function suggestIcons(input: string, limit = 8): Array<{ iconKey: string } & IconMeta> {
   const normalised = input.toLowerCase().trim();
-  if (!normalised) return [];
+  if (!normalised) { return []; }
 
   const results = fuse.search(normalised, { limit });
   return results.map((r) => ({

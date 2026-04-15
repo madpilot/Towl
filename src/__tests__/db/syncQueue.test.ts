@@ -5,7 +5,7 @@ jest.mock('expo-sqlite', () => ({
 
 jest.mock('expo-crypto', () => ({ randomUUID: jest.fn() }));
 
-import * as SQLite from 'expo-sqlite';
+import { openDatabaseAsync } from 'expo-sqlite';
 import { randomUUID } from 'expo-crypto';
 import type { AddItemPayload, RemoveItemPayload } from '@/db/syncQueue';
 
@@ -30,7 +30,7 @@ beforeEach(() => {
   mockDb.getFirstAsync.mockResolvedValue({ version: 1 }); // schema already at v1
   mockDb.getAllAsync.mockResolvedValue([]);
 
-  (SQLite.openDatabaseAsync as jest.Mock).mockResolvedValue(mockDb);
+  (openDatabaseAsync as jest.Mock).mockResolvedValue(mockDb);
   (randomUUID as jest.Mock).mockImplementation(() => `test-uuid-${++uuidCounter}`);
 });
 

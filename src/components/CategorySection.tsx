@@ -32,7 +32,7 @@ export default function CategorySection({
   const unregisterZone = dragDrop?.unregisterZone;
 
   useEffect(() => {
-    if (!registerZone || !unregisterZone) return;
+    if (!registerZone || !unregisterZone) { return; }
 
     registerZone(categoryId, () =>
       new Promise((resolve) => {

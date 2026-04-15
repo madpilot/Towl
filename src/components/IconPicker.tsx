@@ -28,7 +28,7 @@ export default function IconPicker({ visible, selected, onSelect, onClose }: Ico
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return ALL_KEYS;
+    if (!q) { return ALL_KEYS; }
     return ALL_KEYS.filter((k) => k.includes(q));
   }, [query]);
 

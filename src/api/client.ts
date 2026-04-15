@@ -46,7 +46,7 @@ export class ApiClientManager {
           // Wait for the in-flight refresh to complete, then replay.
           return new Promise((resolve, reject) => {
             this.subscribeToRefresh((token) => {
-              if (!token) return reject(error);
+              if (!token) { return reject(error); }
               config.headers.Authorization = `Bearer ${token}`;
               resolve(instance(config));
             });
@@ -113,13 +113,13 @@ export class ApiClientManager {
   }
 
   private notifyRefreshSubscribers(token: string | null): void {
-    for (const cb of this.refreshSubscribers) cb(token);
+    for (const cb of this.refreshSubscribers) { cb(token); }
     this.refreshSubscribers = [];
   }
 
   private async performRefresh(instance: AxiosInstance): Promise<string> {
     const baseURL = instance.defaults.baseURL;
-    if (!baseURL) throw new Error('API client has no baseURL configured');
+    if (!baseURL) { throw new Error('API client has no baseURL configured'); }
 
     const tokens = await TokenStore.instance.getTokens();
 
@@ -146,7 +146,7 @@ export class ApiClientManager {
 
     // Step 2: try the long-lived token.
     const llt = tokens?.llt ?? (await TokenStore.instance.getLlt());
-    if (!llt) throw new Error('No valid token available for refresh');
+    if (!llt) { throw new Error('No valid token available for refresh'); }
 
     const res = await axios.get<{ access_token: string; refresh_token: string }>(
       `${baseURL}/auth/refresh`,

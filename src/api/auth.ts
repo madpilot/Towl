@@ -41,7 +41,7 @@ export async function testConnection(serverUrl: string): Promise<boolean> {
     return true;
   } catch (err: unknown) {
     // A 405 or 4xx from /api/auth still means the server is reachable
-    if (isAxiosError(err) && err.response) return true;
+    if (isAxiosError(err) && err.response) { return true; }
     return false;
   }
 }

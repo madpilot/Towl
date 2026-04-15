@@ -190,7 +190,7 @@ export default function HouseholdPickerScreen({ navigation }: HouseholdPickerScr
 
   async function handleDone() {
     const household = households.find((h) => h.id === selectedId);
-    if (!household) return;
+    if (!household) { return; }
     await persistAndSelectHousehold(household);
     // MainNavigator auto-transitions when selectedHousehold becomes non-null.
   }

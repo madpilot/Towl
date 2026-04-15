@@ -14,7 +14,7 @@ export function ListsSection() {
   const [saving, setSaving] = useState(false);
 
   async function handleCreate() {
-    if (!listName.trim()) return;
+    if (!listName.trim()) { return; }
     setSaving(true);
     try {
       await createList(listName.trim());
@@ -28,7 +28,7 @@ export function ListsSection() {
   }
 
   async function handleRename() {
-    if (!listName.trim() || editingListId === null) return;
+    if (!listName.trim() || editingListId === null) { return; }
     setSaving(true);
     try {
       await renameList(editingListId, listName.trim());
@@ -41,7 +41,7 @@ export function ListsSection() {
   }
 
   async function handleDelete() {
-    if (editingListId === null) return;
+    if (editingListId === null) { return; }
     setSaving(true);
     try {
       await deleteList(editingListId);

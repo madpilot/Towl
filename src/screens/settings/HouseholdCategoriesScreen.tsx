@@ -161,7 +161,7 @@ export default function HouseholdCategoriesScreen({ navigation, route }: Househo
 
   function startAutoScroll(direction: 'up' | 'down') {
     // Don't restart if already scrolling in the same direction
-    if (autoScrollTimerRef.current !== null) return;
+    if (autoScrollTimerRef.current !== null) { return; }
 
     autoScrollTimerRef.current = setInterval(() => {
       const delta = direction === 'up' ? -SCROLL_SPEED : SCROLL_SPEED;
@@ -184,7 +184,7 @@ export default function HouseholdCategoriesScreen({ navigation, route }: Househo
   // ── Load ───────────────────────────────────────────────────────────────────
 
   const load = useCallback(async () => {
-    if (!householdsApi) return;
+    if (!householdsApi) { return; }
     try {
       const fetched = await householdsApi.getCategories(householdId);
       setCategories(fetched.slice().sort((a, b) => a.ordering - b.ordering));
@@ -218,7 +218,7 @@ export default function HouseholdCategoriesScreen({ navigation, route }: Househo
   // ── CRUD ───────────────────────────────────────────────────────────────────
 
   async function handleCreate() {
-    if (!name.trim() || !householdsApi) return;
+    if (!name.trim() || !householdsApi) { return; }
     setAction('create');
     try {
       const ordering = categories.length;
@@ -235,7 +235,7 @@ export default function HouseholdCategoriesScreen({ navigation, route }: Househo
   }
 
   async function handleUpdate() {
-    if (!name.trim() || !editingCat || !householdsApi) return;
+    if (!name.trim() || !editingCat || !householdsApi) { return; }
     setAction('update');
     try {
       await householdsApi.updateCategory(editingCat.id, name.trim(), editingCat.ordering);
@@ -251,7 +251,7 @@ export default function HouseholdCategoriesScreen({ navigation, route }: Househo
   }
 
   async function handleDelete() {
-    if (!editingCat || !householdsApi) return;
+    if (!editingCat || !householdsApi) { return; }
     setAction('delete');
     try {
       await householdsApi.deleteCategory(editingCat.id);

@@ -18,7 +18,7 @@ export function MembersSection() {
   const [saving, setSaving] = useState(false);
 
   async function handleInvite() {
-    if (!inviteUsername.trim()) return;
+    if (!inviteUsername.trim()) { return; }
     setSaving(true);
     try {
       await inviteMember(inviteUsername.trim());
@@ -32,7 +32,7 @@ export function MembersSection() {
   }
 
   async function handleRemove() {
-    if (removingMemberId === null) return;
+    if (removingMemberId === null) { return; }
     setSaving(true);
     try {
       await removeMember(removingMemberId);

@@ -18,11 +18,11 @@ export default function AuthenticatedImage({ uri, style }: Props) {
 
   useEffect(() => {
     TokenStore.instance.getTokens()
-      .then((tokens) => { if (tokens?.accessToken) setAccessToken(tokens.accessToken); })
+      .then((tokens) => { if (tokens?.accessToken) { setAccessToken(tokens.accessToken); } })
       .catch(() => {});
   }, []);
 
-  if (!accessToken) return null;
+  if (!accessToken) { return null; }
 
   return (
     <Image

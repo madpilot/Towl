@@ -34,7 +34,7 @@ import type { SettingsScreenProps } from '@/navigation/types';
 
 function sessionLabel(name: string): string {
   const match = name.match(/(Firefox|Chrome|Edg|Safari|Towl|OPR|Opera)\/[\d.]+/);
-  if (match) return match[0];
+  if (match) { return match[0]; }
   return name.length > 38 ? name.slice(0, 35) + '…' : name;
 }
 
@@ -132,10 +132,10 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!authApi || !serverUrl) return;
+    if (!authApi || !serverUrl) { return; }
     authApi.getUser()
       .then((apiUser) => {
-        if (apiUser.photo) setAvatarUri(`${serverUrl}/api/upload/${apiUser.photo}`);
+        if (apiUser.photo) { setAvatarUri(`${serverUrl}/api/upload/${apiUser.photo}`); }
       })
       .catch(() => {});
   }, [authApi, serverUrl]);
@@ -145,7 +145,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
   const [loadingSessions, setLoadingSessions] = useState(false);
 
   useEffect(() => {
-    if (modal !== 'sessions' || !authApi) return;
+    if (modal !== 'sessions' || !authApi) { return; }
     setLoadingSessions(true);
     authApi.getSessions()
       .then((data) => setSessions([...data].sort((a, b) => a.created_at - b.created_at)))
@@ -172,7 +172,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
   }
 
   const loadHouseholds = useCallback(async () => {
-    if (!householdsApi) return;
+    if (!householdsApi) { return; }
     try {
       setLoadingHouseholds(true);
       const data = await householdsApi.getHouseholds();
@@ -188,7 +188,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
   useEffect(() => { void loadHouseholds(); }, [loadHouseholds]);
 
   async function handleSaveName() {
-    if (!editName.trim() || !authApi) return;
+    if (!editName.trim() || !authApi) { return; }
     setSavingName(true);
     try {
       await authApi.updateProfile(editName.trim());
@@ -207,7 +207,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
   }
 
   async function handleSaveEmail() {
-    if (!authApi) return;
+    if (!authApi) { return; }
     setSavingEmail(true);
     try {
       await authApi.updateEmail(editEmail.trim());
@@ -221,7 +221,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
   }
 
   async function handleChangePassword() {
-    if (!pwNew || !authApi) return;
+    if (!pwNew || !authApi) { return; }
     if (pwNew !== pwConfirm) {
       Alert.alert('Error', 'New passwords do not match.');
       return;
@@ -240,7 +240,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
   }
 
   async function handleCreateHousehold() {
-    if (!newHHName.trim() || !householdsApi) return;
+    if (!newHHName.trim() || !householdsApi) { return; }
     setCreatingHH(true);
     try {
       await householdsApi.createHousehold(newHHName.trim());

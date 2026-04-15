@@ -57,7 +57,7 @@ export default function AddItemBar({ onAdd }: AddItemBarProps) {
 
   function commit(name: string, description: string, iconKey: string | null, category: string) {
     const trimmed = name.trim();
-    if (!trimmed) return;
+    if (!trimmed) { return; }
     onAdd(trimmed, description.trim(), iconKey, category);
     setValue('');
     inputRef.current?.blur();
@@ -178,7 +178,7 @@ export default function AddItemBar({ onAdd }: AddItemBarProps) {
 /** Renders suggestion name with the matched portion bolded. */
 function SuggestLabel({ name, query }: { name: string; query: string }) {
   const idx = name.toLowerCase().indexOf(query.toLowerCase().trim());
-  if (idx === -1) return <>{name}</>;
+  if (idx === -1) { return <>{name}</>; }
   return (
     <>
       {name.slice(0, idx)}

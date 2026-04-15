@@ -17,7 +17,7 @@ import { SECURE_STORE_KEYS } from '@/utils/constants';
 
 beforeEach(() => {
   // Clear the mock store between tests
-  for (const key of Object.keys(store)) delete store[key];
+  for (const key of Object.keys(store)) { delete store[key]; }
   jest.clearAllMocks();
 });
 

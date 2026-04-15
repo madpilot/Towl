@@ -66,7 +66,7 @@ export async function upsertListFromServer(
     'SELECT * FROM local_lists WHERE local_id = ?',
     [localId]
   );
-  if (!row) throw new Error(`Failed to read back list with local_id=${localId}`);
+  if (!row) { throw new Error(`Failed to read back list with local_id=${localId}`); }
   return rowToList(row);
 }
 

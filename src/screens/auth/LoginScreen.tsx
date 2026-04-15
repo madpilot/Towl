@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import * as authApi from '@/api/auth';
+import { login, isAxiosAuthError } from '@/api/auth';
 import { onLoginSuccess } from '@/auth/authManager';
 import {
   BubbleText,
@@ -51,10 +51,10 @@ export default function LoginScreen({ route }: LoginScreenProps) {
     setError('');
     setLoading(true);
     try {
-      const res = await authApi.login(serverUrl, username.trim(), password);
+      const res = await login(serverUrl, username.trim(), password);
       await onLoginSuccess(serverUrl, res.access_token, res.refresh_token, res.user);
     } catch (err: unknown) {
-      if (authApi.isAxiosAuthError(err) && err.response?.status === 401) {
+      if (isAxiosAuthError(err) && err.response?.status === 401) {
         setError('Invalid username or password.');
       } else {
         setError('Could not connect to server. Check your network and try again.');

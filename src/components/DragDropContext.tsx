@@ -131,12 +131,12 @@ export function DragDropProvider({ children, onDrop }: DragDropProviderProps) {
   // ── Zone measurement ───────────────────────────────────────────────────────
 
   const measureAllZones = useCallback(async () => {
-    if (measuringRef.current) return;
+    if (measuringRef.current) { return; }
     measuringRef.current = true;
     const promises = Array.from(zonesRef.current.entries()).map(async ([id, fn]) => {
-      if (boundsRef.current.has(id)) return; // already cached
+      if (boundsRef.current.has(id)) { return; } // already cached
       const bounds = await fn();
-      if (bounds) boundsRef.current.set(id, bounds);
+      if (bounds) { boundsRef.current.set(id, bounds); }
     });
     await Promise.all(promises);
     measuringRef.current = false;

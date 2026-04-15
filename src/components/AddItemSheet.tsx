@@ -37,7 +37,7 @@ const AddItemSheet = forwardRef<AddItemSheetHandle, AddItemSheetProps>(
 
     const handleAdd = useCallback(async () => {
       const trimmedName = name.trim();
-      if (!trimmedName) return;
+      if (!trimmedName) { return; }
       setAdding(true);
       try {
         await onAdd(trimmedName, description.trim());

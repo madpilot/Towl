@@ -37,7 +37,7 @@ export default function HouseholdDetailScreen({ navigation, route }: HouseholdDe
   }, [householdId, initialName, initialize, loadAll]);
 
   async function handleRename() {
-    if (!renameValue.trim()) return;
+    if (!renameValue.trim()) { return; }
     setAction('rename');
     try {
       await renameHousehold(renameValue.trim());

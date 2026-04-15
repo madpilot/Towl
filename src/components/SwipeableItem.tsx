@@ -33,7 +33,7 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
+import { impactAsync, ImpactFeedbackStyle, notificationAsync, NotificationFeedbackType } from 'expo-haptics';
 import Svg, { Path } from 'react-native-svg';
 import KitchenOwlIcon from '@/components/KitchenOwlIcon';
 import IconPicker from '@/components/IconPicker';
@@ -46,11 +46,11 @@ import type { LocalItem } from '@/db/items';
 
 // ─── Haptic helpers (module-level so runOnJS refs are stable) ────
 function hapticLight(): void {
-  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+  void impactAsync(ImpactFeedbackStyle.Light).catch(() => {});
 }
 
 function hapticSuccess(): void {
-  void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+  void notificationAsync(NotificationFeedbackType.Success).catch(() => {});
 }
 
 // ─── Thresholds ───────────────────────────────────────────────────
@@ -281,7 +281,7 @@ function EditRow({ item, onSave, onCancel }: EditRowProps) {
           onChangeText={setEditText}
           onSubmitEditing={handleSave}
           onKeyPress={({ nativeEvent }) => {
-            if (nativeEvent.key === 'Escape') onCancel();
+            if (nativeEvent.key === 'Escape') { onCancel(); }
           }}
           returnKeyType="done"
           selectTextOnFocus
@@ -343,7 +343,7 @@ function SwipeRowContent({
   );
 
   const handleCheckButtonPress = useCallback(() => {
-    if (!item.isChecked) hapticSuccess();
+    if (!item.isChecked) { hapticSuccess(); }
     onToggleDone();
   }, [item.isChecked, onToggleDone]);
 
@@ -378,7 +378,7 @@ function SwipeRowContent({
     })
     .onEnd((e) => {
       if (e.translationX < -SWIPE_DONE_PX) {
-        if (!item.isChecked) runOnJS(hapticSuccess)();
+        if (!item.isChecked) { runOnJS(hapticSuccess)(); }
         runOnJS(onToggleDone)();
       } else if (e.translationX > SWIPE_DELETE_PX) {
         runOnJS(onDelete)();

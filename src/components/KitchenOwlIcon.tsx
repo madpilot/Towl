@@ -18,7 +18,7 @@ export default function KitchenOwlIcon({
   style,
 }: KitchenOwlIconProps) {
   const char = getIconChar(iconKey);
-  if (!char) return null;
+  if (!char) { return null; }
 
   return (
     <Text

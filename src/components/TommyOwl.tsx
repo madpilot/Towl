@@ -124,7 +124,7 @@ export default function TommyOwl({ size = 90 }: TommyOwlProps) {
         Animated.timing(eyeRy, { toValue: 16, duration: 80, useNativeDriver: false }),
         Animated.delay(900),
       ]).start(({ finished }) => {
-        if (finished) runCycle();
+        if (finished) { runCycle(); }
       });
     }
 

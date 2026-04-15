@@ -169,7 +169,7 @@ export async function upsertItemFromServer(
       'SELECT * FROM local_items WHERE local_id = ?',
       [existing.local_id]
     );
-    if (!updated) throw new Error(`Failed to read back item ${existing.local_id}`);
+    if (!updated) { throw new Error(`Failed to read back item ${existing.local_id}`); }
     return rowToItem(updated);
   }
 
@@ -188,7 +188,7 @@ export async function upsertItemFromServer(
     'SELECT * FROM local_items WHERE local_id = ?',
     [localId]
   );
-  if (!row) throw new Error(`Failed to read back item ${localId}`);
+  if (!row) { throw new Error(`Failed to read back item ${localId}`); }
   return rowToItem(row);
 }
 

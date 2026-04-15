@@ -14,7 +14,7 @@ export const useNetworkStore = create<NetworkState>((set) => ({
 let unsubscribe: (() => void) | null = null;
 
 export function startNetworkMonitoring(onOnline: () => void): void {
-  if (unsubscribe) return;
+  if (unsubscribe) { return; }
   unsubscribe = NetInfo.addEventListener((state) => {
     const online = state.isConnected === true && state.isInternetReachable !== false;
     const wasOffline = !useNetworkStore.getState().isOnline;
