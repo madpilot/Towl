@@ -16,14 +16,14 @@ jest.mock('@/data/iconMetadata', () => ({
 
 import { renderHook, act, waitFor } from '@testing-library/react-native';
 import { useItemSuggestions } from '@/hooks/useItemSuggestions';
-import * as history from '@/db/history';
-import * as foodMatcher from '@/data/foodMatcher';
+import { searchHistory } from '@/db/history';
+import { suggestIcons } from '@/data/foodMatcher';
 
 beforeEach(() => {
   jest.clearAllMocks();
   jest.useFakeTimers();
-  (history.searchHistory as jest.Mock).mockResolvedValue([]);
-  (foodMatcher.suggestIcons as jest.Mock).mockReturnValue([]);
+  (searchHistory as jest.Mock).mockResolvedValue([]);
+  (suggestIcons as jest.Mock).mockReturnValue([]);
 });
 
 afterEach(() => {
@@ -34,7 +34,7 @@ describe('useItemSuggestions', () => {
   it('returns empty array when input is less than 2 chars', async () => {
     const { result } = renderHook(() => useItemSuggestions('a'));
     expect(result.current).toEqual([]);
-    expect(history.searchHistory).not.toHaveBeenCalled();
+    expect(searchHistory).not.toHaveBeenCalled();
   });
 
   it('debounces the query and returns combined results', async () => {
@@ -47,8 +47,8 @@ describe('useItemSuggestions', () => {
       useCount: 5,
       lastUsedAt: Date.now(),
     };
-    (history.searchHistory as jest.Mock).mockResolvedValue([historyEntry]);
-    (foodMatcher.suggestIcons as jest.Mock).mockReturnValue([
+    (searchHistory as jest.Mock).mockResolvedValue([historyEntry]);
+    (suggestIcons as jest.Mock).mockReturnValue([
       { iconKey: 'milk_carton', emoji: '🥛', category: 'Dairy & Eggs' },
     ]);
 
@@ -77,9 +77,9 @@ describe('useItemSuggestions', () => {
       useCount: 3,
       lastUsedAt: Date.now(),
     };
-    (history.searchHistory as jest.Mock).mockResolvedValue([historyEntry]);
+    (searchHistory as jest.Mock).mockResolvedValue([historyEntry]);
     // suggestIcons returns an entry whose label matches the history name
-    (foodMatcher.suggestIcons as jest.Mock).mockReturnValue([
+    (suggestIcons as jest.Mock).mockReturnValue([
       { iconKey: 'milk', emoji: '🥛', category: 'Dairy & Eggs' },
     ]);
 
@@ -95,8 +95,8 @@ describe('useItemSuggestions', () => {
   });
 
   it('returns only icon suggestions when history is empty', async () => {
-    (history.searchHistory as jest.Mock).mockResolvedValue([]);
-    (foodMatcher.suggestIcons as jest.Mock).mockReturnValue([
+    (searchHistory as jest.Mock).mockResolvedValue([]);
+    (suggestIcons as jest.Mock).mockReturnValue([
       { iconKey: 'apple', emoji: '🍎', category: 'Produce' },
     ]);
 
@@ -120,7 +120,7 @@ describe('useItemSuggestions', () => {
     await act(async () => { jest.runAllTimers(); });
 
     // searchHistory should only be called once (for the final input)
-    expect(history.searchHistory).toHaveBeenCalledTimes(1);
-    expect(history.searchHistory).toHaveBeenCalledWith('mil', 8);
+    expect(searchHistory).toHaveBeenCalledTimes(1);
+    expect(searchHistory).toHaveBeenCalledWith('mil', 8);
   });
 });

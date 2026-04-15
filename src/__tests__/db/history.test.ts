@@ -2,7 +2,7 @@ jest.mock('expo-sqlite', () => ({
   openDatabaseAsync: jest.fn(),
 }));
 
-import * as SQLite from 'expo-sqlite';
+import { openDatabaseAsync } from 'expo-sqlite';
 
 const mockDb = {
   execAsync: jest.fn(),
@@ -17,7 +17,7 @@ beforeEach(() => {
   mockDb.runAsync.mockResolvedValue(undefined);
   mockDb.getFirstAsync.mockResolvedValue({ version: 1 });
   mockDb.getAllAsync.mockResolvedValue([]);
-  (SQLite.openDatabaseAsync as jest.Mock).mockResolvedValue(mockDb);
+  (openDatabaseAsync as jest.Mock).mockResolvedValue(mockDb);
 });
 
 const getModule = () => require('@/db/history');

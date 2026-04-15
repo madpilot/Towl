@@ -90,8 +90,8 @@ function EditRow({ item, onSave, onCancel }: EditRowProps) {
   }, []);
 
   function handleSave() {
-    if (name.trim()) onSave(name.trim(), iconKey);
-    else onCancel();
+    if (name.trim()) { onSave(name.trim(), iconKey); }
+    else { onCancel(); }
   }
 
   return (

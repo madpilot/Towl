@@ -1,7 +1,7 @@
 jest.mock('expo-sqlite', () => ({ openDatabaseAsync: jest.fn() }));
 jest.mock('expo-crypto', () => ({ randomUUID: jest.fn() }));
 
-import * as SQLite from 'expo-sqlite';
+import { openDatabaseAsync } from 'expo-sqlite';
 import { randomUUID } from 'expo-crypto';
 
 const mockDb = {
@@ -14,7 +14,7 @@ const mockDb = {
 // Prime the db cache once so that subsequent calls to getDb() skip migration
 // and don't consume getFirstAsync mock values.
 beforeAll(async () => {
-  (SQLite.openDatabaseAsync as jest.Mock).mockResolvedValue(mockDb);
+  (openDatabaseAsync as jest.Mock).mockResolvedValue(mockDb);
   const { getDb } = require('@/db/schema');
   await getDb();
 });
@@ -25,7 +25,7 @@ beforeEach(() => {
   mockDb.runAsync.mockResolvedValue(undefined);
   mockDb.getFirstAsync.mockResolvedValue({ version: 2 });
   mockDb.getAllAsync.mockResolvedValue([]);
-  (SQLite.openDatabaseAsync as jest.Mock).mockResolvedValue(mockDb);
+  (openDatabaseAsync as jest.Mock).mockResolvedValue(mockDb);
   (randomUUID as jest.Mock).mockReturnValue('test-uuid');
 });
 
