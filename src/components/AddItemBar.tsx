@@ -28,7 +28,7 @@ type AddItemBarProps = {
  */
 function extractPrefix(input: string, matchedName: string): string {
   const idx = input.toLowerCase().indexOf(matchedName.toLowerCase());
-  if (idx <= 0) return '';
+  if (idx <= 0) { return ''; }
   return input.slice(0, idx).trim();
 }
 
@@ -69,7 +69,7 @@ export default function AddItemBar({ onAdd }: AddItemBarProps) {
 
   async function handleAdd() {
     const trimmed = trimmedValue;
-    if (!trimmed || parsing) return;
+    if (!trimmed || parsing) { return; }
 
     if (exactMatch) {
       // User typed the item name exactly — no prefix to extract.
