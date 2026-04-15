@@ -10,7 +10,13 @@ type FieldProps = {
   secureTextEntry?: boolean;
 };
 
-export function Field({ label, value, onChangeText, placeholder, secureTextEntry = false }: FieldProps) {
+export function Field({
+  label,
+  value,
+  onChangeText,
+  placeholder,
+  secureTextEntry = false,
+}: FieldProps) {
   return (
     <View style={styles.wrap}>
       <Text style={styles.label}>{label}</Text>

@@ -34,13 +34,17 @@ import type { SettingsScreenProps } from '@/navigation/types';
 
 function sessionLabel(name: string): string {
   const match = name.match(/(Firefox|Chrome|Edg|Safari|Towl|OPR|Opera)\/[\d.]+/);
-  if (match) { return match[0]; }
+  if (match) {
+    return match[0];
+  }
   return name.length > 38 ? name.slice(0, 35) + '…' : name;
 }
 
 function formatDate(ms: number): string {
   return new Date(ms).toLocaleDateString(undefined, {
-    month: 'short', day: 'numeric', year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
   });
 }
 
@@ -53,7 +57,10 @@ function Avatar({ name, size = 52, uri }: { name: string; size?: number; uri?: s
     .join('')
     .slice(0, 2)
     .toUpperCase();
-  const containerStyle = [avatarStyles.circle, { width: size, height: size, borderRadius: size / 2 }];
+  const containerStyle = [
+    avatarStyles.circle,
+    { width: size, height: size, borderRadius: size / 2 },
+  ];
   if (uri) {
     return (
       <View style={containerStyle}>
@@ -132,10 +139,15 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!authApi || !serverUrl) { return; }
-    authApi.getUser()
+    if (!authApi || !serverUrl) {
+      return;
+    }
+    authApi
+      .getUser()
       .then((apiUser) => {
-        if (apiUser.photo) { setAvatarUri(`${serverUrl}/api/upload/${apiUser.photo}`); }
+        if (apiUser.photo) {
+          setAvatarUri(`${serverUrl}/api/upload/${apiUser.photo}`);
+        }
       })
       .catch(() => {});
   }, [authApi, serverUrl]);
@@ -145,9 +157,12 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
   const [loadingSessions, setLoadingSessions] = useState(false);
 
   useEffect(() => {
-    if (modal !== 'sessions' || !authApi) { return; }
+    if (modal !== 'sessions' || !authApi) {
+      return;
+    }
     setLoadingSessions(true);
-    authApi.getSessions()
+    authApi
+      .getSessions()
       .then((data) => setSessions([...data].sort((a, b) => a.created_at - b.created_at)))
       .catch(() => Alert.alert('Error', 'Could not load sessions.'))
       .finally(() => setLoadingSessions(false));
@@ -172,7 +187,9 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
   }
 
   const loadHouseholds = useCallback(async () => {
-    if (!householdsApi) { return; }
+    if (!householdsApi) {
+      return;
+    }
     try {
       setLoadingHouseholds(true);
       const data = await householdsApi.getHouseholds();
@@ -185,10 +202,14 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
     }
   }, [householdsApi, setStoreHouseholds]);
 
-  useEffect(() => { void loadHouseholds(); }, [loadHouseholds]);
+  useEffect(() => {
+    void loadHouseholds();
+  }, [loadHouseholds]);
 
   async function handleSaveName() {
-    if (!editName.trim() || !authApi) { return; }
+    if (!editName.trim() || !authApi) {
+      return;
+    }
     setSavingName(true);
     try {
       await authApi.updateProfile(editName.trim());
@@ -207,7 +228,9 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
   }
 
   async function handleSaveEmail() {
-    if (!authApi) { return; }
+    if (!authApi) {
+      return;
+    }
     setSavingEmail(true);
     try {
       await authApi.updateEmail(editEmail.trim());
@@ -221,7 +244,9 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
   }
 
   async function handleChangePassword() {
-    if (!pwNew || !authApi) { return; }
+    if (!pwNew || !authApi) {
+      return;
+    }
     if (pwNew !== pwConfirm) {
       Alert.alert('Error', 'New passwords do not match.');
       return;
@@ -230,7 +255,9 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
     try {
       await authApi.changePassword(pwCurrent, pwNew);
       setModal(null);
-      setPwCurrent(''); setPwNew(''); setPwConfirm('');
+      setPwCurrent('');
+      setPwNew('');
+      setPwConfirm('');
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Failed to change password.';
       Alert.alert('Not yet available', msg);
@@ -240,7 +267,9 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
   }
 
   async function handleCreateHousehold() {
-    if (!newHHName.trim() || !householdsApi) { return; }
+    if (!newHHName.trim() || !householdsApi) {
+      return;
+    }
     setCreatingHH(true);
     try {
       await householdsApi.createHousehold(newHHName.trim());
@@ -276,9 +305,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
           <Avatar name={displayName} size={52} uri={avatarUri} />
           <View>
             <Text style={styles.heroName}>{displayName}</Text>
-            {displayUsername ? (
-              <Text style={styles.heroSub}>@{displayUsername}</Text>
-            ) : null}
+            {displayUsername ? <Text style={styles.heroSub}>@{displayUsername}</Text> : null}
           </View>
         </View>
 
@@ -288,23 +315,37 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
           <Row
             label="Name"
             sub={displayName}
-            onPress={() => { setEditName(displayName); setModal('editName'); }}
+            onPress={() => {
+              setEditName(displayName);
+              setModal('editName');
+            }}
           />
           <Sep />
           <Row
             label="Email"
             sub={user?.email}
-            onPress={() => { setEditEmail(user?.email ?? ''); setModal('editEmail'); }}
+            onPress={() => {
+              setEditEmail(user?.email ?? '');
+              setModal('editEmail');
+            }}
           />
           <Sep />
           <Row
             label="Change password"
-            onPress={() => { setPwCurrent(''); setPwNew(''); setPwConfirm(''); setModal('changePassword'); }}
+            onPress={() => {
+              setPwCurrent('');
+              setPwNew('');
+              setPwConfirm('');
+              setModal('changePassword');
+            }}
           />
           <Sep />
           <Row
             label="Active sessions"
-            onPress={() => { setSessions([]); setModal('sessions'); }}
+            onPress={() => {
+              setSessions([]);
+              setModal('sessions');
+            }}
           />
         </Card>
 
@@ -320,10 +361,12 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
               <View key={hh.id}>
                 <Row
                   label={hh.name}
-                  onPress={() => navigation.navigate('HouseholdDetail', {
-                    householdId: hh.id,
-                    householdName: hh.name,
-                  })}
+                  onPress={() =>
+                    navigation.navigate('HouseholdDetail', {
+                      householdId: hh.id,
+                      householdName: hh.name,
+                    })
+                  }
                 />
                 {i < households.length - 1 && <Sep />}
               </View>
@@ -332,7 +375,10 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
           <Sep />
           <TouchableOpacity
             style={styles.addRow}
-            onPress={() => { setNewHHName(''); setModal('newHousehold'); }}
+            onPress={() => {
+              setNewHHName('');
+              setModal('newHousehold');
+            }}
             activeOpacity={0.7}
           >
             <Text style={styles.addLabel}>+ New household</Text>
@@ -342,21 +388,20 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
         {/* Log out */}
         <View style={{ height: Spacing.lg }} />
         <Card>
-          <Row
-            label="Log out"
-            onPress={() => setModal('logout')}
-            danger
-            showChevron={false}
-          />
+          <Row label="Log out" onPress={() => setModal('logout')} danger showChevron={false} />
         </Card>
-
       </ScrollView>
 
       <BottomNav active="settings" />
 
       {/* Edit name modal */}
       <Sheet visible={modal === 'editName'} title="Your name" onClose={() => setModal(null)}>
-        <Field label="Full name" value={editName} onChangeText={setEditName} placeholder="Your name" />
+        <Field
+          label="Full name"
+          value={editName}
+          onChangeText={setEditName}
+          placeholder="Your name"
+        />
         <PrimaryBtn label="Save changes" onPress={handleSaveName} loading={savingName} />
         <SecondaryBtn label="Cancel" onPress={() => setModal(null)} />
         <View style={{ height: Spacing.xl }} />
@@ -364,17 +409,36 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
 
       {/* Edit email modal */}
       <Sheet visible={modal === 'editEmail'} title="Email address" onClose={() => setModal(null)}>
-        <Field label="Email" value={editEmail} onChangeText={setEditEmail} placeholder="you@example.com" />
+        <Field
+          label="Email"
+          value={editEmail}
+          onChangeText={setEditEmail}
+          placeholder="you@example.com"
+        />
         <PrimaryBtn label="Save changes" onPress={handleSaveEmail} loading={savingEmail} />
         <SecondaryBtn label="Cancel" onPress={() => setModal(null)} />
         <View style={{ height: Spacing.xl }} />
       </Sheet>
 
       {/* Change password modal */}
-      <Sheet visible={modal === 'changePassword'} title="Change password" onClose={() => setModal(null)}>
-        <Field label="Current password" value={pwCurrent} onChangeText={setPwCurrent} secureTextEntry />
+      <Sheet
+        visible={modal === 'changePassword'}
+        title="Change password"
+        onClose={() => setModal(null)}
+      >
+        <Field
+          label="Current password"
+          value={pwCurrent}
+          onChangeText={setPwCurrent}
+          secureTextEntry
+        />
         <Field label="New password" value={pwNew} onChangeText={setPwNew} secureTextEntry />
-        <Field label="Confirm new password" value={pwConfirm} onChangeText={setPwConfirm} secureTextEntry />
+        <Field
+          label="Confirm new password"
+          value={pwConfirm}
+          onChangeText={setPwConfirm}
+          secureTextEntry
+        />
         <PrimaryBtn label="Update password" onPress={handleChangePassword} loading={savingPw} />
         <SecondaryBtn label="Cancel" onPress={() => setModal(null)} />
         <View style={{ height: Spacing.xl }} />
@@ -396,7 +460,9 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
               <View key={s.id}>
                 <View style={styles.sessionRow}>
                   <View style={styles.sessionInfo}>
-                    <Text style={styles.sessionName} numberOfLines={1}>{sessionLabel(s.name)}</Text>
+                    <Text style={styles.sessionName} numberOfLines={1}>
+                      {sessionLabel(s.name)}
+                    </Text>
                     <Text style={styles.sessionDate}>{formatDate(s.created_at)}</Text>
                   </View>
                   <TouchableOpacity onPress={() => handleRevokeSession(s.id)} hitSlop={8}>
@@ -413,7 +479,11 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
       </Sheet>
 
       {/* New household modal */}
-      <Sheet visible={modal === 'newHousehold'} title="New household" onClose={() => setModal(null)}>
+      <Sheet
+        visible={modal === 'newHousehold'}
+        title="New household"
+        onClose={() => setModal(null)}
+      >
         <Field
           label="Household name"
           value={newHHName}
@@ -429,7 +499,9 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
       <Sheet visible={modal === 'logout'} title="Log out" onClose={() => setModal(null)}>
         <View style={styles.stubWrap}>
           <Text style={styles.stubText}>
-            {"You'll be returned to the server login screen. Your data stays safe on your KitchenOwl server."}
+            {
+              "You'll be returned to the server login screen. Your data stays safe on your KitchenOwl server."
+            }
           </Text>
         </View>
         <PrimaryBtn label="Log out" onPress={handleLogout} danger />

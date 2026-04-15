@@ -76,19 +76,35 @@ import type { LocalList } from '@/db/lists';
 
 function makeList(overrides: Partial<LocalList> = {}): LocalList {
   return {
-    localId: 'list-local-1', serverId: 5, householdId: 1, name: 'Groceries',
-    isDirty: false, isDeleted: false, lastSynced: 0,
+    localId: 'list-local-1',
+    serverId: 5,
+    householdId: 1,
+    name: 'Groceries',
+    isDirty: false,
+    isDeleted: false,
+    lastSynced: 0,
     ...overrides,
   };
 }
 
 function makeItem(overrides: Partial<LocalItem> = {}): LocalItem {
   return {
-    localId: 'item-1', serverId: 100, listLocalId: 'list-local-1',
-    name: 'Milk', description: '', iconKey: 'milk_carton', category: 'Dairy & Eggs',
-    serverCategoryId: null, serverCategoryName: null, serverCategoryOrdering: null,
-    isChecked: false, isImportant: false, isDirty: false, isDeleted: false,
-    createdAt: Date.now(), checkedAt: null,
+    localId: 'item-1',
+    serverId: 100,
+    listLocalId: 'list-local-1',
+    name: 'Milk',
+    description: '',
+    iconKey: 'milk_carton',
+    category: 'Dairy & Eggs',
+    serverCategoryId: null,
+    serverCategoryName: null,
+    serverCategoryOrdering: null,
+    isChecked: false,
+    isImportant: false,
+    isDirty: false,
+    isDeleted: false,
+    createdAt: Date.now(),
+    checkedAt: null,
     ...overrides,
   };
 }
@@ -115,7 +131,11 @@ beforeEach(() => {
   (getAllLists as jest.Mock).mockResolvedValue([]);
   (mockGetShoppingLists as jest.Mock).mockResolvedValue([]);
   (mockGetHousehold as jest.Mock).mockResolvedValue({
-    id: 1, name: 'Home', photo: null, member: [], default_shopping_list: null,
+    id: 1,
+    name: 'Home',
+    photo: null,
+    member: [],
+    default_shopping_list: null,
   });
 });
 
@@ -169,7 +189,10 @@ describe('bootstrap', () => {
     (getAllLists as jest.Mock).mockResolvedValue(lists);
     (getItemAsync as jest.Mock).mockResolvedValue(null);
     (mockGetHousehold as jest.Mock).mockResolvedValue({
-      id: 1, name: 'Home', photo: null, member: [],
+      id: 1,
+      name: 'Home',
+      photo: null,
+      member: [],
       default_shopping_list: { id: 8, name: 'Pharmacy', household_id: 1 },
     });
 
@@ -184,7 +207,10 @@ describe('bootstrap', () => {
     (getAllLists as jest.Mock).mockResolvedValue(lists);
     (getItemAsync as jest.Mock).mockResolvedValue(null);
     (mockGetHousehold as jest.Mock).mockResolvedValue({
-      id: 1, name: 'Home', photo: null, member: [],
+      id: 1,
+      name: 'Home',
+      photo: null,
+      member: [],
       default_shopping_list: { id: 99, name: 'Unknown', household_id: 1 },
     });
 
@@ -345,7 +371,9 @@ describe('toggleImportant', () => {
 describe('deleteItem', () => {
   beforeEach(() => {
     useListDetailStore.setState({
-      items: [makeItem()], activeLocalId: 'list-local-1', activeServerId: 5,
+      items: [makeItem()],
+      activeLocalId: 'list-local-1',
+      activeServerId: 5,
     });
     (softDeleteItem as jest.Mock).mockResolvedValue(undefined);
     (hardDeleteItem as jest.Mock).mockResolvedValue(undefined);
@@ -386,7 +414,9 @@ describe('deleteItem', () => {
 describe('saveItem', () => {
   beforeEach(() => {
     useListDetailStore.setState({
-      items: [makeItem()], activeLocalId: 'list-local-1', activeServerId: 5,
+      items: [makeItem()],
+      activeLocalId: 'list-local-1',
+      activeServerId: 5,
     });
     (updateItemNameAndIcon as jest.Mock).mockResolvedValue(undefined);
   });
@@ -477,9 +507,7 @@ describe('addItem', () => {
   it('uses provided iconKey and category instead of matching', async () => {
     await useListDetailStore.getState().addItem('Banana', '', 'banana', 'Produce');
 
-    expect(addItemLocally).toHaveBeenCalledWith(
-      'list-local-1', 'Banana', '', 'banana', 'Produce'
-    );
+    expect(addItemLocally).toHaveBeenCalledWith('list-local-1', 'Banana', '', 'banana', 'Produce');
   });
 
   it('does nothing when no activeLocalId', async () => {

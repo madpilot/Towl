@@ -1,6 +1,14 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react-native';
-import { SectionLabel, Card, Sep, Row, Field, PrimaryBtn, SecondaryBtn } from '@/components/settings';
+import {
+  SectionLabel,
+  Card,
+  Sep,
+  Row,
+  Field,
+  PrimaryBtn,
+  SecondaryBtn,
+} from '@/components/settings';
 
 describe('SectionLabel', () => {
   it('renders label text in uppercase', () => {
@@ -11,7 +19,11 @@ describe('SectionLabel', () => {
 
 describe('Card', () => {
   it('renders children', () => {
-    render(<Card><Row label="Test row" /></Card>);
+    render(
+      <Card>
+        <Row label="Test row" />
+      </Card>
+    );
     expect(screen.getByText('Test row')).toBeTruthy();
   });
 });
@@ -63,7 +75,9 @@ describe('Field', () => {
 
   it('calls onChangeText when input changes', () => {
     const onChangeText = jest.fn();
-    render(<Field label="Email" value="" onChangeText={onChangeText} placeholder="you@example.com" />);
+    render(
+      <Field label="Email" value="" onChangeText={onChangeText} placeholder="you@example.com" />
+    );
     fireEvent.changeText(screen.getByPlaceholderText('you@example.com'), 'new@example.com');
     expect(onChangeText).toHaveBeenCalledWith('new@example.com');
   });

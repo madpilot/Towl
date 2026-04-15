@@ -1,12 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, View } from 'react-native';
 import { testConnection } from '@/api/auth';
 import { TokenStore } from '@/auth/tokenStore';
 import {
@@ -23,7 +16,12 @@ import { Colors } from '@/theme';
 import type { ServerSetupScreenProps } from '@/navigation/types';
 
 function isValidUrl(s: string): boolean {
-  try { new URL(s); return true; } catch { return false; }
+  try {
+    new URL(s);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export default function ServerSetupScreen({ navigation }: ServerSetupScreenProps) {
@@ -65,8 +63,11 @@ export default function ServerSetupScreen({ navigation }: ServerSetupScreenProps
 
   const urlValid = isValidUrl(url.trim());
 
-  const bubbleMsg = error
-    || (urlValid ? "Looking good! Hit connect when you're ready." : "What's the address of your KitchenOwl server?");
+  const bubbleMsg =
+    error ||
+    (urlValid
+      ? "Looking good! Hit connect when you're ready."
+      : "What's the address of your KitchenOwl server?");
 
   return (
     <OnboardingLayout step={1}>
@@ -90,7 +91,10 @@ export default function ServerSetupScreen({ navigation }: ServerSetupScreenProps
             <FieldCard label="Server URL">
               <TextInput
                 value={url}
-                onChangeText={(v) => { setUrl(v); setError(''); }}
+                onChangeText={(v) => {
+                  setUrl(v);
+                  setError('');
+                }}
                 onSubmitEditing={handleConnect}
                 placeholder="https://kitchenowl.example.com"
                 placeholderTextColor={Colors.textFaded}
@@ -103,8 +107,18 @@ export default function ServerSetupScreen({ navigation }: ServerSetupScreenProps
               />
               {url.length > 0 && (
                 <View style={validatorStyles.row}>
-                  <View style={[validatorStyles.dot, { backgroundColor: urlValid ? Colors.mintLight : Colors.deleteRed }]} />
-                  <Text style={[validatorStyles.label, { color: urlValid ? Colors.mint : Colors.deleteRedStrong }]}>
+                  <View
+                    style={[
+                      validatorStyles.dot,
+                      { backgroundColor: urlValid ? Colors.mintLight : Colors.deleteRed },
+                    ]}
+                  />
+                  <Text
+                    style={[
+                      validatorStyles.label,
+                      { color: urlValid ? Colors.mint : Colors.deleteRedStrong },
+                    ]}
+                  >
                     {urlValid ? 'Valid URL' : 'Invalid URL'}
                   </Text>
                 </View>
@@ -121,11 +135,7 @@ export default function ServerSetupScreen({ navigation }: ServerSetupScreenProps
           <View style={screenStyles.spacer} />
 
           <FadeIn visible={v} delay={250}>
-            <PrimaryButton
-              onPress={handleConnect}
-              loading={loading}
-              testID="connect-btn"
-            >
+            <PrimaryButton onPress={handleConnect} loading={loading} testID="connect-btn">
               {loading ? 'Connecting…' : 'Connect →'}
             </PrimaryButton>
           </FadeIn>

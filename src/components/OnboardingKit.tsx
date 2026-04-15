@@ -157,18 +157,54 @@ export const OnboardingTommy = React.memo(function OnboardingTommy({
         <Circle cx="88" cy="100" r="62" fill={Colors.mintBg} stroke={Colors.mint} strokeWidth="3" />
         {/* Chest feathers */}
         <Ellipse
-          cx="88" cy="103" rx="44" ry="40"
-          fill="none" stroke={Colors.mint} strokeWidth="1.8" opacity="0.35"
+          cx="88"
+          cy="103"
+          rx="44"
+          ry="40"
+          fill="none"
+          stroke={Colors.mint}
+          strokeWidth="1.8"
+          opacity="0.35"
         />
         {/* Eyebrows */}
-        <Path d="M 60 79 Q 70 74 80 77" stroke={Colors.mint} strokeWidth="2.2" strokeLinecap="round" fill="none" opacity="0.45" />
-        <Path d="M 96 77 Q 106 74 116 79" stroke={Colors.mint} strokeWidth="2.2" strokeLinecap="round" fill="none" opacity="0.45" />
+        <Path
+          d="M 60 79 Q 70 74 80 77"
+          stroke={Colors.mint}
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          fill="none"
+          opacity="0.45"
+        />
+        <Path
+          d="M 96 77 Q 106 74 116 79"
+          stroke={Colors.mint}
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          fill="none"
+          opacity="0.45"
+        />
         {/* Left eye */}
-        <Ellipse cx="70" cy="97" rx="16" ry="16" fill="white" stroke={Colors.mint} strokeWidth="2.6" />
+        <Ellipse
+          cx="70"
+          cy="97"
+          rx="16"
+          ry="16"
+          fill="white"
+          stroke={Colors.mint}
+          strokeWidth="2.6"
+        />
         <Circle cx="70" cy="97" r="9" fill={Colors.mint} />
         <Circle cx="73" cy="93" r="3" fill="white" />
         {/* Right eye */}
-        <Ellipse cx="106" cy="97" rx="16" ry="16" fill="white" stroke={Colors.mint} strokeWidth="2.6" />
+        <Ellipse
+          cx="106"
+          cy="97"
+          rx="16"
+          ry="16"
+          fill="white"
+          stroke={Colors.mint}
+          strokeWidth="2.6"
+        />
         <Circle cx="106" cy="97" r="9" fill={Colors.mint} />
         <Circle cx="109" cy="93" r="3" fill="white" />
         {/* Beak */}
@@ -200,7 +236,12 @@ function SpeechBubble({ children, visible, error = false }: SpeechBubbleProps) {
     if (visible) {
       Animated.parallel([
         Animated.spring(opacity, { toValue: 1, useNativeDriver: true, tension: 120, friction: 8 }),
-        Animated.spring(translateY, { toValue: 0, useNativeDriver: true, tension: 120, friction: 8 }),
+        Animated.spring(translateY, {
+          toValue: 0,
+          useNativeDriver: true,
+          tension: 120,
+          friction: 8,
+        }),
       ]).start();
     } else {
       opacity.setValue(0);
@@ -233,7 +274,7 @@ const bubbleStyles = StyleSheet.create({
     maxWidth: 264,
     shadowColor: Colors.mint,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.10,
+    shadowOpacity: 0.1,
     shadowRadius: 10,
     elevation: 3,
   },
@@ -392,9 +433,14 @@ export function Spinner() {
     <Animated.View style={{ transform: [{ rotate: spin }] }}>
       <Svg width={18} height={18} viewBox="0 0 18 18">
         <Circle
-          cx="9" cy="9" r="7"
-          stroke={Colors.mint} strokeWidth="2.5"
-          fill="none" strokeDasharray="35" strokeDashoffset="10"
+          cx="9"
+          cy="9"
+          r="7"
+          stroke={Colors.mint}
+          strokeWidth="2.5"
+          fill="none"
+          strokeDasharray="35"
+          strokeDashoffset="10"
         />
       </Svg>
     </Animated.View>
@@ -487,14 +533,30 @@ type EyeIconProps = { visible: boolean };
 export function EyeIcon({ visible }: EyeIconProps) {
   if (visible) {
     return (
-      <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={Colors.mintLight} strokeWidth="1.8" strokeLinecap="round">
+      <Svg
+        width={18}
+        height={18}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke={Colors.mintLight}
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      >
         <Path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" />
         <Line x1="1" y1="1" x2="23" y2="23" />
       </Svg>
     );
   }
   return (
-    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={Colors.mintLight} strokeWidth="1.8" strokeLinecap="round">
+    <Svg
+      width={18}
+      height={18}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={Colors.mintLight}
+      strokeWidth="1.8"
+      strokeLinecap="round"
+    >
       <Path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
       <Circle cx="12" cy="12" r="3" />
     </Svg>

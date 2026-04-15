@@ -10,15 +10,9 @@ export type AuthStackParamList = {
 
 export type WelcomeScreenProps = NativeStackScreenProps<AuthStackParamList, 'Welcome'>;
 
-export type ServerSetupScreenProps = NativeStackScreenProps<
-  AuthStackParamList,
-  'ServerSetup'
->;
+export type ServerSetupScreenProps = NativeStackScreenProps<AuthStackParamList, 'ServerSetup'>;
 
-export type LoginScreenProps = NativeStackScreenProps<
-  AuthStackParamList,
-  'Login'
->;
+export type LoginScreenProps = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
 // ─── Main (app) stack ────────────────────────────────────────────────────────
 
@@ -31,9 +25,21 @@ export type MainStackParamList = {
   HouseholdCategories: { householdId: number; householdName: string };
 };
 
-export type HouseholdPickerScreenProps = NativeStackScreenProps<MainStackParamList, 'HouseholdPicker'>;
+export type HouseholdPickerScreenProps = NativeStackScreenProps<
+  MainStackParamList,
+  'HouseholdPicker'
+>;
 export type ListDetailScreenProps = NativeStackScreenProps<MainStackParamList, 'ListDetail'>;
 export type SettingsScreenProps = NativeStackScreenProps<MainStackParamList, 'Settings'>;
-export type HouseholdDetailScreenProps = NativeStackScreenProps<MainStackParamList, 'HouseholdDetail'>;
-export type HouseholdItemsScreenProps = NativeStackScreenProps<MainStackParamList, 'HouseholdItems'>;
-export type HouseholdCategoriesScreenProps = NativeStackScreenProps<MainStackParamList, 'HouseholdCategories'>;
+export type HouseholdDetailScreenProps = NativeStackScreenProps<
+  MainStackParamList,
+  'HouseholdDetail'
+>;
+export type HouseholdItemsScreenProps = NativeStackScreenProps<
+  MainStackParamList,
+  'HouseholdItems'
+>;
+export type HouseholdCategoriesScreenProps = NativeStackScreenProps<
+  MainStackParamList,
+  'HouseholdCategories'
+>;

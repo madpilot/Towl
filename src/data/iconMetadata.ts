@@ -6,7 +6,7 @@
 export type IconMeta = {
   emoji: string;
   category: string;
-}
+};
 
 export const ICON_METADATA: Record<string, IconMeta> = {
   // Produce
@@ -455,6 +455,8 @@ export const ICON_METADATA: Record<string, IconMeta> = {
 export const DEFAULT_META: IconMeta = { emoji: '🛒', category: 'Other' };
 
 export function getIconMeta(iconKey: string | null | undefined): IconMeta {
-  if (!iconKey) { return DEFAULT_META; }
+  if (!iconKey) {
+    return DEFAULT_META;
+  }
   return ICON_METADATA[iconKey] ?? DEFAULT_META;
 }

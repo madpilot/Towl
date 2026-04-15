@@ -77,20 +77,17 @@ describe('history db', () => {
       const { searchHistory } = getModule();
       await searchHistory('mil', 5);
 
-      expect(mockDb.getAllAsync).toHaveBeenCalledWith(
-        expect.stringContaining('LIKE ?'),
-        ['%mil%', 5]
-      );
+      expect(mockDb.getAllAsync).toHaveBeenCalledWith(expect.stringContaining('LIKE ?'), [
+        '%mil%',
+        5,
+      ]);
     });
 
     it('lowercases and trims the query', async () => {
       const { searchHistory } = getModule();
       await searchHistory('  BUTTER  ', 5);
 
-      expect(mockDb.getAllAsync).toHaveBeenCalledWith(
-        expect.anything(),
-        ['%butter%', 5]
-      );
+      expect(mockDb.getAllAsync).toHaveBeenCalledWith(expect.anything(), ['%butter%', 5]);
     });
   });
 

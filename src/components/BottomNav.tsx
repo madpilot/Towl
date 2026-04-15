@@ -36,7 +36,9 @@ export default function BottomNav({ active }: BottomNavProps) {
         activeOpacity={0.7}
       >
         <SettingsIcon color={active === 'settings' ? Colors.mintLight : Colors.mint} size={24} />
-        <Text style={[styles.navLabel, active !== 'settings' && styles.navLabelFaded]}>Settings</Text>
+        <Text style={[styles.navLabel, active !== 'settings' && styles.navLabelFaded]}>
+          Settings
+        </Text>
       </TouchableOpacity>
 
       <View style={styles.owlWrap}>
@@ -63,7 +65,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xxl * 2,
     shadowColor: Colors.mint,
     shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.10,
+    shadowOpacity: 0.1,
     shadowRadius: 12,
     elevation: 8,
   },

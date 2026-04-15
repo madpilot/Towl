@@ -5,11 +5,21 @@
 jest.mock('react-native-svg', () => {
   const React = require('react');
   const { View } = require('react-native');
-  function Svg({ children }: { children?: React.ReactNode }) { return React.createElement(View, null, children); }
-  function Path() { return null; }
-  function Circle() { return null; }
-  function Ellipse() { return null; }
-  function Line() { return null; }
+  function Svg({ children }: { children?: React.ReactNode }) {
+    return React.createElement(View, null, children);
+  }
+  function Path() {
+    return null;
+  }
+  function Circle() {
+    return null;
+  }
+  function Ellipse() {
+    return null;
+  }
+  function Line() {
+    return null;
+  }
   return { __esModule: true, default: Svg, Path, Circle, Ellipse, Line };
 });
 

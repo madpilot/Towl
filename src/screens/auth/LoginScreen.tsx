@@ -88,7 +88,9 @@ export default function LoginScreen({ route }: LoginScreenProps) {
           <FadeIn visible={v} delay={100} style={{ marginTop: 14 }}>
             <View style={pillStyles.pill}>
               <View style={pillStyles.dot} />
-              <Text style={pillStyles.url} numberOfLines={1}>{serverUrl}</Text>
+              <Text style={pillStyles.url} numberOfLines={1}>
+                {serverUrl}
+              </Text>
             </View>
           </FadeIn>
 
@@ -96,7 +98,10 @@ export default function LoginScreen({ route }: LoginScreenProps) {
             <FieldCard label="Username">
               <TextInput
                 value={username}
-                onChangeText={(v) => { setUsername(v); setError(''); }}
+                onChangeText={(v) => {
+                  setUsername(v);
+                  setError('');
+                }}
                 onSubmitEditing={() => passwordRef.current?.focus()}
                 placeholder="tommy"
                 placeholderTextColor={Colors.textFaded}
@@ -114,7 +119,10 @@ export default function LoginScreen({ route }: LoginScreenProps) {
                   <TextInput
                     ref={passwordRef}
                     value={password}
-                    onChangeText={(v) => { setPassword(v); setError(''); }}
+                    onChangeText={(v) => {
+                      setPassword(v);
+                      setError('');
+                    }}
                     onSubmitEditing={handleLogin}
                     placeholder="••••••••"
                     placeholderTextColor={Colors.textFaded}
@@ -138,11 +146,7 @@ export default function LoginScreen({ route }: LoginScreenProps) {
           <View style={screenStyles.spacer} />
 
           <FadeIn visible={v} delay={250}>
-            <PrimaryButton
-              onPress={handleLogin}
-              loading={loading}
-              testID="login-button"
-            >
+            <PrimaryButton onPress={handleLogin} loading={loading} testID="login-button">
               {loading ? 'Signing in…' : 'Sign in →'}
             </PrimaryButton>
           </FadeIn>

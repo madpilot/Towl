@@ -16,12 +16,16 @@ import SyncIndicator from '@/components/SyncIndicator';
 import { useSyncStore } from '@/store/syncStore';
 import { useNetworkStore } from '@/sync/connectivityMonitor';
 
-type SyncState = { status: 'idle' | 'syncing' | 'error'; pendingCount: number; syncVersion: number };
+type SyncState = {
+  status: 'idle' | 'syncing' | 'error';
+  pendingCount: number;
+  syncVersion: number;
+};
 type NetworkState = { isOnline: boolean };
 
 function mockStores(sync: SyncState, network: NetworkState) {
-  (useSyncStore as unknown as jest.Mock).mockImplementation(
-    (sel: (s: SyncState) => unknown) => sel(sync)
+  (useSyncStore as unknown as jest.Mock).mockImplementation((sel: (s: SyncState) => unknown) =>
+    sel(sync)
   );
   (useNetworkStore as unknown as jest.Mock).mockImplementation(
     (sel: (s: NetworkState) => unknown) => sel(network)

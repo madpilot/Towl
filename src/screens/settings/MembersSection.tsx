@@ -18,7 +18,9 @@ export function MembersSection() {
   const [saving, setSaving] = useState(false);
 
   async function handleInvite() {
-    if (!inviteUsername.trim()) { return; }
+    if (!inviteUsername.trim()) {
+      return;
+    }
     setSaving(true);
     try {
       await inviteMember(inviteUsername.trim());
@@ -32,7 +34,9 @@ export function MembersSection() {
   }
 
   async function handleRemove() {
-    if (removingMemberId === null) { return; }
+    if (removingMemberId === null) {
+      return;
+    }
     setSaving(true);
     try {
       await removeMember(removingMemberId);
@@ -68,7 +72,11 @@ export function MembersSection() {
                 )}
                 <Text style={styles.name}>{m.name}</Text>
                 <TouchableOpacity
-                  onPress={() => { setRemovingMemberId(m.id); setRemovingMemberName(m.name); setModal('remove'); }}
+                  onPress={() => {
+                    setRemovingMemberId(m.id);
+                    setRemovingMemberName(m.name);
+                    setModal('remove');
+                  }}
                   hitSlop={8}
                 >
                   <Text style={styles.removeBtn}>✕</Text>
@@ -81,7 +89,10 @@ export function MembersSection() {
         <Sep />
         <TouchableOpacity
           style={styles.addRow}
-          onPress={() => { setInviteUsername(''); setModal('invite'); }}
+          onPress={() => {
+            setInviteUsername('');
+            setModal('invite');
+          }}
           activeOpacity={0.7}
         >
           <Text style={styles.addLabel}>+ Invite member</Text>
@@ -100,7 +111,11 @@ export function MembersSection() {
         <View style={{ height: Spacing.xl }} />
       </Sheet>
 
-      <Sheet visible={modal === 'remove'} title={`Remove ${removingMemberName}`} onClose={() => setModal(null)}>
+      <Sheet
+        visible={modal === 'remove'}
+        title={`Remove ${removingMemberName}`}
+        onClose={() => setModal(null)}
+      >
         <View style={styles.sheetBody}>
           <Text style={styles.sheetBodyText}>
             {removingMemberName} will lose access to this household.

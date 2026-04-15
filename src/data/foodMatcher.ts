@@ -6,7 +6,7 @@ export type MatchResult = {
   iconKey: string | null;
   emoji: string;
   category: string;
-}
+};
 
 // ── Build search corpus ──────────────────────────────────────────────────────
 
@@ -15,7 +15,7 @@ type SearchEntry = {
   label: string;
   /** Original icon key stored in KitchenOwl. */
   iconKey: string;
-}
+};
 
 const corpus: SearchEntry[] = ALL_ICON_KEYS.map((key) => ({
   iconKey: key,
@@ -24,9 +24,7 @@ const corpus: SearchEntry[] = ALL_ICON_KEYS.map((key) => ({
 
 // ── Exact match map (O(1) for common inputs) ────────────────────────────────
 
-const exactMap = new Map<string, string>(
-  corpus.map(({ label, iconKey }) => [label, iconKey])
-);
+const exactMap = new Map<string, string>(corpus.map(({ label, iconKey }) => [label, iconKey]));
 
 // ── Fuse.js index ────────────────────────────────────────────────────────────
 
@@ -51,7 +49,9 @@ const fuse = new Fuse(corpus, {
  */
 export function matchItem(input: string): MatchResult {
   const normalised = input.toLowerCase().trim();
-  if (!normalised) { return { iconKey: null, ...DEFAULT_META }; }
+  if (!normalised) {
+    return { iconKey: null, ...DEFAULT_META };
+  }
 
   // 1. Exact match
   const exact = exactMap.get(normalised);
@@ -71,7 +71,9 @@ export function matchItem(input: string): MatchResult {
 /** Returns the top N candidate icon keys for a given input string. */
 export function suggestIcons(input: string, limit = 8): Array<{ iconKey: string } & IconMeta> {
   const normalised = input.toLowerCase().trim();
-  if (!normalised) { return []; }
+  if (!normalised) {
+    return [];
+  }
 
   const results = fuse.search(normalised, { limit });
   return results.map((r) => ({

@@ -27,9 +27,7 @@ export class TokenStore {
     await Promise.all([
       setItemAsync(SECURE_STORE_KEYS.ACCESS_TOKEN, tokens.accessToken),
       setItemAsync(SECURE_STORE_KEYS.REFRESH_TOKEN, tokens.refreshToken),
-      tokens.llt
-        ? setItemAsync(SECURE_STORE_KEYS.LLT_TOKEN, tokens.llt)
-        : Promise.resolve(),
+      tokens.llt ? setItemAsync(SECURE_STORE_KEYS.LLT_TOKEN, tokens.llt) : Promise.resolve(),
     ]);
   }
 
@@ -38,7 +36,9 @@ export class TokenStore {
       getItemAsync(SECURE_STORE_KEYS.ACCESS_TOKEN),
       getItemAsync(SECURE_STORE_KEYS.REFRESH_TOKEN),
     ]);
-    if (!accessToken || !refreshToken) { return null; }
+    if (!accessToken || !refreshToken) {
+      return null;
+    }
     const llt = await getItemAsync(SECURE_STORE_KEYS.LLT_TOKEN);
     return { accessToken, refreshToken, llt };
   }
@@ -57,7 +57,9 @@ export class TokenStore {
 
   async getUser(): Promise<StoredUser | null> {
     const raw = await getItemAsync(SECURE_STORE_KEYS.USER_JSON);
-    if (!raw) { return null; }
+    if (!raw) {
+      return null;
+    }
     try {
       return StoredUserSchema.parse(JSON.parse(raw));
     } catch {
@@ -84,4 +86,3 @@ export class TokenStore {
     ]);
   }
 }
-

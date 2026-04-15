@@ -34,10 +34,10 @@ export default function TommyOwl({ size = 90 }: TommyOwlProps) {
   const mode: OwlMode = !isOnline
     ? 'sleeping'
     : requestCount > 0
-    ? 'active'
-    : syncStatus === 'error'
-    ? 'error'
-    : 'idle';
+      ? 'active'
+      : syncStatus === 'error'
+        ? 'error'
+        : 'idle';
 
   const [bubbleVisible, setBubbleVisible] = useState(false);
 
@@ -124,7 +124,9 @@ export default function TommyOwl({ size = 90 }: TommyOwlProps) {
         Animated.timing(eyeRy, { toValue: 16, duration: 80, useNativeDriver: false }),
         Animated.delay(900),
       ]).start(({ finished }) => {
-        if (finished) { runCycle(); }
+        if (finished) {
+          runCycle();
+        }
       });
     }
 
@@ -173,7 +175,7 @@ export default function TommyOwl({ size = 90 }: TommyOwlProps) {
         setBubbleVisible(false)
       );
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 
   // ─── Dismiss error ────────────────────────────────────────────────────────

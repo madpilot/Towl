@@ -6,11 +6,21 @@
 jest.mock('react-native-svg', () => {
   const React = require('react');
   const { View } = require('react-native');
-  function Svg({ children }: { children?: React.ReactNode }) { return React.createElement(View, null, children); }
-  function Path() { return null; }
-  function Circle() { return null; }
-  function Ellipse() { return null; }
-  function Line() { return null; }
+  function Svg({ children }: { children?: React.ReactNode }) {
+    return React.createElement(View, null, children);
+  }
+  function Path() {
+    return null;
+  }
+  function Circle() {
+    return null;
+  }
+  function Ellipse() {
+    return null;
+  }
+  function Line() {
+    return null;
+  }
   return { __esModule: true, default: Svg, Path, Circle, Ellipse, Line };
 });
 
@@ -42,9 +52,7 @@ beforeEach(() => {
 
 describe('LoginScreen', () => {
   it('renders server URL pill and form fields', () => {
-    const { getByText, getByPlaceholderText } = render(
-      <LoginScreen {...baseProps} />,
-    );
+    const { getByText, getByPlaceholderText } = render(<LoginScreen {...baseProps} />);
     expect(getByText(SERVER_URL)).toBeTruthy();
     expect(getByPlaceholderText('tommy')).toBeTruthy();
     expect(getByPlaceholderText('••••••••')).toBeTruthy();
@@ -60,9 +68,7 @@ describe('LoginScreen', () => {
   });
 
   it('shows error when password is empty', async () => {
-    const { getByText, getByPlaceholderText, getByTestId } = render(
-      <LoginScreen {...baseProps} />,
-    );
+    const { getByText, getByPlaceholderText, getByTestId } = render(<LoginScreen {...baseProps} />);
     fireEvent.changeText(getByPlaceholderText('tommy'), 'alice');
     await act(async () => {
       fireEvent.press(getByTestId('login-button'));
@@ -79,9 +85,7 @@ describe('LoginScreen', () => {
     (login as jest.Mock).mockResolvedValue(fakeRes);
     (onLoginSuccess as jest.Mock).mockResolvedValue(undefined);
 
-    const { getByPlaceholderText, getByTestId } = render(
-      <LoginScreen {...baseProps} />,
-    );
+    const { getByPlaceholderText, getByTestId } = render(<LoginScreen {...baseProps} />);
     fireEvent.changeText(getByPlaceholderText('tommy'), 'alice');
     fireEvent.changeText(getByPlaceholderText('••••••••'), 'secret');
     await act(async () => {
@@ -89,12 +93,7 @@ describe('LoginScreen', () => {
     });
 
     await waitFor(() =>
-      expect(onLoginSuccess).toHaveBeenCalledWith(
-        SERVER_URL,
-        'acc',
-        'ref',
-        fakeRes.user,
-      ),
+      expect(onLoginSuccess).toHaveBeenCalledWith(SERVER_URL, 'acc', 'ref', fakeRes.user)
     );
   });
 
@@ -103,27 +102,21 @@ describe('LoginScreen', () => {
     (login as jest.Mock).mockRejectedValue(axiosErr);
     (isAxiosAuthError as unknown as jest.Mock).mockReturnValue(true);
 
-    const { getByText, getByPlaceholderText, getByTestId } = render(
-      <LoginScreen {...baseProps} />,
-    );
+    const { getByText, getByPlaceholderText, getByTestId } = render(<LoginScreen {...baseProps} />);
     fireEvent.changeText(getByPlaceholderText('tommy'), 'alice');
     fireEvent.changeText(getByPlaceholderText('••••••••'), 'wrong');
     await act(async () => {
       fireEvent.press(getByTestId('login-button'));
     });
 
-    await waitFor(() =>
-      expect(getByText('Invalid username or password.')).toBeTruthy(),
-    );
+    await waitFor(() => expect(getByText('Invalid username or password.')).toBeTruthy());
   });
 
   it('shows network error on non-401 failure', async () => {
     (login as jest.Mock).mockRejectedValue(new Error('Network Error'));
     (isAxiosAuthError as unknown as jest.Mock).mockReturnValue(false);
 
-    const { getByText, getByPlaceholderText, getByTestId } = render(
-      <LoginScreen {...baseProps} />,
-    );
+    const { getByText, getByPlaceholderText, getByTestId } = render(<LoginScreen {...baseProps} />);
     fireEvent.changeText(getByPlaceholderText('tommy'), 'alice');
     fireEvent.changeText(getByPlaceholderText('••••••••'), 'pass');
     await act(async () => {
@@ -132,8 +125,8 @@ describe('LoginScreen', () => {
 
     await waitFor(() =>
       expect(
-        getByText('Could not connect to server. Check your network and try again.'),
-      ).toBeTruthy(),
+        getByText('Could not connect to server. Check your network and try again.')
+      ).toBeTruthy()
     );
   });
 });

@@ -18,7 +18,10 @@ export default function WelcomeScreen({ navigation }: WelcomeScreenProps) {
   useEffect(() => {
     const t1 = setTimeout(() => setV(true), 300);
     const t2 = setTimeout(() => setV2(true), 900);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
   }, []);
 
   return (
@@ -33,7 +36,7 @@ export default function WelcomeScreen({ navigation }: WelcomeScreenProps) {
           scrollEnabled={false}
         >
           <BubbleText visible={v}>
-            {'Hoot! I\'m Tommy. 👋 '}
+            {"Hoot! I'm Tommy. 👋 "}
             <Text style={{ fontWeight: '600', color: '#555' }}>
               {'Welcome to '}
               <Text style={{ color: Colors.mint, fontWeight: '800' }}>Towl</Text>
@@ -47,15 +50,16 @@ export default function WelcomeScreen({ navigation }: WelcomeScreenProps) {
 
           <FadeIn visible={v2} delay={50} style={{ alignItems: 'center', marginTop: 28 }}>
             <Text style={taglineStyles.headline}>Never forget the milk.</Text>
-            <Text style={taglineStyles.subline}>
-              Fast lists. Smart grouping. Happy shopping.
-            </Text>
+            <Text style={taglineStyles.subline}>Fast lists. Smart grouping. Happy shopping.</Text>
           </FadeIn>
 
           <View style={screenStyles.spacer} />
 
           <FadeIn visible={v2} delay={100}>
-            <PrimaryButton onPress={() => navigation.navigate('ServerSetup')} testID="welcome-next-btn">
+            <PrimaryButton
+              onPress={() => navigation.navigate('ServerSetup')}
+              testID="welcome-next-btn"
+            >
               Let&apos;s get started →
             </PrimaryButton>
           </FadeIn>

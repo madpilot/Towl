@@ -27,27 +27,46 @@ jest.mock('@/store/syncStore', () => ({
 jest.mock('@/screens/lists/ListPickerModal', () => {
   const React = require('react');
   const { View } = require('react-native');
-  function ListPickerModal() { return React.createElement(View, { testID: 'list-picker-modal' }); }
+  function ListPickerModal() {
+    return React.createElement(View, { testID: 'list-picker-modal' });
+  }
   return ListPickerModal;
 });
 
 jest.mock('@/screens/lists/TrolleySection', () => {
   const React = require('react');
   const { View } = require('react-native');
-  function TrolleySection() { return React.createElement(View, { testID: 'trolley-section' }); }
+  function TrolleySection() {
+    return React.createElement(View, { testID: 'trolley-section' });
+  }
   return TrolleySection;
 });
 
 jest.mock('@/components/AddItemBar', () => {
   const React = require('react');
   const { TextInput, TouchableOpacity, View } = require('react-native');
-  function AddItemBar({ onAdd }: { onAdd: (name: string, desc: string, iconKey: string | null, cat: string) => void }) {
+  function AddItemBar({
+    onAdd,
+  }: {
+    onAdd: (name: string, desc: string, iconKey: string | null, cat: string) => void;
+  }) {
     const [val, setVal] = React.useState('');
-    return React.createElement(View, null,
-      React.createElement(TextInput, { testID: 'add-item-input', value: val, onChangeText: setVal }),
+    return React.createElement(
+      View,
+      null,
+      React.createElement(TextInput, {
+        testID: 'add-item-input',
+        value: val,
+        onChangeText: setVal,
+      }),
       React.createElement(TouchableOpacity, {
         testID: 'add-item-submit',
-        onPress: () => { if (val.trim()) { onAdd(val.trim(), '', null, 'Other'); setVal(''); } },
+        onPress: () => {
+          if (val.trim()) {
+            onAdd(val.trim(), '', null, 'Other');
+            setVal('');
+          }
+        },
       })
     );
   }
@@ -57,8 +76,16 @@ jest.mock('@/components/AddItemBar', () => {
 jest.mock('@/components/CategorySection', () => {
   const React = require('react');
   const { View, Text } = require('react-native');
-  function CategorySection({ category, items }: { category: string; items: Array<{ localId: string; name: string }> }) {
-    return React.createElement(View, { testID: `category-${category}` },
+  function CategorySection({
+    category,
+    items,
+  }: {
+    category: string;
+    items: Array<{ localId: string; name: string }>;
+  }) {
+    return React.createElement(
+      View,
+      { testID: `category-${category}` },
       items.map((i) => React.createElement(Text, { key: i.localId }, i.name))
     );
   }
@@ -68,14 +95,18 @@ jest.mock('@/components/CategorySection', () => {
 jest.mock('@/components/BottomNav', () => {
   const React = require('react');
   const { View } = require('react-native');
-  function BottomNav() { return React.createElement(View, { testID: 'bottom-nav' }); }
+  function BottomNav() {
+    return React.createElement(View, { testID: 'bottom-nav' });
+  }
   return BottomNav;
 });
 
 jest.mock('@/components/icons/HouseIcon', () => {
   const React = require('react');
   const { View } = require('react-native');
-  function HouseIcon() { return React.createElement(View, { testID: 'house-icon' }); }
+  function HouseIcon() {
+    return React.createElement(View, { testID: 'house-icon' });
+  }
   return HouseIcon;
 });
 
@@ -98,11 +129,22 @@ const mockSetEditingId = jest.fn();
 
 function makeItem(overrides: Partial<LocalItem> = {}): LocalItem {
   return {
-    localId: 'item-1', serverId: 100, listLocalId: 'list-local-1',
-    name: 'Milk', description: '', iconKey: 'milk_carton', category: 'Dairy & Eggs',
-    serverCategoryId: null, serverCategoryName: null, serverCategoryOrdering: null,
-    isChecked: false, isImportant: false, isDirty: false, isDeleted: false,
-    createdAt: Date.now(), checkedAt: null,
+    localId: 'item-1',
+    serverId: 100,
+    listLocalId: 'list-local-1',
+    name: 'Milk',
+    description: '',
+    iconKey: 'milk_carton',
+    category: 'Dairy & Eggs',
+    serverCategoryId: null,
+    serverCategoryName: null,
+    serverCategoryOrdering: null,
+    isChecked: false,
+    isImportant: false,
+    isDirty: false,
+    isDeleted: false,
+    createdAt: Date.now(),
+    checkedAt: null,
     ...overrides,
   };
 }
@@ -117,15 +159,23 @@ function setupMocks({
     sel({ bootstrap: mockBootstrap, reloadAfterSync: mockReloadAfterSync, loading, items })
   );
   (useListNav as jest.Mock).mockReturnValue({
-    activeName, allLists: [], activeLocalId: 'list-local-1',
-    listPickerVisible: false, refreshing: false,
+    activeName,
+    allLists: [],
+    activeLocalId: 'list-local-1',
+    listPickerVisible: false,
+    refreshing: false,
     setListPickerVisible: mockSetListPickerVisible,
-    switchToList: jest.fn(), refresh: jest.fn(),
+    switchToList: jest.fn(),
+    refresh: jest.fn(),
   });
   (useItemActions as jest.Mock).mockReturnValue({
-    editingId, setEditingId: mockSetEditingId,
-    toggleDone: jest.fn(), toggleImportant: jest.fn(),
-    deleteItem: jest.fn(), saveItem: jest.fn(), addItem: mockAddItem,
+    editingId,
+    setEditingId: mockSetEditingId,
+    toggleDone: jest.fn(),
+    toggleImportant: jest.fn(),
+    deleteItem: jest.fn(),
+    saveItem: jest.fn(),
+    addItem: mockAddItem,
     clearTrolley: jest.fn(),
   });
 }
@@ -147,8 +197,9 @@ describe('ListDetailScreen', () => {
       const { rerender } = render(<ListDetailScreen {...baseProps} />);
       await waitFor(() => expect(mockBootstrap).toHaveBeenCalledWith(1, true));
 
-      (useHouseholdStore as unknown as jest.Mock).mockImplementation((sel: (s: unknown) => unknown) =>
-        sel({ selectedHousehold: { id: 2, name: 'Work', photo: null } })
+      (useHouseholdStore as unknown as jest.Mock).mockImplementation(
+        (sel: (s: unknown) => unknown) =>
+          sel({ selectedHousehold: { id: 2, name: 'Work', photo: null } })
       );
       rerender(<ListDetailScreen {...baseProps} />);
 
@@ -156,8 +207,8 @@ describe('ListDetailScreen', () => {
     });
 
     it('skips bootstrap when no household is selected', async () => {
-      (useHouseholdStore as unknown as jest.Mock).mockImplementation((sel: (s: unknown) => unknown) =>
-        sel({ selectedHousehold: null })
+      (useHouseholdStore as unknown as jest.Mock).mockImplementation(
+        (sel: (s: unknown) => unknown) => sel({ selectedHousehold: null })
       );
       render(<ListDetailScreen {...baseProps} />);
       await act(async () => {});
@@ -193,12 +244,16 @@ describe('ListDetailScreen', () => {
     });
 
     it('renders category sections for unchecked items grouped by server category', () => {
-      setupMocks({ items: [makeItem({
-        serverCategoryId: 2,
-        serverCategoryName: 'Dairy & Eggs',
-        serverCategoryOrdering: 1,
-        isChecked: false,
-      })] });
+      setupMocks({
+        items: [
+          makeItem({
+            serverCategoryId: 2,
+            serverCategoryName: 'Dairy & Eggs',
+            serverCategoryOrdering: 1,
+            isChecked: false,
+          }),
+        ],
+      });
       const { getByTestId } = render(<ListDetailScreen {...baseProps} />);
       expect(getByTestId('category-Dairy & Eggs')).toBeTruthy();
     });
@@ -210,7 +265,11 @@ describe('ListDetailScreen', () => {
     });
 
     it('excludes checked items from category sections (they go to TrolleySection)', () => {
-      setupMocks({ items: [makeItem({ serverCategoryId: 2, serverCategoryName: 'Dairy & Eggs', isChecked: true })] });
+      setupMocks({
+        items: [
+          makeItem({ serverCategoryId: 2, serverCategoryName: 'Dairy & Eggs', isChecked: true }),
+        ],
+      });
       const { queryByTestId } = render(<ListDetailScreen {...baseProps} />);
       expect(queryByTestId('category-Dairy & Eggs')).toBeNull();
     });
@@ -226,7 +285,9 @@ describe('ListDetailScreen', () => {
     it('calls addItem from useItemActions when AddItemBar submits', async () => {
       const { getByTestId } = render(<ListDetailScreen {...baseProps} />);
       fireEvent.changeText(getByTestId('add-item-input'), 'Bread');
-      await act(async () => { fireEvent.press(getByTestId('add-item-submit')); });
+      await act(async () => {
+        fireEvent.press(getByTestId('add-item-submit'));
+      });
       expect(mockAddItem).toHaveBeenCalledWith('Bread', '', null, 'Other');
     });
   });

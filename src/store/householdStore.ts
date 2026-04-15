@@ -9,7 +9,7 @@ type HouseholdState = {
   selectedHousehold: Household | null;
   setHouseholds: (households: Household[]) => void;
   selectHousehold: (household: Household) => void;
-}
+};
 
 export const useHouseholdStore = create<HouseholdState>((set) => ({
   households: [],
@@ -28,10 +28,7 @@ export const useHouseholdStore = create<HouseholdState>((set) => ({
  * is awaited and any storage failure is visible to the caller.
  */
 export async function persistAndSelectHousehold(household: Household): Promise<void> {
-  await setItemAsync(
-    SECURE_STORE_KEYS.SELECTED_HOUSEHOLD,
-    JSON.stringify(household)
-  );
+  await setItemAsync(SECURE_STORE_KEYS.SELECTED_HOUSEHOLD, JSON.stringify(household));
   useHouseholdStore.getState().selectHousehold(household);
 }
 

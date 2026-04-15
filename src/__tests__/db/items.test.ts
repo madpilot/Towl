@@ -51,17 +51,26 @@ describe('items', () => {
   describe('parseImportantDescription', () => {
     it('returns isImportant=false and unchanged description when no leading !', () => {
       const { parseImportantDescription } = getModule();
-      expect(parseImportantDescription('some item')).toEqual({ description: 'some item', isImportant: false });
+      expect(parseImportantDescription('some item')).toEqual({
+        description: 'some item',
+        isImportant: false,
+      });
     });
 
     it('returns isImportant=true and strips the leading ! when present', () => {
       const { parseImportantDescription } = getModule();
-      expect(parseImportantDescription('!buy this')).toEqual({ description: 'buy this', isImportant: true });
+      expect(parseImportantDescription('!buy this')).toEqual({
+        description: 'buy this',
+        isImportant: true,
+      });
     });
 
     it('also strips spaces after the ! so leading whitespace is removed', () => {
       const { parseImportantDescription } = getModule();
-      expect(parseImportantDescription('!  spaced')).toEqual({ description: 'spaced', isImportant: true });
+      expect(parseImportantDescription('!  spaced')).toEqual({
+        description: 'spaced',
+        isImportant: true,
+      });
     });
 
     it('returns isImportant=false for an empty string', () => {
@@ -86,9 +95,27 @@ describe('items', () => {
       // No existing row
       mockDb.getFirstAsync
         .mockResolvedValueOnce(null) // existing check
-        .mockResolvedValueOnce({ ...baseRow, local_id: 'test-uuid', server_id: 10, description: 'buy this', is_important: 1, is_dirty: 0, is_deleted: 0 }); // read-back
+        .mockResolvedValueOnce({
+          ...baseRow,
+          local_id: 'test-uuid',
+          server_id: 10,
+          description: 'buy this',
+          is_important: 1,
+          is_dirty: 0,
+          is_deleted: 0,
+        }); // read-back
 
-      await upsertItemFromServer(10, 'list-1', 'Milk', '!buy this', null, 'Dairy', null, null, null);
+      await upsertItemFromServer(
+        10,
+        'list-1',
+        'Milk',
+        '!buy this',
+        null,
+        'Dairy',
+        null,
+        null,
+        null
+      );
 
       const [sql, params] = mockDb.runAsync.mock.calls[0] as [string, unknown[]];
       expect(sql).toContain('is_important');
@@ -104,7 +131,15 @@ describe('items', () => {
       const { upsertItemFromServer } = getModule();
       mockDb.getFirstAsync
         .mockResolvedValueOnce(null) // existing check
-        .mockResolvedValueOnce({ ...baseRow, local_id: 'test-uuid', server_id: 11, description: 'plain', is_important: 0, is_dirty: 0, is_deleted: 0 }); // read-back
+        .mockResolvedValueOnce({
+          ...baseRow,
+          local_id: 'test-uuid',
+          server_id: 11,
+          description: 'plain',
+          is_important: 0,
+          is_dirty: 0,
+          is_deleted: 0,
+        }); // read-back
 
       await upsertItemFromServer(11, 'list-1', 'Eggs', 'plain', null, 'Dairy', null, null, null);
 
@@ -143,10 +178,11 @@ describe('items', () => {
     it('deletes synced clean items whose serverId is absent from the server list', async () => {
       const { removeItemsDeletedOnServer } = getModule();
       await removeItemsDeletedOnServer('list-1', [10, 20]);
-      expect(mockDb.runAsync).toHaveBeenCalledWith(
-        expect.stringContaining('server_id NOT IN'),
-        ['list-1', 10, 20]
-      );
+      expect(mockDb.runAsync).toHaveBeenCalledWith(expect.stringContaining('server_id NOT IN'), [
+        'list-1',
+        10,
+        20,
+      ]);
     });
 
     it('deletes all synced non-pending-removal items when server list is empty', async () => {
@@ -171,10 +207,7 @@ describe('items', () => {
     it('passes only the listLocalId and serverIds as parameters', async () => {
       const { removeItemsDeletedOnServer } = getModule();
       await removeItemsDeletedOnServer('list-99', [5, 6, 7]);
-      expect(mockDb.runAsync).toHaveBeenCalledWith(
-        expect.any(String),
-        ['list-99', 5, 6, 7]
-      );
+      expect(mockDb.runAsync).toHaveBeenCalledWith(expect.any(String), ['list-99', 5, 6, 7]);
     });
 
     it('targets only the given list (list_local_id filter is present)', async () => {
@@ -234,10 +267,10 @@ describe('items', () => {
     it('sets is_checked=1, is_dirty=1, and checked_at on the row', async () => {
       const { checkItem } = getModule();
       await checkItem('item-1', 9000);
-      expect(mockDb.runAsync).toHaveBeenCalledWith(
-        expect.stringContaining('is_checked = 1'),
-        [9000, 'item-1']
-      );
+      expect(mockDb.runAsync).toHaveBeenCalledWith(expect.stringContaining('is_checked = 1'), [
+        9000,
+        'item-1',
+      ]);
       const [sql] = mockDb.runAsync.mock.calls[0] as [string, unknown[]];
       expect(sql).toContain('is_dirty = 1');
       expect(sql).toContain('checked_at = ?');
@@ -248,10 +281,10 @@ describe('items', () => {
     it('clears is_checked and checked_at, sets is_dirty when needsReAdd=true', async () => {
       const { uncheckItem } = getModule();
       await uncheckItem('item-1', true);
-      expect(mockDb.runAsync).toHaveBeenCalledWith(
-        expect.stringContaining('is_checked = 0'),
-        [1, 'item-1']
-      );
+      expect(mockDb.runAsync).toHaveBeenCalledWith(expect.stringContaining('is_checked = 0'), [
+        1,
+        'item-1',
+      ]);
       const [sql] = mockDb.runAsync.mock.calls[0] as [string, unknown[]];
       expect(sql).toContain('checked_at = NULL');
     });
@@ -259,10 +292,7 @@ describe('items', () => {
     it('sets is_dirty=0 when needsReAdd=false (op still pending)', async () => {
       const { uncheckItem } = getModule();
       await uncheckItem('item-1', false);
-      expect(mockDb.runAsync).toHaveBeenCalledWith(
-        expect.any(String),
-        [0, 'item-1']
-      );
+      expect(mockDb.runAsync).toHaveBeenCalledWith(expect.any(String), [0, 'item-1']);
     });
   });
 
@@ -270,10 +300,9 @@ describe('items', () => {
     it('hard-deletes all checked items for the list', async () => {
       const { clearCheckedItems } = getModule();
       await clearCheckedItems('list-1');
-      expect(mockDb.runAsync).toHaveBeenCalledWith(
-        expect.stringContaining('is_checked = 1'),
-        ['list-1']
-      );
+      expect(mockDb.runAsync).toHaveBeenCalledWith(expect.stringContaining('is_checked = 1'), [
+        'list-1',
+      ]);
       const [sql] = mockDb.runAsync.mock.calls[0] as [string, unknown[]];
       expect(sql).toContain('DELETE FROM local_items');
     });
@@ -283,10 +312,10 @@ describe('items', () => {
     it('deletes checked items with checked_at older than the cutoff', async () => {
       const { clearExpiredCheckedItems } = getModule();
       await clearExpiredCheckedItems('list-1', 5000);
-      expect(mockDb.runAsync).toHaveBeenCalledWith(
-        expect.stringContaining('checked_at < ?'),
-        ['list-1', 5000]
-      );
+      expect(mockDb.runAsync).toHaveBeenCalledWith(expect.stringContaining('checked_at < ?'), [
+        'list-1',
+        5000,
+      ]);
       const [sql] = mockDb.runAsync.mock.calls[0] as [string, unknown[]];
       expect(sql).toContain('checked_at IS NOT NULL');
       expect(sql).toContain('is_checked = 1');
@@ -319,10 +348,13 @@ describe('items', () => {
     it('accepts null category fields for uncategorized items', async () => {
       const { updateItemCategory } = getModule();
       await updateItemCategory('item-2', 'Uncategorized', null, null, null);
-      expect(mockDb.runAsync).toHaveBeenCalledWith(
-        expect.any(String),
-        ['Uncategorized', null, null, null, 'item-2']
-      );
+      expect(mockDb.runAsync).toHaveBeenCalledWith(expect.any(String), [
+        'Uncategorized',
+        null,
+        null,
+        null,
+        'item-2',
+      ]);
     });
 
     it('targets only the given local_id', async () => {

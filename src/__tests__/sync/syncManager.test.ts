@@ -107,11 +107,11 @@ describe('drain()', () => {
 
   it('processes ADD_ITEM op and marks item synced', async () => {
     const op = makeAddOp();
-    (getAll as jest.Mock)
-      .mockResolvedValueOnce([op])
-      .mockResolvedValue([]);
+    (getAll as jest.Mock).mockResolvedValueOnce([op]).mockResolvedValue([]);
     mockApi.addItemByName.mockResolvedValue({
-      id: 99, name: 'Milk', description: '',
+      id: 99,
+      name: 'Milk',
+      description: '',
       category: { id: 9, name: '🥛 Dairy', ordering: 0, default_key: 'dairy' },
     });
 
@@ -135,9 +135,7 @@ describe('drain()', () => {
         name: 'Groceries',
       },
     };
-    (getAll as jest.Mock)
-      .mockResolvedValueOnce([op])
-      .mockResolvedValue([]);
+    (getAll as jest.Mock).mockResolvedValueOnce([op]).mockResolvedValue([]);
     mockApi.createShoppingList.mockResolvedValue({ id: 42 });
 
     await drain();
@@ -149,9 +147,7 @@ describe('drain()', () => {
 
   it('increments attempts on retryable error', async () => {
     const op = makeAddOp();
-    (getAll as jest.Mock)
-      .mockResolvedValueOnce([op])
-      .mockResolvedValue([op]);
+    (getAll as jest.Mock).mockResolvedValueOnce([op]).mockResolvedValue([op]);
     mockApi.addItemByName.mockRejectedValue(new Error('Network error'));
 
     await drain();
@@ -162,9 +158,7 @@ describe('drain()', () => {
 
   it('removes op without retry on 4xx non-retryable error', async () => {
     const op = makeAddOp();
-    (getAll as jest.Mock)
-      .mockResolvedValueOnce([op])
-      .mockResolvedValue([]);
+    (getAll as jest.Mock).mockResolvedValueOnce([op]).mockResolvedValue([]);
 
     const axiosErr = Object.assign(new Error('Unprocessable'), {
       isAxiosError: true,
@@ -195,23 +189,23 @@ describe('drain()', () => {
         category: { id: 9, name: '🥛 Dairy', ordering: 0 },
       },
     };
-    (getAll as jest.Mock)
-      .mockResolvedValueOnce([op])
-      .mockResolvedValue([]);
+    (getAll as jest.Mock).mockResolvedValueOnce([op]).mockResolvedValue([]);
     mockApi.updateItem.mockResolvedValue(undefined);
 
     await drain();
 
-    expect(mockApi.updateItem).toHaveBeenCalledWith(12, 'Almond Milk', '2 bunches', 'milk_carton', { id: 9, name: '🥛 Dairy', ordering: 0 });
+    expect(mockApi.updateItem).toHaveBeenCalledWith(12, 'Almond Milk', '2 bunches', 'milk_carton', {
+      id: 9,
+      name: '🥛 Dairy',
+      ordering: 0,
+    });
     expect(markItemCheckSynced).toHaveBeenCalledWith('item-local-1');
     expect(remove).toHaveBeenCalledWith('op-upd');
   });
 
   it('ADD_ITEM: prepends ! to description when item isImportant=true', async () => {
     const op = makeAddOp();
-    (getAll as jest.Mock)
-      .mockResolvedValueOnce([op])
-      .mockResolvedValue([]);
+    (getAll as jest.Mock).mockResolvedValueOnce([op]).mockResolvedValue([]);
     (getItem as jest.Mock).mockResolvedValue({ isImportant: true, description: '' });
     mockApi.addItemByName.mockResolvedValue({ id: 99, name: 'Milk', description: '!' });
 
@@ -222,9 +216,7 @@ describe('drain()', () => {
 
   it('ADD_ITEM: does not prepend ! when item isImportant=false', async () => {
     const op = makeAddOp();
-    (getAll as jest.Mock)
-      .mockResolvedValueOnce([op])
-      .mockResolvedValue([]);
+    (getAll as jest.Mock).mockResolvedValueOnce([op]).mockResolvedValue([]);
     (getItem as jest.Mock).mockResolvedValue({ isImportant: false, description: '' });
     mockApi.addItemByName.mockResolvedValue({ id: 99, name: 'Milk', description: '' });
 
@@ -250,15 +242,19 @@ describe('drain()', () => {
         category: null,
       },
     };
-    (getAll as jest.Mock)
-      .mockResolvedValueOnce([op])
-      .mockResolvedValue([]);
+    (getAll as jest.Mock).mockResolvedValueOnce([op]).mockResolvedValue([]);
     (getItem as jest.Mock).mockResolvedValue({ isImportant: true, description: 'two pints' });
     mockApi.updateItem.mockResolvedValue(undefined);
 
     await drain();
 
-    expect(mockApi.updateItem).toHaveBeenCalledWith(12, 'Almond Milk', '!two pints', 'milk_carton', null);
+    expect(mockApi.updateItem).toHaveBeenCalledWith(
+      12,
+      'Almond Milk',
+      '!two pints',
+      'milk_carton',
+      null
+    );
   });
 
   it('UPDATE_ITEM: does not prepend ! when item isImportant=false', async () => {
@@ -278,9 +274,7 @@ describe('drain()', () => {
         category: null,
       },
     };
-    (getAll as jest.Mock)
-      .mockResolvedValueOnce([op])
-      .mockResolvedValue([]);
+    (getAll as jest.Mock).mockResolvedValueOnce([op]).mockResolvedValue([]);
     (getItem as jest.Mock).mockResolvedValue({ isImportant: false, description: 'two pints' });
     mockApi.updateItem.mockResolvedValue(undefined);
 
@@ -291,9 +285,7 @@ describe('drain()', () => {
 
   it('drops ops that have exceeded MAX_SYNC_RETRIES', async () => {
     const op = makeAddOp({ attempts: 999 });
-    (getAll as jest.Mock)
-      .mockResolvedValueOnce([op])
-      .mockResolvedValue([]);
+    (getAll as jest.Mock).mockResolvedValueOnce([op]).mockResolvedValue([]);
 
     await drain();
 
@@ -304,9 +296,7 @@ describe('drain()', () => {
   describe('syncVersion', () => {
     it('bumps syncVersion after a successful op is removed', async () => {
       const op = makeAddOp();
-      (getAll as jest.Mock)
-        .mockResolvedValueOnce([op])
-        .mockResolvedValue([]);
+      (getAll as jest.Mock).mockResolvedValueOnce([op]).mockResolvedValue([]);
       mockApi.addItemByName.mockResolvedValue({ id: 99, name: 'Milk', description: '' });
 
       await drain();
@@ -316,9 +306,7 @@ describe('drain()', () => {
 
     it('bumps syncVersion when a max-retries op is dropped', async () => {
       const op = makeAddOp({ attempts: 999 });
-      (getAll as jest.Mock)
-        .mockResolvedValueOnce([op])
-        .mockResolvedValue([]);
+      (getAll as jest.Mock).mockResolvedValueOnce([op]).mockResolvedValue([]);
 
       await drain();
 
@@ -327,9 +315,7 @@ describe('drain()', () => {
 
     it('bumps syncVersion when a non-retryable op is removed', async () => {
       const op = makeAddOp();
-      (getAll as jest.Mock)
-        .mockResolvedValueOnce([op])
-        .mockResolvedValue([]);
+      (getAll as jest.Mock).mockResolvedValueOnce([op]).mockResolvedValue([]);
       const axiosErr = Object.assign(new Error('Bad Request'), {
         isAxiosError: true,
         response: { status: 400 },
@@ -351,9 +337,7 @@ describe('drain()', () => {
 
     it('does not bump syncVersion when op fails with a retryable error', async () => {
       const op = makeAddOp();
-      (getAll as jest.Mock)
-        .mockResolvedValueOnce([op])
-        .mockResolvedValue([op]);
+      (getAll as jest.Mock).mockResolvedValueOnce([op]).mockResolvedValue([op]);
       mockApi.addItemByName.mockRejectedValue(new Error('Network error'));
 
       await drain();
@@ -377,9 +361,7 @@ describe('drain()', () => {
         removedAt: 1700000000000,
       },
     };
-    (getAll as jest.Mock)
-      .mockResolvedValueOnce([op])
-      .mockResolvedValue([]);
+    (getAll as jest.Mock).mockResolvedValueOnce([op]).mockResolvedValue([]);
     mockApi.removeItemFromList.mockResolvedValue(undefined);
 
     await drain();
@@ -403,9 +385,7 @@ describe('drain()', () => {
         removedAt: 1700000000000,
       },
     };
-    (getAll as jest.Mock)
-      .mockResolvedValueOnce([op])
-      .mockResolvedValue([]);
+    (getAll as jest.Mock).mockResolvedValueOnce([op]).mockResolvedValue([]);
     const notFound = Object.assign(new Error('Not Found'), {
       isAxiosError: true,
       response: { status: 404 },
@@ -432,9 +412,7 @@ describe('drain()', () => {
         removedAt: 1700000000000,
       },
     };
-    (getAll as jest.Mock)
-      .mockResolvedValueOnce([op])
-      .mockResolvedValue([]);
+    (getAll as jest.Mock).mockResolvedValueOnce([op]).mockResolvedValue([]);
     mockApi.removeItemFromList.mockResolvedValue(undefined);
 
     await drain();
@@ -459,9 +437,7 @@ describe('drain()', () => {
         removedAt: 1700000000000,
       },
     };
-    (getAll as jest.Mock)
-      .mockResolvedValueOnce([op])
-      .mockResolvedValue([]);
+    (getAll as jest.Mock).mockResolvedValueOnce([op]).mockResolvedValue([]);
     const notFound = Object.assign(new Error('Not Found'), {
       isAxiosError: true,
       response: { status: 404 },

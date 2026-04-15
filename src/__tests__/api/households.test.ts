@@ -65,7 +65,10 @@ describe('createCategory', () => {
 
     const created = await api.createCategory(1, 'Baked goods', 2);
 
-    expect(mockPost).toHaveBeenCalledWith('/household/1/category', { name: 'Baked goods', ordering: 2 });
+    expect(mockPost).toHaveBeenCalledWith('/household/1/category', {
+      name: 'Baked goods',
+      ordering: 2,
+    });
     expect(created).toEqual({ id: 5, name: 'Baked goods', ordering: 2 });
   });
 });

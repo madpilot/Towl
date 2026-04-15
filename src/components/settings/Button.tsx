@@ -10,7 +10,13 @@ type PrimaryBtnProps = {
   disabled?: boolean;
 };
 
-export function PrimaryBtn({ label, onPress, loading = false, danger = false, disabled = false }: PrimaryBtnProps) {
+export function PrimaryBtn({
+  label,
+  onPress,
+  loading = false,
+  danger = false,
+  disabled = false,
+}: PrimaryBtnProps) {
   return (
     <TouchableOpacity
       style={[styles.btn, danger && styles.dangerBtn, (disabled || loading) && styles.btnDisabled]}
@@ -18,7 +24,11 @@ export function PrimaryBtn({ label, onPress, loading = false, danger = false, di
       activeOpacity={0.8}
       disabled={loading || disabled}
     >
-      {loading ? <ActivityIndicator color={Colors.white} /> : <Text style={styles.label}>{label}</Text>}
+      {loading ? (
+        <ActivityIndicator color={Colors.white} />
+      ) : (
+        <Text style={styles.label}>{label}</Text>
+      )}
     </TouchableOpacity>
   );
 }

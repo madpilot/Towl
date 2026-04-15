@@ -6,16 +6,8 @@ import {
   removePendingCheckItem as removePendingFromQueue,
 } from '@/db/syncQueue';
 import type { SyncOp, SyncPayload } from '@/db/syncQueue';
-import {
-  getItem,
-  markItemSynced,
-  hardDeleteItem,
-  markItemCheckSynced,
-} from '@/db/items';
-import {
-  markListSynced,
-  hardDeleteList,
-} from '@/db/lists';
+import { getItem, markItemSynced, hardDeleteItem, markItemCheckSynced } from '@/db/items';
+import { markListSynced, hardDeleteList } from '@/db/lists';
 import type { ShoppingListsApi } from '@/api/shoppinglists';
 import { useSyncStore } from '@/store/syncStore';
 import { useAuthStore } from '@/store/authStore';
@@ -36,8 +28,12 @@ export async function removePendingCheckItem(itemLocalId: string): Promise<boole
 }
 
 export async function drain(): Promise<void> {
-  if (draining) { return; }
-  if (!useNetworkStore.getState().isOnline) { return; }
+  if (draining) {
+    return;
+  }
+  if (!useNetworkStore.getState().isOnline) {
+    return;
+  }
 
   draining = true;
   const store = useSyncStore.getState();
@@ -82,11 +78,17 @@ export async function drain(): Promise<void> {
     draining = false;
     const remaining = (await getAll()).length;
     useSyncStore.getState().setPendingCount(remaining);
-    useSyncStore.getState().setStatus(failedDuringDrain ? 'error' : remaining > 0 ? 'syncing' : 'idle');
-    if (anyRemoved) { useSyncStore.getState().bumpSyncVersion(); }
+    useSyncStore
+      .getState()
+      .setStatus(failedDuringDrain ? 'error' : remaining > 0 ? 'syncing' : 'idle');
+    if (anyRemoved) {
+      useSyncStore.getState().bumpSyncVersion();
+    }
     // Re-drain if ops were concurrently enqueued while this pass was running.
     // Don't re-drain immediately after a failure — scheduleRetry handles backoff.
-    if (remaining > 0 && !failedDuringDrain) { void drain(); }
+    if (remaining > 0 && !failedDuringDrain) {
+      void drain();
+    }
   }
 }
 
@@ -99,7 +101,9 @@ function isNonRetryable(err: unknown): boolean {
 }
 
 function scheduleRetry(ms: number): void {
-  if (retryTimer) { clearTimeout(retryTimer); }
+  if (retryTimer) {
+    clearTimeout(retryTimer);
+  }
   retryTimer = setTimeout(() => {
     retryTimer = null;
     void drain();
@@ -108,7 +112,9 @@ function scheduleRetry(ms: number): void {
 
 async function executeOp(op: SyncOp): Promise<void> {
   const api = useAuthStore.getState().shoppingListsApi;
-  if (!api) { throw new Error('No shopping lists API available'); }
+  if (!api) {
+    throw new Error('No shopping lists API available');
+  }
   await dispatchPayload(api, op.payload);
 }
 
@@ -117,11 +123,7 @@ async function dispatchPayload(api: ShoppingListsApi, payload: SyncPayload): Pro
     case 'ADD_ITEM': {
       const addItem = await getItem(payload.itemLocalId);
       const addDescription = addItem?.isImportant ? `!${payload.description}` : payload.description;
-      const result = await api.addItemByName(
-        payload.listServerId,
-        payload.name,
-        addDescription
-      );
+      const result = await api.addItemByName(payload.listServerId, payload.name, addDescription);
       await markItemSynced(
         payload.itemLocalId,
         result.id,
@@ -136,7 +138,9 @@ async function dispatchPayload(api: ShoppingListsApi, payload: SyncPayload): Pro
       try {
         await api.removeItemFromList(payload.listServerId, payload.itemServerId, payload.removedAt);
       } catch (err) {
-        if (isAxiosError(err) && err.response?.status === 404) { break; }
+        if (isAxiosError(err) && err.response?.status === 404) {
+          break;
+        }
         throw err;
       }
       await hardDeleteItem(payload.itemLocalId);
@@ -149,7 +153,9 @@ async function dispatchPayload(api: ShoppingListsApi, payload: SyncPayload): Pro
       try {
         await api.removeItemFromList(payload.listServerId, payload.itemServerId, payload.removedAt);
       } catch (err) {
-        if (isAxiosError(err) && err.response?.status === 404) { break; }
+        if (isAxiosError(err) && err.response?.status === 404) {
+          break;
+        }
         throw err;
       }
       await markItemCheckSynced(payload.itemLocalId);
@@ -167,7 +173,9 @@ async function dispatchPayload(api: ShoppingListsApi, payload: SyncPayload): Pro
 
     case 'UPDATE_ITEM': {
       const updateItem = await getItem(payload.itemLocalId);
-      const updateDescription = updateItem?.isImportant ? `!${payload.description}` : payload.description;
+      const updateDescription = updateItem?.isImportant
+        ? `!${payload.description}`
+        : payload.description;
       await api.updateItem(
         payload.itemServerId,
         payload.name,
@@ -190,7 +198,9 @@ async function dispatchPayload(api: ShoppingListsApi, payload: SyncPayload): Pro
         try {
           await api.deleteShoppingList(payload.listServerId);
         } catch (err) {
-          if (isAxiosError(err) && err.response?.status === 404) { break; }
+          if (isAxiosError(err) && err.response?.status === 404) {
+            break;
+          }
           throw err;
         }
       }

@@ -67,27 +67,27 @@ function DragGhost() {
   const dragDrop = useDragDrop();
 
   const ghostStyle = useAnimatedStyle(() => {
-    if (!dragDrop) { return { opacity: 0 }; }
+    if (!dragDrop) {
+      return { opacity: 0 };
+    }
     return {
-      transform: [
-        { translateX: dragDrop.ghostX.value },
-        { translateY: dragDrop.ghostY.value },
-      ],
+      transform: [{ translateX: dragDrop.ghostX.value }, { translateY: dragDrop.ghostY.value }],
       opacity: dragDrop.ghostOpacity.value,
     };
   });
 
-  if (!dragDrop?.draggingItem) { return null; }
+  if (!dragDrop?.draggingItem) {
+    return null;
+  }
   const { draggingItem } = dragDrop;
 
   return (
-    <Animated.View
-      style={[ghostStyles.ghost, ghostStyle]}
-      pointerEvents="none"
-    >
+    <Animated.View style={[ghostStyles.ghost, ghostStyle]} pointerEvents="none">
       <KitchenOwlIcon iconKey={draggingItem.iconKey} size={20} style={{ color: Colors.mint }} />
       <Text style={ghostStyles.name} numberOfLines={1}>
-        {draggingItem.description ? `${draggingItem.description} ${draggingItem.name}` : draggingItem.name}
+        {draggingItem.description
+          ? `${draggingItem.description} ${draggingItem.name}`
+          : draggingItem.name}
       </Text>
     </Animated.View>
   );
@@ -140,7 +140,8 @@ function ListDetailContent({ navigation }: ListDetailContentProps) {
   );
 
   const { activeName, refreshing, refresh, setListPickerVisible } = useListNav();
-  const { editingId, setEditingId, toggleDone, toggleImportant, deleteItem, saveItem, addItem } = useItemActions();
+  const { editingId, setEditingId, toggleDone, toggleImportant, deleteItem, saveItem, addItem } =
+    useItemActions();
 
   const dragDrop = useDragDrop();
   const dragging = dragDrop?.dragging ?? false;
@@ -162,7 +163,9 @@ function ListDetailContent({ navigation }: ListDetailContentProps) {
    * shared values (ghostY) without listing dragDrop in the effect deps.
    */
   const dragDropRef = useRef(dragDrop);
-  useEffect(() => { dragDropRef.current = dragDrop; });
+  useEffect(() => {
+    dragDropRef.current = dragDrop;
+  });
 
   // Measure the ScrollView's absolute position whenever its layout changes.
   const onScrollViewLayout = useCallback(() => {
@@ -178,7 +181,9 @@ function ListDetailContent({ navigation }: ListDetailContentProps) {
 
   // Start / stop the auto-scroll interval based on dragging state.
   useEffect(() => {
-    if (!dragging) { return; }
+    if (!dragging) {
+      return;
+    }
 
     const EDGE_ZONE = 80; // px from the edge that triggers scrolling
     const MAX_SPEED = 10; // px per tick at the very edge (~600 px/s at 60 fps)
@@ -186,7 +191,9 @@ function ListDetailContent({ navigation }: ListDetailContentProps) {
     const interval = setInterval(() => {
       const ctx = dragDropRef.current;
       const bounds = scrollBoundsRef.current;
-      if (!ctx || !bounds) { return; }
+      if (!ctx || !bounds) {
+        return;
+      }
 
       // ghostY is absolute_y − 30; add 30 back to approximate the finger position.
       const fingerY = ctx.ghostY.value + 30;
@@ -216,7 +223,9 @@ function ListDetailContent({ navigation }: ListDetailContentProps) {
   // ── Bootstrap ────────────────────────────────────────────────────────────────
   const isFirstMountRef = useRef(true);
   useEffect(() => {
-    if (!householdId) { return; }
+    if (!householdId) {
+      return;
+    }
     const restoreLastList = isFirstMountRef.current;
     isFirstMountRef.current = false;
     void bootstrap(householdId, restoreLastList);
@@ -226,7 +235,9 @@ function ListDetailContent({ navigation }: ListDetailContentProps) {
   const syncVersion = useSyncStore((s) => s.syncVersion);
   const lastSyncVersionRef = useRef(syncVersion);
   useEffect(() => {
-    if (syncVersion === lastSyncVersionRef.current) { return; }
+    if (syncVersion === lastSyncVersionRef.current) {
+      return;
+    }
     lastSyncVersionRef.current = syncVersion;
     void reloadAfterSync();
   }, [syncVersion, reloadAfterSync]);
@@ -248,7 +259,9 @@ function ListDetailContent({ navigation }: ListDetailContentProps) {
    * doesn't shift when dragging starts.
    */
   const draggableGroups = useMemo<CategoryGroup[]>(() => {
-    if (!dragging) { return categoryGroups; }
+    if (!dragging) {
+      return categoryGroups;
+    }
 
     const activeCategoryIds = new Set(categoryGroups.map((g) => g.categoryId));
 
@@ -289,7 +302,9 @@ function ListDetailContent({ navigation }: ListDetailContentProps) {
             onPress={() => setListPickerVisible(true)}
             activeOpacity={0.7}
           >
-            <Text style={styles.listName} numberOfLines={1}>{activeName}</Text>
+            <Text style={styles.listName} numberOfLines={1}>
+              {activeName}
+            </Text>
             <Text style={styles.chevron}>▾</Text>
           </TouchableOpacity>
           <TouchableOpacity

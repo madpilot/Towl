@@ -111,10 +111,9 @@ describe('lists db', () => {
       const { softDeleteList } = getModule();
       await softDeleteList('local-1');
 
-      expect(mockDb.runAsync).toHaveBeenCalledWith(
-        expect.stringContaining('is_deleted = 1'),
-        ['local-1']
-      );
+      expect(mockDb.runAsync).toHaveBeenCalledWith(expect.stringContaining('is_deleted = 1'), [
+        'local-1',
+      ]);
     });
   });
 

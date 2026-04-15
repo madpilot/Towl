@@ -47,8 +47,12 @@ const buildSections = (items: HouseholdItem[]): ItemSection[] => {
   }
   return [...map.entries()]
     .sort(([a], [b]) => {
-      if (a === '#') { return -1; }
-      if (b === '#') { return 1; }
+      if (a === '#') {
+        return -1;
+      }
+      if (b === '#') {
+        return 1;
+      }
       return a.localeCompare(b);
     })
     .map(([title, data]) => ({ title, data }));
@@ -86,7 +90,9 @@ export default function HouseholdItemsScreen({ navigation, route }: HouseholdIte
   // ── Load ───────────────────────────────────────────────────────────────────
 
   const load = useCallback(async () => {
-    if (!householdsApi) { return; }
+    if (!householdsApi) {
+      return;
+    }
     try {
       const [fetchedItems, fetchedCategories] = await Promise.all([
         householdsApi.getHouseholdItems(householdId),
@@ -107,7 +113,9 @@ export default function HouseholdItemsScreen({ navigation, route }: HouseholdIte
 
   const filteredItems = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) { return items; }
+    if (!q) {
+      return items;
+    }
     return items.filter((i) => i.name.toLowerCase().includes(q));
   }, [items, query]);
 
@@ -127,10 +135,13 @@ export default function HouseholdItemsScreen({ navigation, route }: HouseholdIte
 
   // Indices of header rows passed to FlashList so it pins them natively while scrolling
   const stickyHeaderIndices = useMemo(
-    () => flatData.reduce<number[]>((acc, row, idx) => {
-      if (row.kind === 'header') { acc.push(idx); }
-      return acc;
-    }, []),
+    () =>
+      flatData.reduce<number[]>((acc, row, idx) => {
+        if (row.kind === 'header') {
+          acc.push(idx);
+        }
+        return acc;
+      }, []),
     [flatData]
   );
 
@@ -162,13 +173,24 @@ export default function HouseholdItemsScreen({ navigation, route }: HouseholdIte
   // ── CRUD ───────────────────────────────────────────────────────────────────
 
   async function handleCreate() {
-    if (!name.trim() || !householdsApi) { return; }
+    if (!name.trim() || !householdsApi) {
+      return;
+    }
     setAction('create');
     try {
       const cat = selectedCategory
-        ? { id: selectedCategory.id, name: selectedCategory.name, ordering: selectedCategory.ordering }
+        ? {
+            id: selectedCategory.id,
+            name: selectedCategory.name,
+            ordering: selectedCategory.ordering,
+          }
         : null;
-      const created = await householdsApi.createHouseholdItem(householdId, name.trim(), iconKey, cat);
+      const created = await householdsApi.createHouseholdItem(
+        householdId,
+        name.trim(),
+        iconKey,
+        cat
+      );
       setItems((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
       closeSheet();
     } catch (e: unknown) {
@@ -179,11 +201,17 @@ export default function HouseholdItemsScreen({ navigation, route }: HouseholdIte
   }
 
   async function handleUpdate() {
-    if (!name.trim() || !editingItem || !householdsApi) { return; }
+    if (!name.trim() || !editingItem || !householdsApi) {
+      return;
+    }
     setAction('update');
     try {
       const cat = selectedCategory
-        ? { id: selectedCategory.id, name: selectedCategory.name, ordering: selectedCategory.ordering }
+        ? {
+            id: selectedCategory.id,
+            name: selectedCategory.name,
+            ordering: selectedCategory.ordering,
+          }
         : null;
       await householdsApi.updateHouseholdItem(editingItem.id, name.trim(), iconKey, cat);
       setItems((prev) =>
@@ -204,7 +232,9 @@ export default function HouseholdItemsScreen({ navigation, route }: HouseholdIte
   }
 
   async function handleDelete() {
-    if (!editingItem || !householdsApi) { return; }
+    if (!editingItem || !householdsApi) {
+      return;
+    }
     setAction('delete');
     try {
       await householdsApi.deleteHouseholdItem(editingItem.id);
@@ -238,14 +268,18 @@ export default function HouseholdItemsScreen({ navigation, route }: HouseholdIte
     const perLetter = indexBarHeightRef.current / ALPHABET.length;
     const idx = Math.max(0, Math.min(ALPHABET.length - 1, Math.floor(relY / perLetter)));
     const letter = ALPHABET[idx];
-    if (letter === lastScrolledLetterRef.current) { return; }
+    if (letter === lastScrolledLetterRef.current) {
+      return;
+    }
     lastScrolledLetterRef.current = letter;
     scrollToLetter(letter);
   }
 
   function scrollToLetter(letter: string) {
     const idx = flatData.findIndex((row) => row.kind === 'header' && row.title === letter);
-    if (idx === -1 || !flashListRef.current) { return; }
+    if (idx === -1 || !flashListRef.current) {
+      return;
+    }
     flashListRef.current.scrollToIndex({ index: idx, animated: false });
   }
 
@@ -258,7 +292,9 @@ export default function HouseholdItemsScreen({ navigation, route }: HouseholdIte
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Text style={styles.backChevron}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.title} numberOfLines={1}>{householdName}: Items</Text>
+        <Text style={styles.title} numberOfLines={1}>
+          {householdName}: Items
+        </Text>
         <TouchableOpacity onPress={openNew} style={styles.addBtn}>
           <Text style={styles.addLabel}>+ New</Text>
         </TouchableOpacity>
@@ -310,30 +346,44 @@ export default function HouseholdItemsScreen({ navigation, route }: HouseholdIte
                 >
                   <View style={styles.iconWrap}>
                     {item.icon ? (
-                      <KitchenOwlIcon iconKey={item.icon} size={22} style={{ color: Colors.mint }} />
+                      <KitchenOwlIcon
+                        iconKey={item.icon}
+                        size={22}
+                        style={{ color: Colors.mint }}
+                      />
                     ) : (
                       <View style={styles.iconPlaceholder} />
                     )}
                   </View>
-                  <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
+                  <Text style={styles.itemName} numberOfLines={1}>
+                    {item.name}
+                  </Text>
                   {item.category ? (
-                    <Text style={styles.itemCategory} numberOfLines={1}>{item.category.name}</Text>
+                    <Text style={styles.itemCategory} numberOfLines={1}>
+                      {item.category.name}
+                    </Text>
                   ) : null}
                   <Text style={styles.itemChevron}>›</Text>
                 </TouchableOpacity>
               );
             }}
-            ItemSeparatorComponent={({ leadingItem, trailingItem }: { leadingItem?: ListRow; trailingItem?: ListRow }) => {
-              if (leadingItem?.kind !== 'item' || trailingItem?.kind !== 'item') { return null; }
+            ItemSeparatorComponent={({
+              leadingItem,
+              trailingItem,
+            }: {
+              leadingItem?: ListRow;
+              trailingItem?: ListRow;
+            }) => {
+              if (leadingItem?.kind !== 'item' || trailingItem?.kind !== 'item') {
+                return null;
+              }
               return <Sep />;
             }}
             contentContainerStyle={styles.listContent}
             ListEmptyComponent={
               <View style={styles.emptyRow}>
                 <Text style={styles.emptyText}>
-                  {query
-                    ? 'No items match your search.'
-                    : 'No items yet. Tap "+ New" to add one.'}
+                  {query ? 'No items match your search.' : 'No items yet. Tap "+ New" to add one.'}
                 </Text>
               </View>
             }
@@ -352,12 +402,17 @@ export default function HouseholdItemsScreen({ navigation, route }: HouseholdIte
                 handleIndexBarTouch(e.nativeEvent.pageY);
               }}
               onResponderMove={(e) => handleIndexBarTouch(e.nativeEvent.pageY)}
-              onResponderRelease={() => { lastScrolledLetterRef.current = null; }}
+              onResponderRelease={() => {
+                lastScrolledLetterRef.current = null;
+              }}
             >
               {ALPHABET.map((letter) => {
                 const active = sections.some((s) => s.title === letter);
                 return (
-                  <Text key={letter} style={[styles.alphaLetter, !active && styles.alphaLetterInactive]}>
+                  <Text
+                    key={letter}
+                    style={[styles.alphaLetter, !active && styles.alphaLetterInactive]}
+                  >
                     {letter}
                   </Text>
                 );
@@ -465,10 +520,15 @@ export default function HouseholdItemsScreen({ navigation, route }: HouseholdIte
         <Card>
           <TouchableOpacity
             style={styles.catPickRow}
-            onPress={() => { setSelectedCategory(null); setSheet(backMode); }}
+            onPress={() => {
+              setSelectedCategory(null);
+              setSheet(backMode);
+            }}
             activeOpacity={0.7}
           >
-            <Text style={[styles.catPickName, !selectedCategory && styles.catPickSelected]}>None</Text>
+            <Text style={[styles.catPickName, !selectedCategory && styles.catPickSelected]}>
+              None
+            </Text>
             {!selectedCategory && <Text style={styles.catTick}>✓</Text>}
           </TouchableOpacity>
           {categories.map((cat, idx) => (
@@ -476,10 +536,18 @@ export default function HouseholdItemsScreen({ navigation, route }: HouseholdIte
               {idx === 0 && <Sep />}
               <TouchableOpacity
                 style={styles.catPickRow}
-                onPress={() => { setSelectedCategory(cat); setSheet(backMode); }}
+                onPress={() => {
+                  setSelectedCategory(cat);
+                  setSheet(backMode);
+                }}
                 activeOpacity={0.7}
               >
-                <Text style={[styles.catPickName, selectedCategory?.id === cat.id && styles.catPickSelected]}>
+                <Text
+                  style={[
+                    styles.catPickName,
+                    selectedCategory?.id === cat.id && styles.catPickSelected,
+                  ]}
+                >
                   {cat.name}
                 </Text>
                 {selectedCategory?.id === cat.id && <Text style={styles.catTick}>✓</Text>}

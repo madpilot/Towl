@@ -58,9 +58,15 @@ function Consumer({ refHolder }: { refHolder: React.MutableRefObject<ConsumerRef
   // Expose context through the ref so tests can drive it.
   if (ctx && refHolder.current === null) {
     refHolder.current = {
-      get dragging() { return ctx.dragging; },
-      get draggingItem() { return ctx.draggingItem; },
-      get hoveredCategoryId() { return ctx.hoveredCategoryId; },
+      get dragging() {
+        return ctx.dragging;
+      },
+      get draggingItem() {
+        return ctx.draggingItem;
+      },
+      get hoveredCategoryId() {
+        return ctx.hoveredCategoryId;
+      },
       startDrag: ctx.startDrag,
       updateDragPosition: ctx.updateDragPosition,
       commitDrop: ctx.commitDrop,
@@ -79,7 +85,8 @@ function Consumer({ refHolder }: { refHolder: React.MutableRefObject<ConsumerRef
 }
 
 function setup(onDrop = jest.fn()) {
-  const ctxRef = React.createRef<ConsumerRef | null>() as React.MutableRefObject<ConsumerRef | null>;
+  const ctxRef =
+    React.createRef<ConsumerRef | null>() as React.MutableRefObject<ConsumerRef | null>;
   ctxRef.current = null;
 
   const { getByTestId, rerender } = render(
@@ -139,7 +146,9 @@ describe('DragDropProvider', () => {
 
       expect(measureFn).not.toHaveBeenCalled();
 
-      act(() => { jest.advanceTimersByTime(150); });
+      act(() => {
+        jest.advanceTimersByTime(150);
+      });
 
       // measureFn will be called asynchronously — advance microtasks.
       return Promise.resolve().then(() => {
@@ -152,18 +161,26 @@ describe('DragDropProvider', () => {
     it('resets dragging state', () => {
       const { ctxRef, getByTestId } = setup();
 
-      act(() => { ctxRef.current!.startDrag(makeItem(), 100, 200); });
+      act(() => {
+        ctxRef.current!.startDrag(makeItem(), 100, 200);
+      });
       expect(getByTestId('dragging').props.children).toBe('yes');
 
-      act(() => { ctxRef.current!.cancelDrag(); });
+      act(() => {
+        ctxRef.current!.cancelDrag();
+      });
       expect(getByTestId('dragging').props.children).toBe('no');
     });
 
     it('clears the dragging item', () => {
       const { ctxRef, getByTestId } = setup();
 
-      act(() => { ctxRef.current!.startDrag(makeItem(), 100, 200); });
-      act(() => { ctxRef.current!.cancelDrag(); });
+      act(() => {
+        ctxRef.current!.startDrag(makeItem(), 100, 200);
+      });
+      act(() => {
+        ctxRef.current!.cancelDrag();
+      });
 
       expect(getByTestId('item-name').props.children).toBe('');
     });
@@ -183,12 +200,18 @@ describe('DragDropProvider', () => {
       });
 
       // Advance timers and let measurement resolve.
-      act(() => { jest.advanceTimersByTime(150); });
+      act(() => {
+        jest.advanceTimersByTime(150);
+      });
 
       return Promise.resolve().then(() => {
         // Simulate finger over the zone.
-        act(() => { ctxRef.current!.updateDragPosition(150, 50); });
-        act(() => { ctxRef.current!.commitDrop(); });
+        act(() => {
+          ctxRef.current!.updateDragPosition(150, 50);
+        });
+        act(() => {
+          ctxRef.current!.commitDrop();
+        });
 
         expect(onDrop).toHaveBeenCalledWith(item, 5);
       });
@@ -203,7 +226,9 @@ describe('DragDropProvider', () => {
       });
 
       // No zones registered; hoveredCategoryId stays undefined.
-      act(() => { ctxRef.current!.commitDrop(); });
+      act(() => {
+        ctxRef.current!.commitDrop();
+      });
 
       expect(onDrop).not.toHaveBeenCalled();
     });
@@ -220,7 +245,9 @@ describe('DragDropProvider', () => {
         ctxRef.current!.startDrag(makeItem(), 50, 25);
       });
 
-      act(() => { jest.advanceTimersByTime(150); });
+      act(() => {
+        jest.advanceTimersByTime(150);
+      });
 
       await Promise.resolve();
 
@@ -231,7 +258,9 @@ describe('DragDropProvider', () => {
         (ctx as unknown as { unregisterZone?: (id: number) => void }).unregisterZone?.(3);
       });
 
-      act(() => { ctxRef.current!.commitDrop(); });
+      act(() => {
+        ctxRef.current!.commitDrop();
+      });
 
       // Zone was removed, so onDrop should not fire.
       expect(onDrop).not.toHaveBeenCalled();
@@ -248,10 +277,14 @@ describe('DragDropProvider', () => {
         ctxRef.current!.startDrag(makeItem(), 150, 50);
       });
 
-      act(() => { jest.advanceTimersByTime(150); });
+      act(() => {
+        jest.advanceTimersByTime(150);
+      });
       await Promise.resolve();
 
-      act(() => { ctxRef.current!.updateDragPosition(150, 140); });
+      act(() => {
+        ctxRef.current!.updateDragPosition(150, 140);
+      });
 
       expect(getByTestId('hovered').props.children).toBe('7');
     });
@@ -265,11 +298,15 @@ describe('DragDropProvider', () => {
         ctxRef.current!.startDrag(makeItem(), 150, 50);
       });
 
-      act(() => { jest.advanceTimersByTime(150); });
+      act(() => {
+        jest.advanceTimersByTime(150);
+      });
       await Promise.resolve();
 
       // Finger outside the zone bounds.
-      act(() => { ctxRef.current!.updateDragPosition(150, 50); });
+      act(() => {
+        ctxRef.current!.updateDragPosition(150, 50);
+      });
 
       expect(getByTestId('hovered').props.children).toBe('undefined');
     });

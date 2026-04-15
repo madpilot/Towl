@@ -6,11 +6,21 @@
 jest.mock('react-native-svg', () => {
   const React = require('react');
   const { View } = require('react-native');
-  function Svg({ children }: { children?: React.ReactNode }) { return React.createElement(View, null, children); }
-  function Path() { return null; }
-  function Circle() { return null; }
-  function Ellipse() { return null; }
-  function Line() { return null; }
+  function Svg({ children }: { children?: React.ReactNode }) {
+    return React.createElement(View, null, children);
+  }
+  function Path() {
+    return null;
+  }
+  function Circle() {
+    return null;
+  }
+  function Ellipse() {
+    return null;
+  }
+  function Line() {
+    return null;
+  }
   return { __esModule: true, default: Svg, Path, Circle, Ellipse, Line };
 });
 
@@ -40,9 +50,7 @@ beforeEach(() => {
 
 describe('ServerSetupScreen', () => {
   it('renders wordmark and URL input', () => {
-    const { getByText, getByPlaceholderText } = render(
-      <ServerSetupScreen {...baseProps} />,
-    );
+    const { getByText, getByPlaceholderText } = render(<ServerSetupScreen {...baseProps} />);
     expect(getByText('towl')).toBeTruthy();
     expect(getByPlaceholderText('https://kitchenowl.example.com')).toBeTruthy();
   });
@@ -58,12 +66,9 @@ describe('ServerSetupScreen', () => {
 
   it('shows error when URL is invalid', async () => {
     const { getByTestId, getByText, getByPlaceholderText } = render(
-      <ServerSetupScreen {...baseProps} />,
+      <ServerSetupScreen {...baseProps} />
     );
-    fireEvent.changeText(
-      getByPlaceholderText('https://kitchenowl.example.com'),
-      'not-a-url',
-    );
+    fireEvent.changeText(getByPlaceholderText('https://kitchenowl.example.com'), 'not-a-url');
     await act(async () => {
       fireEvent.press(getByTestId('connect-btn'));
     });
@@ -73,19 +78,17 @@ describe('ServerSetupScreen', () => {
   it('shows error when server is unreachable', async () => {
     (testConnection as jest.Mock).mockResolvedValue(false);
     const { getByTestId, getByText, getByPlaceholderText } = render(
-      <ServerSetupScreen {...baseProps} />,
+      <ServerSetupScreen {...baseProps} />
     );
     fireEvent.changeText(
       getByPlaceholderText('https://kitchenowl.example.com'),
-      'https://nowhere.example.com',
+      'https://nowhere.example.com'
     );
     await act(async () => {
       fireEvent.press(getByTestId('connect-btn'));
     });
     await waitFor(() =>
-      expect(
-        getByText('Could not reach the server. Check the URL and try again.'),
-      ).toBeTruthy(),
+      expect(getByText('Could not reach the server. Check the URL and try again.')).toBeTruthy()
     );
   });
 
@@ -93,12 +96,10 @@ describe('ServerSetupScreen', () => {
     (testConnection as jest.Mock).mockResolvedValue(true);
     (TokenStore.instance.saveServerUrl as jest.Mock).mockResolvedValue(undefined);
 
-    const { getByTestId, getByPlaceholderText } = render(
-      <ServerSetupScreen {...baseProps} />,
-    );
+    const { getByTestId, getByPlaceholderText } = render(<ServerSetupScreen {...baseProps} />);
     fireEvent.changeText(
       getByPlaceholderText('https://kitchenowl.example.com'),
-      'https://kitchen.local',
+      'https://kitchen.local'
     );
     await act(async () => {
       fireEvent.press(getByTestId('connect-btn'));
@@ -107,7 +108,7 @@ describe('ServerSetupScreen', () => {
     await waitFor(() =>
       expect(mockNavigate).toHaveBeenCalledWith('Login', {
         serverUrl: 'https://kitchen.local',
-      }),
+      })
     );
     expect(TokenStore.instance.saveServerUrl).toHaveBeenCalledWith('https://kitchen.local');
   });

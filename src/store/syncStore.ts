@@ -15,7 +15,7 @@ type SyncState = {
   setErrorMessage: (msg: string | null) => void;
   incrementRequestCount: () => void;
   decrementRequestCount: () => void;
-}
+};
 
 export const useSyncStore = create<SyncState>((set) => ({
   status: 'idle',

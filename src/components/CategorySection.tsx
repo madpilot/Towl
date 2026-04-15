@@ -10,7 +10,7 @@ type CategorySectionProps = SwipeableItemHandlers & {
   category: string;
   categoryId: number | null;
   items: LocalItem[];
-}
+};
 
 export default function CategorySection({
   category,
@@ -19,9 +19,10 @@ export default function CategorySection({
   ...handlers
 }: CategorySectionProps) {
   const coloredCount = CATEGORY_PALETTE.length - 1; // last slot reserved for uncategorized
-  const dotColor = categoryId !== null
-    ? CATEGORY_PALETTE[categoryId % coloredCount]
-    : CATEGORY_PALETTE[CATEGORY_PALETTE.length - 1];
+  const dotColor =
+    categoryId !== null
+      ? CATEGORY_PALETTE[categoryId % coloredCount]
+      : CATEGORY_PALETTE[CATEGORY_PALETTE.length - 1];
 
   const sectionRef = useRef<View>(null);
   const dragDrop = useDragDrop();
@@ -32,18 +33,22 @@ export default function CategorySection({
   const unregisterZone = dragDrop?.unregisterZone;
 
   useEffect(() => {
-    if (!registerZone || !unregisterZone) { return; }
+    if (!registerZone || !unregisterZone) {
+      return;
+    }
 
-    registerZone(categoryId, () =>
-      new Promise((resolve) => {
-        if (!sectionRef.current) {
-          resolve(null);
-          return;
-        }
-        sectionRef.current.measureInWindow((x, y, width, height) => {
-          resolve({ x, y, width, height });
-        });
-      })
+    registerZone(
+      categoryId,
+      () =>
+        new Promise((resolve) => {
+          if (!sectionRef.current) {
+            resolve(null);
+            return;
+          }
+          sectionRef.current.measureInWindow((x, y, width, height) => {
+            resolve({ x, y, width, height });
+          });
+        })
     );
 
     return () => unregisterZone(categoryId);
@@ -52,10 +57,7 @@ export default function CategorySection({
   const isHovered = dragDrop?.hoveredCategoryId === categoryId;
 
   return (
-    <View
-      ref={sectionRef}
-      style={[styles.section, isHovered && styles.sectionHovered]}
-    >
+    <View ref={sectionRef} style={[styles.section, isHovered && styles.sectionHovered]}>
       {/* Header */}
       <View style={styles.header}>
         <View style={[styles.dot, { backgroundColor: dotColor }]} />

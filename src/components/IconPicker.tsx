@@ -18,7 +18,7 @@ type IconPickerProps = {
   selected: string | null;
   onSelect: (key: string) => void;
   onClose: () => void;
-}
+};
 
 const ALL_KEYS = Object.keys(ICON_CODEPOINTS);
 const NUM_COLUMNS = 6;
@@ -28,7 +28,9 @@ export default function IconPicker({ visible, selected, onSelect, onClose }: Ico
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) { return ALL_KEYS; }
+    if (!q) {
+      return ALL_KEYS;
+    }
     return ALL_KEYS.filter((k) => k.includes(q));
   }, [query]);
 
@@ -53,7 +55,11 @@ export default function IconPicker({ visible, selected, onSelect, onClose }: Ico
       <SafeAreaView style={styles.root}>
         <View style={styles.header}>
           <Text style={styles.title}>Choose icon</Text>
-          <TouchableOpacity onPress={handleClose} style={styles.closeBtn} testID="icon-picker-close">
+          <TouchableOpacity
+            onPress={handleClose}
+            style={styles.closeBtn}
+            testID="icon-picker-close"
+          >
             <Text style={styles.closeText}>Done</Text>
           </TouchableOpacity>
         </View>

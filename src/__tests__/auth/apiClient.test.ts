@@ -5,9 +5,13 @@
 // Mock expo-secure-store
 const secureStore: Record<string, string> = {};
 jest.mock('expo-secure-store', () => ({
-  setItemAsync: jest.fn(async (k: string, v: string) => { secureStore[k] = v; }),
+  setItemAsync: jest.fn(async (k: string, v: string) => {
+    secureStore[k] = v;
+  }),
   getItemAsync: jest.fn(async (k: string) => secureStore[k] ?? null),
-  deleteItemAsync: jest.fn(async (k: string) => { delete secureStore[k]; }),
+  deleteItemAsync: jest.fn(async (k: string) => {
+    delete secureStore[k];
+  }),
 }));
 
 import axios from 'axios';
@@ -23,7 +27,9 @@ beforeAll(() => {
 
 afterEach(() => {
   mock.reset();
-  for (const k of Object.keys(secureStore)) { delete secureStore[k]; }
+  for (const k of Object.keys(secureStore)) {
+    delete secureStore[k];
+  }
 });
 
 afterAll(() => {

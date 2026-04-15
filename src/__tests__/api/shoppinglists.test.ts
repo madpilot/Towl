@@ -46,10 +46,7 @@ describe('searchItems', () => {
 
     await api.searchItems(1, 'avo');
 
-    expect(mockGet).toHaveBeenCalledWith(
-      '/household/1/item/search',
-      { params: { query: 'avo' } }
-    );
+    expect(mockGet).toHaveBeenCalledWith('/household/1/item/search', { params: { query: 'avo' } });
   });
 
   it('returns parsed items with name and icon', async () => {
