@@ -33,7 +33,12 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
+import {
+  impactAsync,
+  ImpactFeedbackStyle,
+  notificationAsync,
+  NotificationFeedbackType,
+} from 'expo-haptics';
 import Svg, { Path } from 'react-native-svg';
 import KitchenOwlIcon from '@/components/KitchenOwlIcon';
 import IconPicker from '@/components/IconPicker';
@@ -46,11 +51,11 @@ import type { LocalItem } from '@/db/items';
 
 // ─── Haptic helpers (module-level so runOnJS refs are stable) ────
 function hapticLight(): void {
-  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+  void impactAsync(ImpactFeedbackStyle.Light).catch(() => {});
 }
 
 function hapticSuccess(): void {
-  void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+  void notificationAsync(NotificationFeedbackType.Success).catch(() => {});
 }
 
 // ─── Thresholds ───────────────────────────────────────────────────
@@ -123,12 +128,7 @@ function IconTrash({ color, size }: IconProps) {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <Path
-        d="M10 10 V16 M14 10 V16"
-        stroke={color}
-        strokeWidth={2}
-        strokeLinecap="round"
-      />
+      <Path d="M10 10 V16 M14 10 V16" stroke={color} strokeWidth={2} strokeLinecap="round" />
     </Svg>
   );
 }
@@ -239,7 +239,10 @@ function EditRow({ item, onSave, onCancel }: EditRowProps) {
 
   async function handleSave() {
     const trimmed = editText.trim();
-    if (!trimmed) { onCancel(); return; }
+    if (!trimmed) {
+      onCancel();
+      return;
+    }
 
     if (!searchFn) {
       // Offline / unauthenticated — save raw text as name, no description.
@@ -281,7 +284,9 @@ function EditRow({ item, onSave, onCancel }: EditRowProps) {
           onChangeText={setEditText}
           onSubmitEditing={handleSave}
           onKeyPress={({ nativeEvent }) => {
-            if (nativeEvent.key === 'Escape') onCancel();
+            if (nativeEvent.key === 'Escape') {
+              onCancel();
+            }
           }}
           returnKeyType="done"
           selectTextOnFocus
@@ -294,10 +299,11 @@ function EditRow({ item, onSave, onCancel }: EditRowProps) {
           activeOpacity={0.8}
           disabled={saving}
         >
-          {saving
-            ? <ActivityIndicator size="small" color={Colors.white} />
-            : <IconCheck color={Colors.white} size={16} />
-          }
+          {saving ? (
+            <ActivityIndicator size="small" color={Colors.white} />
+          ) : (
+            <IconCheck color={Colors.white} size={16} />
+          )}
         </TouchableOpacity>
       </View>
 
@@ -337,13 +343,12 @@ function SwipeRowContent({
 
   const dragDrop = useDragDrop();
 
-  const updateZone = useCallback(
-    (zone: BackZone) => setBackZone(zone),
-    []
-  );
+  const updateZone = useCallback((zone: BackZone) => setBackZone(zone), []);
 
   const handleCheckButtonPress = useCallback(() => {
-    if (!item.isChecked) hapticSuccess();
+    if (!item.isChecked) {
+      hapticSuccess();
+    }
     onToggleDone();
   }, [item.isChecked, onToggleDone]);
 
@@ -356,17 +361,17 @@ function SwipeRowContent({
     // Fail (hand off to ScrollView) if vertical movement exceeds 15 px first.
     .failOffsetY([-15, 15])
     .onUpdate((e) => {
-      const x = Math.max(
-        -LEFT_TRAVEL_MAX,
-        Math.min(RIGHT_TRAVEL_MAX, e.translationX)
-      );
+      const x = Math.max(-LEFT_TRAVEL_MAX, Math.min(RIGHT_TRAVEL_MAX, e.translationX));
       translateX.value = x;
 
       const zone =
-        x < -SWIPE_DONE_PX    ? 1  // done
-        : x > SWIPE_DELETE_PX ? 3  // delete (right long)
-        : x > SWIPE_STAR_PX   ? 2  // star / undo (right short)
-        : 0;
+        x < -SWIPE_DONE_PX
+          ? 1 // done
+          : x > SWIPE_DELETE_PX
+            ? 3 // delete (right long)
+            : x > SWIPE_STAR_PX
+              ? 2 // star / undo (right short)
+              : 0;
 
       if (zone !== currentZone.value) {
         currentZone.value = zone;
@@ -378,7 +383,9 @@ function SwipeRowContent({
     })
     .onEnd((e) => {
       if (e.translationX < -SWIPE_DONE_PX) {
-        if (!item.isChecked) runOnJS(hapticSuccess)();
+        if (!item.isChecked) {
+          runOnJS(hapticSuccess)();
+        }
         runOnJS(onToggleDone)();
       } else if (e.translationX > SWIPE_DELETE_PX) {
         runOnJS(onDelete)();
@@ -433,10 +440,17 @@ function SwipeRowContent({
   const backStyle = useAnimatedStyle(() => {
     const x = translateX.value;
     const bg =
-      x < -SWIPE_DONE_PX    ? (item.isChecked ? '#ffe8cc' : Colors.mintLight)
-      : x > SWIPE_DELETE_PX ? Colors.deleteRed
-      : x > SWIPE_STAR_PX   ? (item.isChecked ? '#ffe8cc' : '#fffae8')
-      : 'transparent';
+      x < -SWIPE_DONE_PX
+        ? item.isChecked
+          ? '#ffe8cc'
+          : Colors.mintLight
+        : x > SWIPE_DELETE_PX
+          ? Colors.deleteRed
+          : x > SWIPE_STAR_PX
+            ? item.isChecked
+              ? '#ffe8cc'
+              : '#fffae8'
+            : 'transparent';
     return { backgroundColor: bg };
   });
 
@@ -457,17 +471,11 @@ function SwipeRowContent({
   return (
     <View style={rowStyles.row}>
       {/* ── Back reveal ── */}
-      <Animated.View
-        style={[StyleSheet.absoluteFill, backStyles.container, backStyle]}
-      >
+      <Animated.View style={[StyleSheet.absoluteFill, backStyles.container, backStyle]}>
         {(backZone === 'star' || backZone === 'delete') && (
           <View style={backStyles.leftZone}>
-            {backZone === 'delete' && (
-              <IconTrash color={Colors.deleteRedStrong} size={24} />
-            )}
-            {backZone === 'star' && item.isChecked && (
-              <IconUndo color={Colors.mint} size={24} />
-            )}
+            {backZone === 'delete' && <IconTrash color={Colors.deleteRedStrong} size={24} />}
+            {backZone === 'star' && item.isChecked && <IconUndo color={Colors.mint} size={24} />}
             {backZone === 'star' && !item.isChecked && (
               <IconStar color={Colors.yellow} size={24} filled={item.isImportant} />
             )}
@@ -475,10 +483,11 @@ function SwipeRowContent({
         )}
         {backZone === 'done' && (
           <View style={backStyles.rightZone}>
-            {item.isChecked
-              ? <IconUndo color={Colors.mint} size={24} />
-              : <IconCheck color={Colors.mint} size={24} />
-            }
+            {item.isChecked ? (
+              <IconUndo color={Colors.mint} size={24} />
+            ) : (
+              <IconCheck color={Colors.mint} size={24} />
+            )}
           </View>
         )}
       </Animated.View>
@@ -490,10 +499,7 @@ function SwipeRowContent({
             <KitchenOwlIcon iconKey={item.iconKey} size={28} style={{ color: Colors.mint }} />
           </View>
 
-          <Text
-            style={[rowStyles.name, item.isChecked && rowStyles.nameDone]}
-            numberOfLines={1}
-          >
+          <Text style={[rowStyles.name, item.isChecked && rowStyles.nameDone]} numberOfLines={1}>
             {item.description ? `${item.description} ${item.name}` : item.name}
           </Text>
 

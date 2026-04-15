@@ -37,7 +37,12 @@ describe('MembersSection', () => {
   });
 
   it('renders member names', () => {
-    mockHook({ members: [{ id: 1, name: 'Alice' }, { id: 2, name: 'Bob' }] });
+    mockHook({
+      members: [
+        { id: 1, name: 'Alice' },
+        { id: 2, name: 'Bob' },
+      ],
+    });
     render(<MembersSection />);
     expect(screen.getByText('Alice')).toBeTruthy();
     expect(screen.getByText('Bob')).toBeTruthy();
@@ -54,7 +59,9 @@ describe('MembersSection', () => {
     render(<MembersSection />);
     fireEvent.press(screen.getByText('+ Invite member'));
     fireEvent.changeText(screen.getByPlaceholderText('username'), 'alice');
-    await act(async () => { fireEvent.press(screen.getByText('Send invite')); });
+    await act(async () => {
+      fireEvent.press(screen.getByText('Send invite'));
+    });
     expect(mockInviteMember).toHaveBeenCalledWith('alice');
   });
 
@@ -70,7 +77,9 @@ describe('MembersSection', () => {
     mockHook({ members: [{ id: 1, name: 'Alice' }] });
     render(<MembersSection />);
     fireEvent.press(screen.getByText('✕'));
-    await act(async () => { fireEvent.press(screen.getByText('Remove member')); });
+    await act(async () => {
+      fireEvent.press(screen.getByText('Remove member'));
+    });
     expect(mockRemoveMember).toHaveBeenCalledWith(1);
   });
 });

@@ -18,7 +18,7 @@ import type { ItemSuggestion } from '@/hooks/useItemSuggestions';
 
 type AddItemBarProps = {
   onAdd: (name: string, description: string, iconKey: string | null, category: string) => void;
-}
+};
 
 /**
  * Returns the text in `input` that precedes `matchedName` (case-insensitive).
@@ -28,7 +28,7 @@ type AddItemBarProps = {
  */
 function extractPrefix(input: string, matchedName: string): string {
   const idx = input.toLowerCase().indexOf(matchedName.toLowerCase());
-  if (idx <= 0) return '';
+  if (idx <= 0) { return ''; }
   return input.slice(0, idx).trim();
 }
 
@@ -50,14 +50,18 @@ export default function AddItemBar({ onAdd }: AddItemBarProps) {
 
   const suggestions = useItemSuggestions(value, 5, searchFn);
   const trimmedValue = value.trim();
-  const exactMatch = trimmedValue.length >= 2
-    ? (suggestions.find((s) => s.displayName.toLowerCase() === trimmedValue.toLowerCase()) ?? null)
-    : null;
+  const exactMatch =
+    trimmedValue.length >= 2
+      ? (suggestions.find((s) => s.displayName.toLowerCase() === trimmedValue.toLowerCase()) ??
+        null)
+      : null;
   const showSuggestions = trimmedValue.length >= 2 && suggestions.length > 0;
 
   function commit(name: string, description: string, iconKey: string | null, category: string) {
     const trimmed = name.trim();
-    if (!trimmed) return;
+    if (!trimmed) {
+      return;
+    }
     onAdd(trimmed, description.trim(), iconKey, category);
     setValue('');
     inputRef.current?.blur();
@@ -65,7 +69,7 @@ export default function AddItemBar({ onAdd }: AddItemBarProps) {
 
   async function handleAdd() {
     const trimmed = trimmedValue;
-    if (!trimmed || parsing) return;
+    if (!trimmed || parsing) { return; }
 
     if (exactMatch) {
       // User typed the item name exactly — no prefix to extract.
@@ -137,15 +141,13 @@ export default function AddItemBar({ onAdd }: AddItemBarProps) {
         <View style={styles.suggestions}>
           {/* Add-as-typed row — hidden when the typed value exactly matches a suggestion */}
           {!exactMatch && (
-            <TouchableOpacity
-              style={styles.suggestTyped}
-              onPress={handleAdd}
-              activeOpacity={0.8}
-            >
+            <TouchableOpacity style={styles.suggestTyped} onPress={handleAdd} activeOpacity={0.8}>
               <View style={styles.suggestTypedIcon}>
                 <Text style={styles.suggestTypedPlus}>+</Text>
               </View>
-              <Text style={styles.suggestName} numberOfLines={1}>{trimmedValue}</Text>
+              <Text style={styles.suggestName} numberOfLines={1}>
+                {trimmedValue}
+              </Text>
               <Text style={styles.suggestArrow}>→</Text>
             </TouchableOpacity>
           )}
@@ -153,10 +155,7 @@ export default function AddItemBar({ onAdd }: AddItemBarProps) {
           {suggestions.map((s, i) => (
             <TouchableOpacity
               key={s.key}
-              style={[
-                styles.suggestRow,
-                i < suggestions.length - 1 && styles.suggestRowBorder,
-              ]}
+              style={[styles.suggestRow, i < suggestions.length - 1 && styles.suggestRowBorder]}
               onPress={() => handleSuggestion(s)}
               activeOpacity={0.8}
             >
@@ -178,7 +177,9 @@ export default function AddItemBar({ onAdd }: AddItemBarProps) {
 /** Renders suggestion name with the matched portion bolded. */
 function SuggestLabel({ name, query }: { name: string; query: string }) {
   const idx = name.toLowerCase().indexOf(query.toLowerCase().trim());
-  if (idx === -1) return <>{name}</>;
+  if (idx === -1) {
+    return <>{name}</>;
+  }
   return (
     <>
       {name.slice(0, idx)}
@@ -203,7 +204,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.xs,
     shadowColor: Colors.mint,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.10,
+    shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 2,
   },

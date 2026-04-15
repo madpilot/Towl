@@ -42,7 +42,9 @@ describe('useItemSuggestions', () => {
 
   it('returns empty array when searchFn is null (offline)', async () => {
     const { result } = renderHook(() => useItemSuggestions('avo', 8, null));
-    await act(async () => { jest.runAllTimers(); });
+    await act(async () => {
+      jest.runAllTimers();
+    });
     expect(result.current).toEqual([]);
   });
 
@@ -53,7 +55,9 @@ describe('useItemSuggestions', () => {
     // Not called before debounce fires
     expect(searchFn).not.toHaveBeenCalled();
 
-    await act(async () => { jest.runAllTimers(); });
+    await act(async () => {
+      jest.runAllTimers();
+    });
     expect(searchFn).toHaveBeenCalledWith('avo');
   });
 
@@ -61,7 +65,9 @@ describe('useItemSuggestions', () => {
     const searchFn = makeSearchFn([makeServerItem()]);
     const { result } = renderHook(() => useItemSuggestions('avo', 8, searchFn));
 
-    await act(async () => { jest.runAllTimers(); });
+    await act(async () => {
+      jest.runAllTimers();
+    });
     await waitFor(() => expect(result.current.length).toBeGreaterThan(0));
 
     expect(result.current[0].key).toBe('server:Avocado');
@@ -71,10 +77,14 @@ describe('useItemSuggestions', () => {
   });
 
   it('uses "Uncategorised" when server item has no category', async () => {
-    const searchFn = makeSearchFn([makeServerItem({ name: 'Mystery', icon: null, category: null })]);
+    const searchFn = makeSearchFn([
+      makeServerItem({ name: 'Mystery', icon: null, category: null }),
+    ]);
     const { result } = renderHook(() => useItemSuggestions('mys', 8, searchFn));
 
-    await act(async () => { jest.runAllTimers(); });
+    await act(async () => {
+      jest.runAllTimers();
+    });
     await waitFor(() => expect(result.current.length).toBeGreaterThan(0));
 
     expect(result.current[0].category).toBe('Uncategorised');
@@ -84,20 +94,22 @@ describe('useItemSuggestions', () => {
     const searchFn = makeSearchFn([makeServerItem({ icon: null })]);
     const { result } = renderHook(() => useItemSuggestions('avo', 8, searchFn));
 
-    await act(async () => { jest.runAllTimers(); });
+    await act(async () => {
+      jest.runAllTimers();
+    });
     await waitFor(() => expect(result.current.length).toBeGreaterThan(0));
 
     expect(result.current[0].iconKey).toBeNull();
   });
 
   it('respects the limit', async () => {
-    const manyItems = Array.from({ length: 10 }, (_, i) =>
-      makeServerItem({ name: `Item ${i}` })
-    );
+    const manyItems = Array.from({ length: 10 }, (_, i) => makeServerItem({ name: `Item ${i}` }));
     const searchFn = makeSearchFn(manyItems);
     const { result } = renderHook(() => useItemSuggestions('it', 4, searchFn));
 
-    await act(async () => { jest.runAllTimers(); });
+    await act(async () => {
+      jest.runAllTimers();
+    });
     await waitFor(() => expect(result.current.length).toBe(4));
   });
 
@@ -105,7 +117,9 @@ describe('useItemSuggestions', () => {
     const searchFn = jest.fn().mockRejectedValue(new Error('offline'));
     const { result } = renderHook(() => useItemSuggestions('avo', 8, searchFn));
 
-    await act(async () => { jest.runAllTimers(); });
+    await act(async () => {
+      jest.runAllTimers();
+    });
     await waitFor(() => expect(searchFn).toHaveBeenCalled());
 
     expect(result.current).toEqual([]);
@@ -120,7 +134,9 @@ describe('useItemSuggestions', () => {
 
     rerender({ input: 'avo' });
 
-    await act(async () => { jest.runAllTimers(); });
+    await act(async () => {
+      jest.runAllTimers();
+    });
 
     // Only called once — for the final input
     expect(searchFn).toHaveBeenCalledTimes(1);
@@ -134,11 +150,15 @@ describe('useItemSuggestions', () => {
       { initialProps: { input: 'avo' } }
     );
 
-    await act(async () => { jest.runAllTimers(); });
+    await act(async () => {
+      jest.runAllTimers();
+    });
     await waitFor(() => expect(result.current.length).toBeGreaterThan(0));
 
     rerender({ input: 'a' });
-    await act(async () => { jest.runAllTimers(); });
+    await act(async () => {
+      jest.runAllTimers();
+    });
 
     expect(result.current).toEqual([]);
   });

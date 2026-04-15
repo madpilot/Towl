@@ -4,7 +4,7 @@ import Svg, { Line } from 'react-native-svg';
 type ListsIconProps = {
   color: string;
   size?: number;
-}
+};
 
 export default function ListsIcon({ color, size = 24 }: ListsIconProps) {
   return (

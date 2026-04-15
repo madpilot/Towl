@@ -93,8 +93,15 @@ export class HouseholdsApi {
     return z.array(HouseholdCategorySchema).parse(res.data);
   }
 
-  async createCategory(householdId: number, name: string, ordering: number): Promise<HouseholdCategory> {
-    const res = await this.client.post<unknown>(`/household/${householdId}/category`, { name, ordering });
+  async createCategory(
+    householdId: number,
+    name: string,
+    ordering: number
+  ): Promise<HouseholdCategory> {
+    const res = await this.client.post<unknown>(`/household/${householdId}/category`, {
+      name,
+      ordering,
+    });
     return HouseholdCategorySchema.parse(res.data);
   }
 

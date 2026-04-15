@@ -4,7 +4,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
 type SettingsIconProps = {
   color: string;
   size?: number;
-}
+};
 
 export default function SettingsIcon({ color, size = 24 }: SettingsIconProps) {
   return (

@@ -12,13 +12,11 @@ type KitchenOwlIconProps = {
  * Renders a KitchenOwl icon using the Items.ttf custom font.
  * Returns null when the icon key has no codepoint in the font.
  */
-export default function KitchenOwlIcon({
-  iconKey,
-  size = 24,
-  style,
-}: KitchenOwlIconProps) {
+export default function KitchenOwlIcon({ iconKey, size = 24, style }: KitchenOwlIconProps) {
   const char = getIconChar(iconKey);
-  if (!char) return null;
+  if (!char) {
+    return null;
+  }
 
   return (
     <Text

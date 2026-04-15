@@ -24,7 +24,8 @@ type ModalKind = 'rename' | 'leave' | null;
 export default function HouseholdDetailScreen({ navigation, route }: HouseholdDetailScreenProps) {
   const { householdId, householdName: initialName } = route.params;
 
-  const { loading, householdName, initialize, loadAll, renameHousehold, leaveHousehold } = useHouseholdDetail();
+  const { loading, householdName, initialize, loadAll, renameHousehold, leaveHousehold } =
+    useHouseholdDetail();
 
   const [modal, setModal] = useState<ModalKind>(null);
   const [renameValue, setRenameValue] = useState('');
@@ -37,13 +38,18 @@ export default function HouseholdDetailScreen({ navigation, route }: HouseholdDe
   }, [householdId, initialName, initialize, loadAll]);
 
   async function handleRename() {
-    if (!renameValue.trim()) return;
+    if (!renameValue.trim()) {
+      return;
+    }
     setAction('rename');
     try {
       await renameHousehold(renameValue.trim());
       setModal(null);
     } catch (e: unknown) {
-      Alert.alert('Not yet available', e instanceof Error ? e.message : 'Failed to rename household.');
+      Alert.alert(
+        'Not yet available',
+        e instanceof Error ? e.message : 'Failed to rename household.'
+      );
     } finally {
       setAction(null);
     }
@@ -55,7 +61,10 @@ export default function HouseholdDetailScreen({ navigation, route }: HouseholdDe
       await leaveHousehold();
       navigation.goBack();
     } catch (e: unknown) {
-      Alert.alert('Not yet available', e instanceof Error ? e.message : 'Failed to leave household.');
+      Alert.alert(
+        'Not yet available',
+        e instanceof Error ? e.message : 'Failed to leave household.'
+      );
     } finally {
       setAction(null);
     }
@@ -67,9 +76,14 @@ export default function HouseholdDetailScreen({ navigation, route }: HouseholdDe
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Text style={styles.backChevron}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.title} numberOfLines={1}>{householdName}</Text>
+        <Text style={styles.title} numberOfLines={1}>
+          {householdName}
+        </Text>
         <TouchableOpacity
-          onPress={() => { setRenameValue(householdName); setModal('rename'); }}
+          onPress={() => {
+            setRenameValue(householdName);
+            setModal('rename');
+          }}
           style={styles.editBtn}
         >
           <Text style={styles.editLabel}>Edit</Text>
@@ -90,7 +104,9 @@ export default function HouseholdDetailScreen({ navigation, route }: HouseholdDe
             <Card>
               <TouchableOpacity
                 style={styles.navRow}
-                onPress={() => navigation.navigate('HouseholdCategories', { householdId, householdName })}
+                onPress={() =>
+                  navigation.navigate('HouseholdCategories', { householdId, householdName })
+                }
                 activeOpacity={0.7}
               >
                 <Text style={styles.navLabel}>Manage categories</Text>
@@ -102,7 +118,9 @@ export default function HouseholdDetailScreen({ navigation, route }: HouseholdDe
             <Card>
               <TouchableOpacity
                 style={styles.navRow}
-                onPress={() => navigation.navigate('HouseholdItems', { householdId, householdName })}
+                onPress={() =>
+                  navigation.navigate('HouseholdItems', { householdId, householdName })
+                }
                 activeOpacity={0.7}
               >
                 <Text style={styles.navLabel}>Manage items</Text>
@@ -139,17 +157,32 @@ export default function HouseholdDetailScreen({ navigation, route }: HouseholdDe
             returnKeyType="done"
           />
         </View>
-        <PrimaryBtn label="Save" onPress={handleRename} loading={action === 'rename'} disabled={saving} />
+        <PrimaryBtn
+          label="Save"
+          onPress={handleRename}
+          loading={action === 'rename'}
+          disabled={saving}
+        />
         <View style={{ height: Spacing.xl }} />
       </Sheet>
 
-      <Sheet visible={modal === 'leave'} title={`Leave "${householdName}"`} onClose={() => setModal(null)}>
+      <Sheet
+        visible={modal === 'leave'}
+        title={`Leave "${householdName}"`}
+        onClose={() => setModal(null)}
+      >
         <View style={styles.sheetBody}>
           <Text style={styles.sheetBodyText}>
             {"You'll lose access to this household's lists and data. This can't be undone."}
           </Text>
         </View>
-        <PrimaryBtn label="Leave household" onPress={handleLeave} loading={action === 'leave'} disabled={saving} danger />
+        <PrimaryBtn
+          label="Leave household"
+          onPress={handleLeave}
+          loading={action === 'leave'}
+          disabled={saving}
+          danger
+        />
         <View style={{ height: Spacing.xl }} />
       </Sheet>
     </SafeAreaView>
@@ -179,7 +212,12 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: 100 },
   center: { padding: Spacing.xxl, alignItems: 'center' },
-  navRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md + 2 },
+  navRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.md + 2,
+  },
   navLabel: { flex: 1, fontSize: FontSize.body, fontWeight: '700', color: Colors.textDark },
   navChevron: { fontSize: 20, color: Colors.mintPale, fontWeight: '700' },
   dangerRow: { paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md + 2 },

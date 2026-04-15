@@ -63,7 +63,9 @@ function DragRow({
         activeOpacity={0.7}
         testID={`edit-category-${cat.id}`}
       >
-        <Text style={styles.rowName} numberOfLines={1}>{cat.name}</Text>
+        <Text style={styles.rowName} numberOfLines={1}>
+          {cat.name}
+        </Text>
         <Text style={styles.editChevron}>›</Text>
       </TouchableOpacity>
     </View>
@@ -80,7 +82,8 @@ export type CategoriesSectionProps = {
 };
 
 export function CategoriesSection({ onDragScrollLock }: CategoriesSectionProps = {}) {
-  const { categories, createCategory, updateCategory, deleteCategory, reorderCategory } = useCategoriesSection();
+  const { categories, createCategory, updateCategory, deleteCategory, reorderCategory } =
+    useCategoriesSection();
 
   // Stable ground-truth order — only updated when a drag commits or store changes.
   const [localCats, setLocalCats] = useState<HouseholdCategory[]>(() =>
@@ -115,10 +118,14 @@ export function CategoriesSection({ onDragScrollLock }: CategoriesSectionProps =
   const itemHeightRef = useRef(ITEM_HEIGHT_EST);
 
   const reorderRef = useRef(reorderCategory);
-  useEffect(() => { reorderRef.current = reorderCategory; }, [reorderCategory]);
+  useEffect(() => {
+    reorderRef.current = reorderCategory;
+  }, [reorderCategory]);
 
   const onDragScrollLockRef = useRef(onDragScrollLock);
-  useEffect(() => { onDragScrollLockRef.current = onDragScrollLock; }, [onDragScrollLock]);
+  useEffect(() => {
+    onDragScrollLockRef.current = onDragScrollLock;
+  }, [onDragScrollLock]);
 
   // Stable drag callbacks — all mutable state is accessed through refs.
 
@@ -132,10 +139,7 @@ export function CategoriesSection({ onDragScrollLock }: CategoriesSectionProps =
   const handleDragMove = useCallback((fromIndex: number, dy: number) => {
     const h = itemHeightRef.current;
     const centerY = fromIndex * h + h / 2 + dy;
-    const target = Math.max(
-      0,
-      Math.min(localCatsRef.current.length - 1, Math.floor(centerY / h))
-    );
+    const target = Math.max(0, Math.min(localCatsRef.current.length - 1, Math.floor(centerY / h)));
     setTargetIndex(target);
   }, []);
 
@@ -167,40 +171,55 @@ export function CategoriesSection({ onDragScrollLock }: CategoriesSectionProps =
   const [saving, setSaving] = useState(false);
 
   async function handleCreate() {
-    if (!catName.trim()) return;
+    if (!catName.trim()) {
+      return;
+    }
     setSaving(true);
     try {
       await createCategory(catName.trim());
       setCatName('');
       setModal(null);
     } catch (e: unknown) {
-      Alert.alert('Not yet available', e instanceof Error ? e.message : 'Failed to create category.');
+      Alert.alert(
+        'Not yet available',
+        e instanceof Error ? e.message : 'Failed to create category.'
+      );
     } finally {
       setSaving(false);
     }
   }
 
   async function handleUpdate() {
-    if (!catName.trim() || editingCatId === null) return;
+    if (!catName.trim() || editingCatId === null) {
+      return;
+    }
     setSaving(true);
     try {
       await updateCategory(editingCatId, catName.trim());
       setModal(null);
     } catch (e: unknown) {
-      Alert.alert('Not yet available', e instanceof Error ? e.message : 'Failed to update category.');
+      Alert.alert(
+        'Not yet available',
+        e instanceof Error ? e.message : 'Failed to update category.'
+      );
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDelete() {
-    if (editingCatId === null) return;
+    if (editingCatId === null) {
+      return;
+    }
     setSaving(true);
     try {
       await deleteCategory(editingCatId);
       setModal(null);
     } catch (e: unknown) {
-      Alert.alert('Not yet available', e instanceof Error ? e.message : 'Failed to delete category.');
+      Alert.alert(
+        'Not yet available',
+        e instanceof Error ? e.message : 'Failed to delete category.'
+      );
     } finally {
       setSaving(false);
     }
@@ -233,7 +252,13 @@ export function CategoriesSection({ onDragScrollLock }: CategoriesSectionProps =
                     setCatName(cat.name);
                     setModal('edit');
                   }}
-                  onHeightMeasured={displayIdx === 0 ? (h) => { itemHeightRef.current = h; } : undefined}
+                  onHeightMeasured={
+                    displayIdx === 0
+                      ? (h) => {
+                          itemHeightRef.current = h;
+                        }
+                      : undefined
+                  }
                 />
                 {displayIdx < displayCats.length - 1 && <Sep />}
               </View>
@@ -243,7 +268,10 @@ export function CategoriesSection({ onDragScrollLock }: CategoriesSectionProps =
         <Sep />
         <TouchableOpacity
           style={styles.addRow}
-          onPress={() => { setCatName(''); setModal('new'); }}
+          onPress={() => {
+            setCatName('');
+            setModal('new');
+          }}
           activeOpacity={0.7}
         >
           <Text style={styles.addLabel}>+ Add category</Text>
@@ -251,14 +279,24 @@ export function CategoriesSection({ onDragScrollLock }: CategoriesSectionProps =
       </Card>
 
       <Sheet visible={modal === 'new'} title="New category" onClose={() => setModal(null)}>
-        <Field label="Category name" value={catName} onChangeText={setCatName} placeholder="e.g. Frozen" />
+        <Field
+          label="Category name"
+          value={catName}
+          onChangeText={setCatName}
+          placeholder="e.g. Frozen"
+        />
         <PrimaryBtn label="Add category" onPress={handleCreate} loading={saving} />
         <SecondaryBtn label="Cancel" onPress={() => setModal(null)} />
         <View style={{ height: Spacing.xl }} />
       </Sheet>
 
       <Sheet visible={modal === 'edit'} title="Edit category" onClose={() => setModal(null)}>
-        <Field label="Category name" value={catName} onChangeText={setCatName} placeholder="Category name" />
+        <Field
+          label="Category name"
+          value={catName}
+          onChangeText={setCatName}
+          placeholder="Category name"
+        />
         <PrimaryBtn label="Save changes" onPress={handleUpdate} loading={saving} />
         <PrimaryBtn label="Delete category" onPress={handleDelete} loading={saving} danger />
         <SecondaryBtn label="Cancel" onPress={() => setModal(null)} />

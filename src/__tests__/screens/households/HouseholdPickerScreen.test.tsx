@@ -13,10 +13,11 @@ jest.mock('@/store/householdStore', () => ({
 jest.mock('@/components/TommyOwl', () => {
   const React = require('react');
   const { View } = require('react-native');
-  function TommyOwl() { return React.createElement(View, { testID: 'tommy-owl' }); }
+  function TommyOwl() {
+    return React.createElement(View, { testID: 'tommy-owl' });
+  }
   return TommyOwl;
 });
-
 
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
@@ -25,7 +26,12 @@ import { useHouseholdStore, persistAndSelectHousehold } from '@/store/householdS
 import type { Household } from '@/api/households';
 
 const mockPersistAndSelectHousehold = persistAndSelectHousehold as unknown as jest.Mock;
-const mockNavigation = { navigate: jest.fn(), canGoBack: jest.fn(), goBack: jest.fn(), reset: jest.fn() };
+const mockNavigation = {
+  navigate: jest.fn(),
+  canGoBack: jest.fn(),
+  goBack: jest.fn(),
+  reset: jest.fn(),
+};
 const baseProps = { navigation: mockNavigation as never, route: {} as never };
 
 function makeHousehold(overrides: Partial<Household> = {}): Household {
@@ -94,10 +100,7 @@ describe('HouseholdPickerScreen', () => {
 
     it('calls persistAndSelectHousehold immediately when a household is tapped', async () => {
       const household = makeHousehold({ id: 2, name: 'Office' });
-      mockGetHouseholds.mockResolvedValue([
-        makeHousehold({ id: 1, name: 'Home' }),
-        household,
-      ]);
+      mockGetHouseholds.mockResolvedValue([makeHousehold({ id: 1, name: 'Home' }), household]);
 
       const { getByText } = render(<HouseholdPickerScreen {...baseProps} />);
       await waitFor(() => expect(getByText('Office')).toBeTruthy());
@@ -166,10 +169,7 @@ describe('HouseholdPickerScreen', () => {
 
     it('Done button calls persistAndSelectHousehold with the selected household', async () => {
       const office = makeHousehold({ id: 2, name: 'Office' });
-      mockGetHouseholds.mockResolvedValue([
-        makeHousehold({ id: 1, name: 'Home' }),
-        office,
-      ]);
+      mockGetHouseholds.mockResolvedValue([makeHousehold({ id: 1, name: 'Home' }), office]);
 
       const { getByText, getByTestId } = render(<HouseholdPickerScreen {...baseProps} />);
       await waitFor(() => expect(getByText('Office')).toBeTruthy());
@@ -177,9 +177,7 @@ describe('HouseholdPickerScreen', () => {
       fireEvent.press(getByText('Office'));
       fireEvent.press(getByTestId('done-button'));
 
-      await waitFor(() =>
-        expect(mockPersistAndSelectHousehold).toHaveBeenCalledWith(office)
-      );
+      await waitFor(() => expect(mockPersistAndSelectHousehold).toHaveBeenCalledWith(office));
     });
 
     it('Done button does not call persistAndSelectHousehold when no household selected', async () => {
@@ -197,10 +195,7 @@ describe('HouseholdPickerScreen', () => {
 
     it('resets navigation to ListDetail when selectedHousehold becomes non-null', async () => {
       const household = makeHousehold();
-      mockGetHouseholds.mockResolvedValue([
-        household,
-        makeHousehold({ id: 2, name: 'Office' }),
-      ]);
+      mockGetHouseholds.mockResolvedValue([household, makeHousehold({ id: 2, name: 'Office' })]);
 
       // Start with no selection, then simulate store updating after Done.
       const { rerender } = render(<HouseholdPickerScreen {...baseProps} />);
@@ -230,9 +225,7 @@ describe('HouseholdPickerScreen', () => {
     mockGetHouseholds.mockRejectedValue(new Error('Network error'));
 
     const { getByText } = render(<HouseholdPickerScreen {...baseProps} />);
-    await waitFor(() =>
-      expect(getByText(/Could not load households/)).toBeTruthy()
-    );
+    await waitFor(() => expect(getByText(/Could not load households/)).toBeTruthy());
   });
 
   it('shows back button when canGoBack is true', async () => {

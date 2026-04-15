@@ -47,7 +47,10 @@ beforeEach(() => {
   jest.clearAllMocks();
   (useAuthStore as unknown as jest.Mock).mockReturnValue({ householdsApi, shoppingListsApi });
   // Mimic getState()
-  (useAuthStore as unknown as { getState: () => unknown }).getState = () => ({ householdsApi, shoppingListsApi });
+  (useAuthStore as unknown as { getState: () => unknown }).getState = () => ({
+    householdsApi,
+    shoppingListsApi,
+  });
   // Reset store to clean state before each test
   useHouseholdDetailStore.setState({
     householdId: null,
@@ -149,7 +152,6 @@ describe('createCategory', () => {
     expect(useHouseholdDetailStore.getState().categories).toContainEqual(newCat);
   });
 });
-
 
 describe('reorderCategory', () => {
   it('reassigns orderings for the full new order before calling the API', async () => {

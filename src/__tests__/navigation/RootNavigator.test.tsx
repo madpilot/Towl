@@ -43,21 +43,27 @@ jest.mock('@react-navigation/native-stack', () => {
 jest.mock('@/screens/auth/ServerSetupScreen', () => {
   const React = require('react');
   const { Text } = require('react-native');
-  function ServerSetupScreen() { return React.createElement(Text, null, 'ServerSetup'); }
+  function ServerSetupScreen() {
+    return React.createElement(Text, null, 'ServerSetup');
+  }
   return ServerSetupScreen;
 });
 
 jest.mock('@/screens/auth/LoginScreen', () => {
   const React = require('react');
   const { Text } = require('react-native');
-  function LoginScreen() { return React.createElement(Text, null, 'Login'); }
+  function LoginScreen() {
+    return React.createElement(Text, null, 'Login');
+  }
   return LoginScreen;
 });
 
 jest.mock('@/screens/lists/ListDetailScreen', () => {
   const React = require('react');
   const { Text } = require('react-native');
-  function ListDetailScreen() { return React.createElement(Text, null, 'ListDetail'); }
+  function ListDetailScreen() {
+    return React.createElement(Text, null, 'ListDetail');
+  }
   return ListDetailScreen;
 });
 
@@ -72,35 +78,45 @@ jest.mock('@/store/householdStore', () => ({
 jest.mock('@/screens/households/HouseholdPickerScreen', () => {
   const React = require('react');
   const { Text } = require('react-native');
-  function HouseholdPickerScreen() { return React.createElement(Text, null, 'HouseholdPicker'); }
+  function HouseholdPickerScreen() {
+    return React.createElement(Text, null, 'HouseholdPicker');
+  }
   return HouseholdPickerScreen;
 });
 
 jest.mock('@/screens/settings/SettingsScreen', () => {
   const React = require('react');
   const { Text } = require('react-native');
-  function SettingsScreen() { return React.createElement(Text, null, 'Settings'); }
+  function SettingsScreen() {
+    return React.createElement(Text, null, 'Settings');
+  }
   return SettingsScreen;
 });
 
 jest.mock('@/screens/settings/HouseholdDetailScreen', () => {
   const React = require('react');
   const { Text } = require('react-native');
-  function HouseholdDetailScreen() { return React.createElement(Text, null, 'HouseholdDetail'); }
+  function HouseholdDetailScreen() {
+    return React.createElement(Text, null, 'HouseholdDetail');
+  }
   return HouseholdDetailScreen;
 });
 
 jest.mock('@/screens/settings/HouseholdItemsScreen', () => {
   const React = require('react');
   const { Text } = require('react-native');
-  function HouseholdItemsScreen() { return React.createElement(Text, null, 'HouseholdItems'); }
+  function HouseholdItemsScreen() {
+    return React.createElement(Text, null, 'HouseholdItems');
+  }
   return HouseholdItemsScreen;
 });
 
 jest.mock('@/screens/settings/HouseholdCategoriesScreen', () => {
   const React = require('react');
   const { Text } = require('react-native');
-  function HouseholdCategoriesScreen() { return React.createElement(Text, null, 'HouseholdCategories'); }
+  function HouseholdCategoriesScreen() {
+    return React.createElement(Text, null, 'HouseholdCategories');
+  }
   return HouseholdCategoriesScreen;
 });
 
@@ -115,8 +131,8 @@ type AuthState = { status: 'unknown' | 'unauthenticated' | 'authenticated' };
 type HouseholdState = { selectedHousehold: { id: number; name: string; photo: null } | null };
 
 function mockAuth(status: AuthState['status']) {
-  (useAuthStore as unknown as jest.Mock).mockImplementation(
-    (sel: (s: AuthState) => unknown) => sel({ status })
+  (useAuthStore as unknown as jest.Mock).mockImplementation((sel: (s: AuthState) => unknown) =>
+    sel({ status })
   );
 }
 

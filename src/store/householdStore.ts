@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import * as SecureStore from 'expo-secure-store';
+import { setItemAsync, getItemAsync } from 'expo-secure-store';
 import { SECURE_STORE_KEYS } from '@/utils/constants';
 import { HouseholdSchema } from '@/api/households';
 import type { Household } from '@/api/households';
@@ -9,7 +9,7 @@ type HouseholdState = {
   selectedHousehold: Household | null;
   setHouseholds: (households: Household[]) => void;
   selectHousehold: (household: Household) => void;
-}
+};
 
 export const useHouseholdStore = create<HouseholdState>((set) => ({
   households: [],
@@ -28,16 +28,13 @@ export const useHouseholdStore = create<HouseholdState>((set) => ({
  * is awaited and any storage failure is visible to the caller.
  */
 export async function persistAndSelectHousehold(household: Household): Promise<void> {
-  await SecureStore.setItemAsync(
-    SECURE_STORE_KEYS.SELECTED_HOUSEHOLD,
-    JSON.stringify(household)
-  );
+  await setItemAsync(SECURE_STORE_KEYS.SELECTED_HOUSEHOLD, JSON.stringify(household));
   useHouseholdStore.getState().selectHousehold(household);
 }
 
 export async function restoreSelectedHousehold(): Promise<void> {
   try {
-    const raw = await SecureStore.getItemAsync(SECURE_STORE_KEYS.SELECTED_HOUSEHOLD);
+    const raw = await getItemAsync(SECURE_STORE_KEYS.SELECTED_HOUSEHOLD);
     if (raw) {
       const household = HouseholdSchema.parse(JSON.parse(raw));
       useHouseholdStore.getState().selectHousehold(household);

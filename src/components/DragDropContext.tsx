@@ -131,12 +131,18 @@ export function DragDropProvider({ children, onDrop }: DragDropProviderProps) {
   // ── Zone measurement ───────────────────────────────────────────────────────
 
   const measureAllZones = useCallback(async () => {
-    if (measuringRef.current) return;
+    if (measuringRef.current) {
+      return;
+    }
     measuringRef.current = true;
     const promises = Array.from(zonesRef.current.entries()).map(async ([id, fn]) => {
-      if (boundsRef.current.has(id)) return; // already cached
+      if (boundsRef.current.has(id)) {
+        return;
+      } // already cached
       const bounds = await fn();
-      if (bounds) boundsRef.current.set(id, bounds);
+      if (bounds) {
+        boundsRef.current.set(id, bounds);
+      }
     });
     await Promise.all(promises);
     measuringRef.current = false;
@@ -144,52 +150,62 @@ export function DragDropProvider({ children, onDrop }: DragDropProviderProps) {
 
   // ── Drag actions ───────────────────────────────────────────────────────────
 
-  const startDrag = useCallback((item: LocalItem, x: number, y: number) => {
-    draggingItemRef.current = item;
-    hoveredRef.current = undefined;
-    boundsRef.current.clear();
-    measuringRef.current = false;
+  const startDrag = useCallback(
+    (item: LocalItem, x: number, y: number) => {
+      draggingItemRef.current = item;
+      hoveredRef.current = undefined;
+      boundsRef.current.clear();
+      measuringRef.current = false;
 
-    // Access shared values through the stable ref to avoid react-hooks/immutability.
-    ghostRef.current.x.value = x;
-    ghostRef.current.y.value = y - 30; // float slightly above finger
-    ghostRef.current.opacity.value = 1;
+      // Access shared values through the stable ref to avoid react-hooks/immutability.
+      ghostRef.current.x.value = x;
+      ghostRef.current.y.value = y - 30; // float slightly above finger
+      ghostRef.current.opacity.value = 1;
 
-    setDraggingItem(item);
-    setDragging(true);
-    setHoveredCategoryId(undefined);
+      setDraggingItem(item);
+      setDragging(true);
+      setHoveredCategoryId(undefined);
 
-    // Measure zones after a short delay to allow empty categories to mount.
-    setTimeout(() => { void measureAllZones(); }, 150);
-  }, [measureAllZones]);
+      // Measure zones after a short delay to allow empty categories to mount.
+      setTimeout(() => {
+        void measureAllZones();
+      }, 150);
+    },
+    [measureAllZones]
+  );
 
-  const updateDragPosition = useCallback((x: number, y: number) => {
-    ghostRef.current.x.value = x;
-    ghostRef.current.y.value = y - 30;
+  const updateDragPosition = useCallback(
+    (x: number, y: number) => {
+      ghostRef.current.x.value = x;
+      ghostRef.current.y.value = y - 30;
 
-    if (boundsRef.current.size === 0) {
-      // Bounds not yet measured — trigger a measurement and bail out this frame.
-      void measureAllZones();
-      return;
-    }
-
-    // Hit-test all registered zones.
-    let hovered: number | null | undefined = undefined;
-    for (const [categoryId, bounds] of boundsRef.current) {
-      if (
-        x >= bounds.x && x <= bounds.x + bounds.width &&
-        y >= bounds.y && y <= bounds.y + bounds.height
-      ) {
-        hovered = categoryId;
-        break;
+      if (boundsRef.current.size === 0) {
+        // Bounds not yet measured — trigger a measurement and bail out this frame.
+        void measureAllZones();
+        return;
       }
-    }
 
-    if (hovered !== hoveredRef.current) {
-      hoveredRef.current = hovered;
-      setHoveredCategoryId(hovered);
-    }
-  }, [measureAllZones]);
+      // Hit-test all registered zones.
+      let hovered: number | null | undefined = undefined;
+      for (const [categoryId, bounds] of boundsRef.current) {
+        if (
+          x >= bounds.x &&
+          x <= bounds.x + bounds.width &&
+          y >= bounds.y &&
+          y <= bounds.y + bounds.height
+        ) {
+          hovered = categoryId;
+          break;
+        }
+      }
+
+      if (hovered !== hoveredRef.current) {
+        hoveredRef.current = hovered;
+        setHoveredCategoryId(hovered);
+      }
+    },
+    [measureAllZones]
+  );
 
   /** Fire the drop callback if a zone is hovered (called from gesture onEnd). */
   const commitDrop = useCallback(() => {
@@ -239,9 +255,5 @@ export function DragDropProvider({ children, onDrop }: DragDropProviderProps) {
     remeasureZones,
   };
 
-  return (
-    <DragDropContext.Provider value={value}>
-      {children}
-    </DragDropContext.Provider>
-  );
+  return <DragDropContext.Provider value={value}>{children}</DragDropContext.Provider>;
 }

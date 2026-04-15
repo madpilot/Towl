@@ -22,116 +22,118 @@ type AddItemSheetProps = {
   onAdd: (name: string, description: string) => Promise<void>;
 };
 
-const AddItemSheet = forwardRef<AddItemSheetHandle, AddItemSheetProps>(
-  function AddItemSheet({ visible, onClose, onAdd }, ref) {
-    const [name, setName] = useState('');
-    const [description, setDescription] = useState('');
-    const [adding, setAdding] = useState(false);
+const AddItemSheet = forwardRef<AddItemSheetHandle, AddItemSheetProps>(function AddItemSheet(
+  { visible, onClose, onAdd },
+  ref
+) {
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [adding, setAdding] = useState(false);
 
-    const nameInputRef = useRef<TextInput>(null);
-    const suggestions = useItemSuggestions(name);
+  const nameInputRef = useRef<TextInput>(null);
+  const suggestions = useItemSuggestions(name);
 
-    useImperativeHandle(ref, () => ({
-      focus: () => nameInputRef.current?.focus(),
-    }));
+  useImperativeHandle(ref, () => ({
+    focus: () => nameInputRef.current?.focus(),
+  }));
 
-    const handleAdd = useCallback(async () => {
-      const trimmedName = name.trim();
-      if (!trimmedName) return;
-      setAdding(true);
-      try {
-        await onAdd(trimmedName, description.trim());
-        setName('');
-        setDescription('');
-        onClose();
-      } catch {
-        // Error handling delegated to parent
-      } finally {
-        setAdding(false);
-      }
-    }, [name, description, onAdd, onClose]);
-
-    const handleClose = useCallback(() => {
+  const handleAdd = useCallback(async () => {
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      return;
+    }
+    setAdding(true);
+    try {
+      await onAdd(trimmedName, description.trim());
       setName('');
       setDescription('');
       onClose();
-    }, [onClose]);
+    } catch {
+      // Error handling delegated to parent
+    } finally {
+      setAdding(false);
+    }
+  }, [name, description, onAdd, onClose]);
 
-    const handleSuggestionPress = useCallback((displayName: string) => {
-      setName(displayName);
-    }, []);
+  const handleClose = useCallback(() => {
+    setName('');
+    setDescription('');
+    onClose();
+  }, [onClose]);
 
-    return (
-      <Modal
-        visible={visible}
-        transparent
-        animationType="slide"
-        onRequestClose={handleClose}
+  const handleSuggestionPress = useCallback((displayName: string) => {
+    setName(displayName);
+  }, []);
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
+      <KeyboardAvoidingView
+        style={styles.overlay}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <KeyboardAvoidingView
-          style={styles.overlay}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
-          <TouchableOpacity style={styles.backdrop} onPress={handleClose} activeOpacity={1} />
-          <View style={styles.sheet}>
-            <View style={styles.handle} />
-            <Text style={styles.title}>Add Item</Text>
+        <TouchableOpacity style={styles.backdrop} onPress={handleClose} activeOpacity={1} />
+        <View style={styles.sheet}>
+          <View style={styles.handle} />
+          <Text style={styles.title}>Add Item</Text>
 
-            <TextInput
-              ref={nameInputRef}
-              style={styles.input}
-              value={name}
-              onChangeText={setName}
-              placeholder="Item name (e.g. Milk)"
-              autoFocus
-              returnKeyType="next"
-              editable={!adding}
-              testID="item-name-input"
-            />
+          <TextInput
+            ref={nameInputRef}
+            style={styles.input}
+            value={name}
+            onChangeText={setName}
+            placeholder="Item name (e.g. Milk)"
+            autoFocus
+            returnKeyType="next"
+            editable={!adding}
+            testID="item-name-input"
+          />
 
-            {suggestions.length > 0 && (
-              <View style={styles.suggestions}>
-                {suggestions.map((s) => (
-                  <TouchableOpacity
-                    key={s.key}
-                    style={styles.suggestionChip}
-                    onPress={() => handleSuggestionPress(s.displayName)}
-                  >
-                    <Text style={styles.suggestionLabel}>{s.displayName}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+          {suggestions.length > 0 && (
+            <View style={styles.suggestions}>
+              {suggestions.map((s) => (
+                <TouchableOpacity
+                  key={s.key}
+                  style={styles.suggestionChip}
+                  onPress={() => handleSuggestionPress(s.displayName)}
+                >
+                  <Text style={styles.suggestionLabel}>{s.displayName}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
+          <TextInput
+            style={styles.input}
+            value={description}
+            onChangeText={setDescription}
+            placeholder="Note (optional)"
+            returnKeyType="done"
+            onSubmitEditing={handleAdd}
+            editable={!adding}
+            testID="item-desc-input"
+          />
+
+          <TouchableOpacity
+            style={[
+              styles.addButton,
+              !name.trim() || adding ? styles.addButtonDisabled : undefined,
+            ]}
+            onPress={handleAdd}
+            disabled={!name.trim() || adding}
+            activeOpacity={0.8}
+            testID="add-item-button"
+          >
+            {adding ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.addButtonText}>Add to List</Text>
             )}
-
-            <TextInput
-              style={styles.input}
-              value={description}
-              onChangeText={setDescription}
-              placeholder="Note (optional)"
-              returnKeyType="done"
-              onSubmitEditing={handleAdd}
-              editable={!adding}
-              testID="item-desc-input"
-            />
-
-            <TouchableOpacity
-              style={[styles.addButton, (!name.trim() || adding) ? styles.addButtonDisabled : undefined]}
-              onPress={handleAdd}
-              disabled={!name.trim() || adding}
-              activeOpacity={0.8}
-              testID="add-item-button"
-            >
-              {adding
-                ? <ActivityIndicator color="#fff" />
-                : <Text style={styles.addButtonText}>Add to List</Text>
-              }
-            </TouchableOpacity>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
-    );
-  }
-);
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+});
 
 export default AddItemSheet;
 

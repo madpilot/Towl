@@ -26,7 +26,7 @@ type ActionKind = 'create' | 'update' | 'delete' | null;
 const BOTTOM_NAV_CLEARANCE = 100;
 const ITEM_HEIGHT_EST = 50;
 const SCROLL_EDGE_ZONE = 80; // px from top/bottom edge that triggers auto-scroll
-const SCROLL_SPEED = 6;      // px per frame during auto-scroll
+const SCROLL_SPEED = 6; // px per frame during auto-scroll
 
 // ─── DragRow ──────────────────────────────────────────────────────────────────
 
@@ -85,12 +85,10 @@ function DragRow({
       >
         <Text style={styles.handleText}>≡</Text>
       </View>
-      <TouchableOpacity
-        style={styles.rowContent}
-        onPress={onEditPress}
-        activeOpacity={0.7}
-      >
-        <Text style={styles.rowName} numberOfLines={1}>{cat.name}</Text>
+      <TouchableOpacity style={styles.rowContent} onPress={onEditPress} activeOpacity={0.7}>
+        <Text style={styles.rowName} numberOfLines={1}>
+          {cat.name}
+        </Text>
         <Text style={styles.rowChevron}>›</Text>
       </TouchableOpacity>
     </View>
@@ -99,7 +97,10 @@ function DragRow({
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
-export default function HouseholdCategoriesScreen({ navigation, route }: HouseholdCategoriesScreenProps) {
+export default function HouseholdCategoriesScreen({
+  navigation,
+  route,
+}: HouseholdCategoriesScreenProps) {
   const { householdId, householdName } = route.params;
   const { householdsApi } = useAuthStore();
 
@@ -141,9 +142,9 @@ export default function HouseholdCategoriesScreen({ navigation, route }: Househo
 
   const scrollViewRef = useRef<ScrollView>(null);
   const scrollContainerRef = useRef<View>(null); // used for measure() — ScrollView doesn't expose it
-  const scrollOffsetRef = useRef(0);        // current scroll Y
-  const scrollViewTopRef = useRef(0);       // screen Y of scroll view top
-  const scrollViewHeightRef = useRef(0);    // visible height of scroll view
+  const scrollOffsetRef = useRef(0); // current scroll Y
+  const scrollViewTopRef = useRef(0); // screen Y of scroll view top
+  const scrollViewHeightRef = useRef(0); // visible height of scroll view
 
   // Drag context needed by the auto-scroll interval to recalculate target
   const dragStartScrollOffsetRef = useRef(0);
@@ -161,7 +162,9 @@ export default function HouseholdCategoriesScreen({ navigation, route }: Househo
 
   function startAutoScroll(direction: 'up' | 'down') {
     // Don't restart if already scrolling in the same direction
-    if (autoScrollTimerRef.current !== null) return;
+    if (autoScrollTimerRef.current !== null) {
+      return;
+    }
 
     autoScrollTimerRef.current = setInterval(() => {
       const delta = direction === 'up' ? -SCROLL_SPEED : SCROLL_SPEED;
@@ -184,7 +187,9 @@ export default function HouseholdCategoriesScreen({ navigation, route }: Househo
   // ── Load ───────────────────────────────────────────────────────────────────
 
   const load = useCallback(async () => {
-    if (!householdsApi) return;
+    if (!householdsApi) {
+      return;
+    }
     try {
       const fetched = await householdsApi.getCategories(householdId);
       setCategories(fetched.slice().sort((a, b) => a.ordering - b.ordering));
@@ -218,7 +223,9 @@ export default function HouseholdCategoriesScreen({ navigation, route }: Househo
   // ── CRUD ───────────────────────────────────────────────────────────────────
 
   async function handleCreate() {
-    if (!name.trim() || !householdsApi) return;
+    if (!name.trim() || !householdsApi) {
+      return;
+    }
     setAction('create');
     try {
       const ordering = categories.length;
@@ -235,12 +242,14 @@ export default function HouseholdCategoriesScreen({ navigation, route }: Househo
   }
 
   async function handleUpdate() {
-    if (!name.trim() || !editingCat || !householdsApi) return;
+    if (!name.trim() || !editingCat || !householdsApi) {
+      return;
+    }
     setAction('update');
     try {
       await householdsApi.updateCategory(editingCat.id, name.trim(), editingCat.ordering);
       setCategories((prev) =>
-        prev.map((c) => c.id === editingCat.id ? { ...c, name: name.trim() } : c)
+        prev.map((c) => (c.id === editingCat.id ? { ...c, name: name.trim() } : c))
       );
       closeSheet();
     } catch (e: unknown) {
@@ -251,7 +260,9 @@ export default function HouseholdCategoriesScreen({ navigation, route }: Househo
   }
 
   async function handleDelete() {
-    if (!editingCat || !householdsApi) return;
+    if (!editingCat || !householdsApi) {
+      return;
+    }
     setAction('delete');
     try {
       await householdsApi.deleteCategory(editingCat.id);
@@ -283,10 +294,7 @@ export default function HouseholdCategoriesScreen({ navigation, route }: Househo
     const h = itemHeightRef.current;
     const scrollDelta = scrollOffsetRef.current - dragStartScrollOffsetRef.current;
     const centerY = fromIndex * h + h / 2 + dy + scrollDelta;
-    const target = Math.max(
-      0,
-      Math.min(categoriesRef.current.length - 1, Math.floor(centerY / h))
-    );
+    const target = Math.max(0, Math.min(categoriesRef.current.length - 1, Math.floor(centerY / h)));
     setTargetIndex(target);
 
     // Start or stop auto-scroll based on proximity to the scroll view edges
@@ -301,33 +309,36 @@ export default function HouseholdCategoriesScreen({ navigation, route }: Househo
     }
   }, []);
 
-  const handleDragEnd = useCallback((fromIndex: number, dy: number) => {
-    stopAutoScroll();
+  const handleDragEnd = useCallback(
+    (fromIndex: number, dy: number) => {
+      stopAutoScroll();
 
-    const cats = categoriesRef.current;
-    const h = itemHeightRef.current;
-    const scrollDelta = scrollOffsetRef.current - dragStartScrollOffsetRef.current;
-    const centerY = fromIndex * h + h / 2 + dy + scrollDelta;
-    const target = Math.max(0, Math.min(cats.length - 1, Math.floor(centerY / h)));
+      const cats = categoriesRef.current;
+      const h = itemHeightRef.current;
+      const scrollDelta = scrollOffsetRef.current - dragStartScrollOffsetRef.current;
+      const centerY = fromIndex * h + h / 2 + dy + scrollDelta;
+      const target = Math.max(0, Math.min(cats.length - 1, Math.floor(centerY / h)));
 
-    if (target !== fromIndex) {
-      const newCats = [...cats];
-      const [moved] = newCats.splice(fromIndex, 1);
-      newCats.splice(target, 0, moved);
-      const ordered = newCats.map((c, i) => ({ ...c, ordering: i }));
-      setCategories(ordered);
-      if (householdsApi) {
-        ordered.forEach((c) => {
-          void householdsApi.updateCategory(c.id, c.name, c.ordering);
-        });
+      if (target !== fromIndex) {
+        const newCats = [...cats];
+        const [moved] = newCats.splice(fromIndex, 1);
+        newCats.splice(target, 0, moved);
+        const ordered = newCats.map((c, i) => ({ ...c, ordering: i }));
+        setCategories(ordered);
+        if (householdsApi) {
+          ordered.forEach((c) => {
+            void householdsApi.updateCategory(c.id, c.name, c.ordering);
+          });
+        }
       }
-    }
 
-    setDraggingIndex(null);
-    setTargetIndex(null);
-    isDraggingRef.current = false;
-    setScrollEnabled(true);
-  }, [householdsApi]);
+      setDraggingIndex(null);
+      setTargetIndex(null);
+      isDraggingRef.current = false;
+      setScrollEnabled(true);
+    },
+    [householdsApi]
+  );
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -338,7 +349,9 @@ export default function HouseholdCategoriesScreen({ navigation, route }: Househo
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Text style={styles.backChevron}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.title} numberOfLines={1}>{householdName}: Categories</Text>
+        <Text style={styles.title} numberOfLines={1}>
+          {householdName}: Categories
+        </Text>
         <TouchableOpacity onPress={openNew} style={styles.addBtn}>
           <Text style={styles.addLabel}>+ New</Text>
         </TouchableOpacity>
@@ -360,41 +373,49 @@ export default function HouseholdCategoriesScreen({ navigation, route }: Househo
             });
           }}
         >
-        <ScrollView
-          ref={scrollViewRef}
-          style={styles.fill}
-          contentContainerStyle={styles.scrollContent}
-          scrollEnabled={scrollEnabled}
-          scrollEventThrottle={16}
-          onScroll={(e) => { scrollOffsetRef.current = e.nativeEvent.contentOffset.y; }}
-        >
-          {categories.length === 0 ? (
-            <View style={styles.emptyRow}>
-              <Text style={styles.emptyText}>{'No categories yet. Tap "+ New" to add one.'}</Text>
-            </View>
-          ) : (
-            <Card>
-              {displayCats.map((cat, displayIdx) => {
-                const stableIndex = categoriesRef.current.findIndex((c) => c.id === cat.id);
-                return (
-                  <View key={cat.id}>
-                    <DragRow
-                      cat={cat}
-                      index={stableIndex}
-                      isDragging={draggingIndex === stableIndex}
-                      onDragStart={handleDragStart}
-                      onDragMove={handleDragMove}
-                      onDragEnd={handleDragEnd}
-                      onEditPress={() => openEdit(cat)}
-                      onHeightMeasured={displayIdx === 0 ? (h) => { itemHeightRef.current = h; } : undefined}
-                    />
-                    {displayIdx < displayCats.length - 1 && <Sep />}
-                  </View>
-                );
-              })}
-            </Card>
-          )}
-        </ScrollView>
+          <ScrollView
+            ref={scrollViewRef}
+            style={styles.fill}
+            contentContainerStyle={styles.scrollContent}
+            scrollEnabled={scrollEnabled}
+            scrollEventThrottle={16}
+            onScroll={(e) => {
+              scrollOffsetRef.current = e.nativeEvent.contentOffset.y;
+            }}
+          >
+            {categories.length === 0 ? (
+              <View style={styles.emptyRow}>
+                <Text style={styles.emptyText}>{'No categories yet. Tap "+ New" to add one.'}</Text>
+              </View>
+            ) : (
+              <Card>
+                {displayCats.map((cat, displayIdx) => {
+                  const stableIndex = categoriesRef.current.findIndex((c) => c.id === cat.id);
+                  return (
+                    <View key={cat.id}>
+                      <DragRow
+                        cat={cat}
+                        index={stableIndex}
+                        isDragging={draggingIndex === stableIndex}
+                        onDragStart={handleDragStart}
+                        onDragMove={handleDragMove}
+                        onDragEnd={handleDragEnd}
+                        onEditPress={() => openEdit(cat)}
+                        onHeightMeasured={
+                          displayIdx === 0
+                            ? (h) => {
+                                itemHeightRef.current = h;
+                              }
+                            : undefined
+                        }
+                      />
+                      {displayIdx < displayCats.length - 1 && <Sep />}
+                    </View>
+                  );
+                })}
+              </Card>
+            )}
+          </ScrollView>
         </View>
       )}
 
@@ -486,8 +507,8 @@ const styles = StyleSheet.create({
 
   // List
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  scroll: { flex: 1 },        // outer View used for measureInWindow
-  fill: { flex: 1 },          // ScrollView inside the wrapper
+  scroll: { flex: 1 }, // outer View used for measureInWindow
+  fill: { flex: 1 }, // ScrollView inside the wrapper
   scrollContent: { paddingBottom: BOTTOM_NAV_CLEARANCE },
   emptyRow: { padding: Spacing.xl, alignItems: 'center' },
   emptyText: { fontSize: FontSize.body, color: Colors.textFaded, textAlign: 'center' },

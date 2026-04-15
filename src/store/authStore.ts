@@ -18,9 +18,13 @@ type AuthState = {
   setUnauthenticated: () => void;
   setServerUrl: (url: string) => void;
   setUser: (user: StoredUser | null) => void;
-  setApis: (authApi: AuthApi, householdsApi: HouseholdsApi, shoppingListsApi: ShoppingListsApi) => void;
+  setApis: (
+    authApi: AuthApi,
+    householdsApi: HouseholdsApi,
+    shoppingListsApi: ShoppingListsApi
+  ) => void;
   clearApis: () => void;
-}
+};
 
 export const useAuthStore = create<AuthState>((set) => ({
   status: 'unknown',
@@ -30,11 +34,9 @@ export const useAuthStore = create<AuthState>((set) => ({
   householdsApi: null,
   shoppingListsApi: null,
 
-  setAuthenticated: (user, serverUrl) =>
-    set({ status: 'authenticated', user, serverUrl }),
+  setAuthenticated: (user, serverUrl) => set({ status: 'authenticated', user, serverUrl }),
 
-  setUnauthenticated: () =>
-    set({ status: 'unauthenticated', user: null }),
+  setUnauthenticated: () => set({ status: 'unauthenticated', user: null }),
 
   setServerUrl: (url) => set({ serverUrl: url }),
 
@@ -43,6 +45,5 @@ export const useAuthStore = create<AuthState>((set) => ({
   setApis: (authApi, householdsApi, shoppingListsApi) =>
     set({ authApi, householdsApi, shoppingListsApi }),
 
-  clearApis: () =>
-    set({ authApi: null, householdsApi: null, shoppingListsApi: null }),
+  clearApis: () => set({ authApi: null, householdsApi: null, shoppingListsApi: null }),
 }));

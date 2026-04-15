@@ -18,7 +18,7 @@ export type LocalItem = {
   isDeleted: boolean;
   createdAt: number;
   checkedAt: number | null;
-}
+};
 
 /** Row shape returned by SQLite for the local_items table. */
 type ItemRow = {
@@ -38,14 +38,17 @@ type ItemRow = {
   is_deleted: number;
   created_at: number;
   checked_at: number | null;
-}
+};
 
 /**
  * Parses the "important" hack out of a server description.
  * A leading `!` marks the item as important; strip it and any following spaces
  * before storing locally so they're never shown in the UI.
  */
-export function parseImportantDescription(raw: string): { description: string; isImportant: boolean } {
+export function parseImportantDescription(raw: string): {
+  description: string;
+  isImportant: boolean;
+} {
   if (raw.startsWith('!')) {
     return { description: raw.slice(1).trimStart(), isImportant: true };
   }
@@ -75,10 +78,9 @@ function rowToItem(row: ItemRow): LocalItem {
 
 export async function getItem(localId: string): Promise<LocalItem | null> {
   const db = await getDb();
-  const row = await db.getFirstAsync<ItemRow>(
-    'SELECT * FROM local_items WHERE local_id = ?',
-    [localId]
-  );
+  const row = await db.getFirstAsync<ItemRow>('SELECT * FROM local_items WHERE local_id = ?', [
+    localId,
+  ]);
   return row ? rowToItem(row) : null;
 }
 
@@ -159,17 +161,26 @@ export async function upsertItemFromServer(
              server_category_id=?, server_category_name=?, server_category_ordering=?,
              is_important=?, is_dirty=0, is_deleted=0
          WHERE local_id=?`,
-        [name, parsed.description, iconKey, category,
-         serverCategoryId, serverCategoryName, serverCategoryOrdering,
-         parsed.isImportant ? 1 : 0,
-         existing.local_id]
+        [
+          name,
+          parsed.description,
+          iconKey,
+          category,
+          serverCategoryId,
+          serverCategoryName,
+          serverCategoryOrdering,
+          parsed.isImportant ? 1 : 0,
+          existing.local_id,
+        ]
       );
     }
     const updated = await db.getFirstAsync<ItemRow>(
       'SELECT * FROM local_items WHERE local_id = ?',
       [existing.local_id]
     );
-    if (!updated) throw new Error(`Failed to read back item ${existing.local_id}`);
+    if (!updated) {
+      throw new Error(`Failed to read back item ${existing.local_id}`);
+    }
     return rowToItem(updated);
   }
 
@@ -180,15 +191,27 @@ export async function upsertItemFromServer(
       server_category_id, server_category_name, server_category_ordering,
       is_checked, is_important, is_dirty, is_deleted, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 0, 0, ?)`,
-    [localId, serverId, listLocalId, name, parsed.description, iconKey, category,
-     serverCategoryId, serverCategoryName, serverCategoryOrdering,
-     parsed.isImportant ? 1 : 0, Date.now()]
+    [
+      localId,
+      serverId,
+      listLocalId,
+      name,
+      parsed.description,
+      iconKey,
+      category,
+      serverCategoryId,
+      serverCategoryName,
+      serverCategoryOrdering,
+      parsed.isImportant ? 1 : 0,
+      Date.now(),
+    ]
   );
-  const row = await db.getFirstAsync<ItemRow>(
-    'SELECT * FROM local_items WHERE local_id = ?',
-    [localId]
-  );
-  if (!row) throw new Error(`Failed to read back item ${localId}`);
+  const row = await db.getFirstAsync<ItemRow>('SELECT * FROM local_items WHERE local_id = ?', [
+    localId,
+  ]);
+  if (!row) {
+    throw new Error(`Failed to read back item ${localId}`);
+  }
   return rowToItem(row);
 }
 
@@ -213,10 +236,9 @@ export async function markItemSynced(
 
 export async function softDeleteItem(localId: string): Promise<void> {
   const db = await getDb();
-  await db.runAsync(
-    `UPDATE local_items SET is_deleted = 1, is_dirty = 1 WHERE local_id = ?`,
-    [localId]
-  );
+  await db.runAsync(`UPDATE local_items SET is_deleted = 1, is_dirty = 1 WHERE local_id = ?`, [
+    localId,
+  ]);
 }
 
 export async function hardDeleteItem(localId: string): Promise<void> {
@@ -250,20 +272,16 @@ export async function uncheckItem(localId: string, isDirty: boolean): Promise<vo
 /** Clear the dirty flag after a CHECK_ITEM sync op drains successfully. */
 export async function markItemCheckSynced(localId: string): Promise<void> {
   const db = await getDb();
-  await db.runAsync(
-    'UPDATE local_items SET is_dirty = 0 WHERE local_id = ?',
-    [localId]
-  );
+  await db.runAsync('UPDATE local_items SET is_dirty = 0 WHERE local_id = ?', [localId]);
 }
 
 /** Hard-delete all checked (trolley) items for a list. No server call needed — the
  *  server was already updated by the CHECK_ITEM sync op. */
 export async function clearCheckedItems(listLocalId: string): Promise<void> {
   const db = await getDb();
-  await db.runAsync(
-    'DELETE FROM local_items WHERE list_local_id = ? AND is_checked = 1',
-    [listLocalId]
-  );
+  await db.runAsync('DELETE FROM local_items WHERE list_local_id = ? AND is_checked = 1', [
+    listLocalId,
+  ]);
 }
 
 /** Hard-delete checked items that were added to the trolley before `olderThan` (epoch ms). */
@@ -282,10 +300,10 @@ export async function clearExpiredCheckedItems(
 
 export async function toggleItemImportant(localId: string, important: boolean): Promise<void> {
   const db = await getDb();
-  await db.runAsync(
-    'UPDATE local_items SET is_important = ? WHERE local_id = ?',
-    [important ? 1 : 0, localId]
-  );
+  await db.runAsync('UPDATE local_items SET is_important = ? WHERE local_id = ?', [
+    important ? 1 : 0,
+    localId,
+  ]);
 }
 
 export async function updateItemNameAndIcon(

@@ -30,7 +30,11 @@ interface HouseholdDetailState {
   createCategory: (name: string) => Promise<void>;
   updateCategory: (id: number, name: string) => Promise<void>;
   deleteCategory: (id: number) => Promise<void>;
-  reorderCategory: (id: number, newOrdering: number, newOrder: HouseholdCategory[]) => Promise<void>;
+  reorderCategory: (
+    id: number,
+    newOrdering: number,
+    newOrder: HouseholdCategory[]
+  ) => Promise<void>;
 
   // Members
   inviteMember: (username: string) => Promise<void>;
@@ -56,9 +60,13 @@ export const useHouseholdDetailStore = create<HouseholdDetailState>((set, get) =
 
   loadAll: async () => {
     const { householdId } = get();
-    if (householdId === null) return;
+    if (householdId === null) {
+      return;
+    }
     const { householdsApi, shoppingListsApi } = useAuthStore.getState();
-    if (!householdsApi || !shoppingListsApi) return;
+    if (!householdsApi || !shoppingListsApi) {
+      return;
+    }
 
     set({ loading: true });
     try {
@@ -66,8 +74,12 @@ export const useHouseholdDetailStore = create<HouseholdDetailState>((set, get) =
         shoppingListsApi.getShoppingLists(householdId),
         householdsApi.getCategories(householdId),
       ]);
-      if (listsResult.status === 'fulfilled') set({ lists: listsResult.value });
-      if (categoriesResult.status === 'fulfilled') set({ categories: categoriesResult.value });
+      if (listsResult.status === 'fulfilled') {
+        set({ lists: listsResult.value });
+      }
+      if (categoriesResult.status === 'fulfilled') {
+        set({ categories: categoriesResult.value });
+      }
 
       try {
         const members = await householdsApi.getMembers(householdId);
@@ -86,18 +98,26 @@ export const useHouseholdDetailStore = create<HouseholdDetailState>((set, get) =
 
   renameHousehold: async (name) => {
     const { householdId } = get();
-    if (householdId === null) return;
+    if (householdId === null) {
+      return;
+    }
     const { householdsApi } = useAuthStore.getState();
-    if (!householdsApi) return;
+    if (!householdsApi) {
+      return;
+    }
     await householdsApi.renameHousehold(householdId, name);
     set({ householdName: name });
   },
 
   leaveHousehold: async () => {
     const { householdId } = get();
-    if (householdId === null) return;
+    if (householdId === null) {
+      return;
+    }
     const { householdsApi } = useAuthStore.getState();
-    if (!householdsApi) return;
+    if (!householdsApi) {
+      return;
+    }
     await householdsApi.leaveHousehold(householdId);
   },
 
@@ -105,23 +125,31 @@ export const useHouseholdDetailStore = create<HouseholdDetailState>((set, get) =
 
   createList: async (name) => {
     const { householdId } = get();
-    if (householdId === null) return;
+    if (householdId === null) {
+      return;
+    }
     const { shoppingListsApi } = useAuthStore.getState();
-    if (!shoppingListsApi) return;
+    if (!shoppingListsApi) {
+      return;
+    }
     const created = await shoppingListsApi.createShoppingList(name, householdId);
     set((s) => ({ lists: [...s.lists, created] }));
   },
 
   renameList: async (id, name) => {
     const { shoppingListsApi } = useAuthStore.getState();
-    if (!shoppingListsApi) return;
+    if (!shoppingListsApi) {
+      return;
+    }
     await shoppingListsApi.renameShoppingList(id, name);
-    set((s) => ({ lists: s.lists.map((l) => l.id === id ? { ...l, name } : l) }));
+    set((s) => ({ lists: s.lists.map((l) => (l.id === id ? { ...l, name } : l)) }));
   },
 
   deleteList: async (id) => {
     const { shoppingListsApi } = useAuthStore.getState();
-    if (!shoppingListsApi) return;
+    if (!shoppingListsApi) {
+      return;
+    }
     await shoppingListsApi.deleteShoppingList(id);
     set((s) => ({ lists: s.lists.filter((l) => l.id !== id) }));
   },
@@ -130,9 +158,13 @@ export const useHouseholdDetailStore = create<HouseholdDetailState>((set, get) =
 
   createCategory: async (name) => {
     const { householdId, categories } = get();
-    if (householdId === null) return;
+    if (householdId === null) {
+      return;
+    }
     const { householdsApi } = useAuthStore.getState();
-    if (!householdsApi) return;
+    if (!householdsApi) {
+      return;
+    }
     const ordering = categories.length;
     const created = await householdsApi.createCategory(householdId, name, ordering);
     set((s) => ({ categories: [...s.categories, created] }));
@@ -140,25 +172,33 @@ export const useHouseholdDetailStore = create<HouseholdDetailState>((set, get) =
 
   updateCategory: async (id, name) => {
     const { householdsApi } = useAuthStore.getState();
-    if (!householdsApi) return;
+    if (!householdsApi) {
+      return;
+    }
     const existing = get().categories.find((c) => c.id === id);
     const ordering = existing?.ordering ?? 0;
     await householdsApi.updateCategory(id, name, ordering);
-    set((s) => ({ categories: s.categories.map((c) => c.id === id ? { ...c, name } : c) }));
+    set((s) => ({ categories: s.categories.map((c) => (c.id === id ? { ...c, name } : c)) }));
   },
 
   deleteCategory: async (id) => {
     const { householdsApi } = useAuthStore.getState();
-    if (!householdsApi) return;
+    if (!householdsApi) {
+      return;
+    }
     await householdsApi.deleteCategory(id);
     set((s) => ({ categories: s.categories.filter((c) => c.id !== id) }));
   },
 
   reorderCategory: async (id, newOrdering, newOrder) => {
     const { householdsApi } = useAuthStore.getState();
-    if (!householdsApi) return;
+    if (!householdsApi) {
+      return;
+    }
     const existing = get().categories.find((c) => c.id === id);
-    if (!existing) return;
+    if (!existing) {
+      return;
+    }
     // Optimistically assign orderings 0, 1, 2, … to the new visual order so
     // any subsequent sort of the store's categories produces the correct sequence.
     set({ categories: newOrder.map((c, i) => ({ ...c, ordering: i })) });
@@ -169,9 +209,13 @@ export const useHouseholdDetailStore = create<HouseholdDetailState>((set, get) =
 
   inviteMember: async (username) => {
     const { householdId } = get();
-    if (householdId === null) return;
+    if (householdId === null) {
+      return;
+    }
     const { householdsApi } = useAuthStore.getState();
-    if (!householdsApi) return;
+    if (!householdsApi) {
+      return;
+    }
     await householdsApi.inviteMember(householdId, username);
     // Reload members to pick up the newly invited user
     try {
@@ -184,9 +228,13 @@ export const useHouseholdDetailStore = create<HouseholdDetailState>((set, get) =
 
   removeMember: async (memberId) => {
     const { householdId } = get();
-    if (householdId === null) return;
+    if (householdId === null) {
+      return;
+    }
     const { householdsApi } = useAuthStore.getState();
-    if (!householdsApi) return;
+    if (!householdsApi) {
+      return;
+    }
     await householdsApi.removeMember(householdId, memberId);
     set((s) => ({ members: s.members.filter((m) => m.id !== memberId) }));
   },

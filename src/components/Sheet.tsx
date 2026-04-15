@@ -57,7 +57,9 @@ export default function Sheet({ visible, title, onClose, children }: SheetProps)
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         {/* Backdrop fades in independently of the sheet */}
-        <Animated.View style={[StyleSheet.absoluteFill, styles.backdrop, { opacity: backdropOpacity }]}>
+        <Animated.View
+          style={[StyleSheet.absoluteFill, styles.backdrop, { opacity: backdropOpacity }]}
+        >
           <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={onClose} />
         </Animated.View>
 
@@ -69,9 +71,7 @@ export default function Sheet({ visible, title, onClose, children }: SheetProps)
               <Text style={styles.close}>✕</Text>
             </TouchableOpacity>
           </View>
-          <ScrollView keyboardShouldPersistTaps="handled">
-            {children}
-          </ScrollView>
+          <ScrollView keyboardShouldPersistTaps="handled">{children}</ScrollView>
         </Animated.View>
       </KeyboardAvoidingView>
     </Modal>

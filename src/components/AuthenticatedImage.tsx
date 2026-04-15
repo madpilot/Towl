@@ -17,17 +17,21 @@ export default function AuthenticatedImage({ uri, style }: Props) {
   const [accessToken, setAccessToken] = useState<string | null>(null);
 
   useEffect(() => {
-    TokenStore.instance.getTokens()
-      .then((tokens) => { if (tokens?.accessToken) setAccessToken(tokens.accessToken); })
+    TokenStore.instance
+      .getTokens()
+      .then((tokens) => {
+        if (tokens?.accessToken) {
+          setAccessToken(tokens.accessToken);
+        }
+      })
       .catch(() => {});
   }, []);
 
-  if (!accessToken) return null;
+  if (!accessToken) {
+    return null;
+  }
 
   return (
-    <Image
-      source={{ uri, headers: { Authorization: `Bearer ${accessToken}` } }}
-      style={style}
-    />
+    <Image source={{ uri, headers: { Authorization: `Bearer ${accessToken}` } }} style={style} />
   );
 }

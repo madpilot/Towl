@@ -9,7 +9,7 @@ export type LocalList = {
   isDirty: boolean;
   isDeleted: boolean;
   lastSynced: number;
-}
+};
 
 /** Row shape returned by SQLite for the local_lists table. */
 type ListRow = {
@@ -20,7 +20,7 @@ type ListRow = {
   is_dirty: number;
   is_deleted: number;
   last_synced: number;
-}
+};
 
 function rowToList(row: ListRow): LocalList {
   return {
@@ -62,11 +62,12 @@ export async function upsertListFromServer(
        last_synced  = excluded.last_synced`,
     [localId, serverId, householdId, name, Date.now()]
   );
-  const row = await db.getFirstAsync<ListRow>(
-    'SELECT * FROM local_lists WHERE local_id = ?',
-    [localId]
-  );
-  if (!row) throw new Error(`Failed to read back list with local_id=${localId}`);
+  const row = await db.getFirstAsync<ListRow>('SELECT * FROM local_lists WHERE local_id = ?', [
+    localId,
+  ]);
+  if (!row) {
+    throw new Error(`Failed to read back list with local_id=${localId}`);
+  }
   return rowToList(row);
 }
 
@@ -99,10 +100,9 @@ export async function markListSynced(localId: string, serverId: number): Promise
 
 export async function softDeleteList(localId: string): Promise<void> {
   const db = await getDb();
-  await db.runAsync(
-    `UPDATE local_lists SET is_deleted = 1, is_dirty = 1 WHERE local_id = ?`,
-    [localId]
-  );
+  await db.runAsync(`UPDATE local_lists SET is_deleted = 1, is_dirty = 1 WHERE local_id = ?`, [
+    localId,
+  ]);
 }
 
 export async function hardDeleteList(localId: string): Promise<void> {
@@ -113,9 +113,8 @@ export async function hardDeleteList(localId: string): Promise<void> {
 
 export async function getListByServerId(serverId: number): Promise<LocalList | null> {
   const db = await getDb();
-  const row = await db.getFirstAsync<ListRow>(
-    'SELECT * FROM local_lists WHERE server_id = ?',
-    [serverId]
-  );
+  const row = await db.getFirstAsync<ListRow>('SELECT * FROM local_lists WHERE server_id = ?', [
+    serverId,
+  ]);
   return row ? rowToList(row) : null;
 }

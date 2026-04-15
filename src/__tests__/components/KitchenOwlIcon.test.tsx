@@ -4,7 +4,9 @@ import KitchenOwlIcon from '@/components/KitchenOwlIcon';
 
 jest.mock('@/icons/kitchenowlIcons', () => ({
   getIconChar: jest.fn((key: string | null | undefined) => {
-    if (key === 'apple') return '\u0103'; // fake codepoint char
+    if (key === 'apple') {
+      return '\u0103';
+    } // fake codepoint char
     return null;
   }),
   FONT_FAMILY: 'Items',
@@ -30,9 +32,7 @@ describe('KitchenOwlIcon', () => {
     const { getByText } = render(<KitchenOwlIcon iconKey="apple" size={32} />);
     const textEl = getByText('\u0103');
     expect(textEl.props.style).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ fontFamily: 'Items', fontSize: 32 }),
-      ])
+      expect.arrayContaining([expect.objectContaining({ fontFamily: 'Items', fontSize: 32 })])
     );
   });
 });

@@ -39,12 +39,16 @@ export function useItemSuggestions(
   const cancelRef = useRef<{ cancelled: boolean }>({ cancelled: false });
   // Stable ref keeps searchFn out of effect deps while staying current.
   const searchFnRef = useRef(searchFn);
-  useEffect(() => { searchFnRef.current = searchFn; });
+  useEffect(() => {
+    searchFnRef.current = searchFn;
+  });
 
   useEffect(() => {
     const trimmed = input.trim();
 
-    if (timerRef.current) clearTimeout(timerRef.current);
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+    }
 
     cancelRef.current.cancelled = true;
     const run = { cancelled: false };
@@ -66,7 +70,9 @@ export function useItemSuggestions(
       void (async () => {
         try {
           const items = await fn(trimmed);
-          if (run.cancelled) return;
+          if (run.cancelled) {
+            return;
+          }
           setSuggestions(
             items.slice(0, limit).map((item) => ({
               key: `server:${item.name}`,
@@ -76,13 +82,17 @@ export function useItemSuggestions(
             }))
           );
         } catch {
-          if (!run.cancelled) setSuggestions([]);
+          if (!run.cancelled) {
+            setSuggestions([]);
+          }
         }
       })();
     }, delay);
 
     return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
       run.cancelled = true;
     };
   }, [input, limit]); // searchFnRef is a stable ref — safe to omit from deps

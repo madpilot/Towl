@@ -1,38 +1,33 @@
-import React, { useEffect } from "react";
-import { View, ActivityIndicator, StyleSheet } from "react-native";
-import { NavigationContainer } from "@react-navigation/native";
-import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import React, { useEffect } from 'react';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-import { useAuthStore } from "@/store/authStore";
-import { useHouseholdStore } from "@/store/householdStore";
-import { initializeAuth } from "@/auth/authManager";
-import { getDb } from "@/db/schema";
-import {
-  startNetworkMonitoring,
-  stopNetworkMonitoring,
-} from "@/sync/connectivityMonitor";
-import { drain } from "@/sync/syncManager";
+import { useAuthStore } from '@/store/authStore';
+import { useHouseholdStore } from '@/store/householdStore';
+import { initializeAuth } from '@/auth/authManager';
+import { getDb } from '@/db/schema';
+import { startNetworkMonitoring, stopNetworkMonitoring } from '@/sync/connectivityMonitor';
+import { drain } from '@/sync/syncManager';
 
-import WelcomeScreen from "@/screens/auth/WelcomeScreen";
-import ServerSetupScreen from "@/screens/auth/ServerSetupScreen";
-import LoginScreen from "@/screens/auth/LoginScreen";
-import HouseholdPickerScreen from "@/screens/households/HouseholdPickerScreen";
-import ListDetailScreen from "@/screens/lists/ListDetailScreen";
-import SettingsScreen from "@/screens/settings/SettingsScreen";
-import HouseholdDetailScreen from "@/screens/settings/HouseholdDetailScreen";
-import HouseholdItemsScreen from "@/screens/settings/HouseholdItemsScreen";
-import HouseholdCategoriesScreen from "@/screens/settings/HouseholdCategoriesScreen";
+import WelcomeScreen from '@/screens/auth/WelcomeScreen';
+import ServerSetupScreen from '@/screens/auth/ServerSetupScreen';
+import LoginScreen from '@/screens/auth/LoginScreen';
+import HouseholdPickerScreen from '@/screens/households/HouseholdPickerScreen';
+import ListDetailScreen from '@/screens/lists/ListDetailScreen';
+import SettingsScreen from '@/screens/settings/SettingsScreen';
+import HouseholdDetailScreen from '@/screens/settings/HouseholdDetailScreen';
+import HouseholdItemsScreen from '@/screens/settings/HouseholdItemsScreen';
+import HouseholdCategoriesScreen from '@/screens/settings/HouseholdCategoriesScreen';
 
-import type { AuthStackParamList, MainStackParamList } from "./types";
+import type { AuthStackParamList, MainStackParamList } from './types';
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 const MainStack = createNativeStackNavigator<MainStackParamList>();
 
 function AuthNavigator() {
   return (
-    <AuthStack.Navigator
-      screenOptions={{ headerShown: false, animation: 'slide_from_right' }}
-    >
+    <AuthStack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
       <AuthStack.Screen name="Welcome" component={WelcomeScreen} />
       <AuthStack.Screen name="ServerSetup" component={ServerSetupScreen} />
       <AuthStack.Screen name="Login" component={LoginScreen} />
@@ -55,10 +50,7 @@ function MainNavigator() {
     <MainStack.Navigator screenOptions={{ headerShown: false }}>
       {selectedHousehold === null ? (
         // Onboarding: only the picker is available; selecting auto-transitions
-        <MainStack.Screen
-          name="HouseholdPicker"
-          component={HouseholdPickerScreen}
-        />
+        <MainStack.Screen name="HouseholdPicker" component={HouseholdPickerScreen} />
       ) : (
         // Authenticated: list is the root; picker is reachable from the nav bar
         <>
@@ -77,18 +69,9 @@ function MainNavigator() {
             component={SettingsScreen}
             options={{ animation: 'none' }}
           />
-          <MainStack.Screen
-            name="HouseholdDetail"
-            component={HouseholdDetailScreen}
-          />
-          <MainStack.Screen
-            name="HouseholdItems"
-            component={HouseholdItemsScreen}
-          />
-          <MainStack.Screen
-            name="HouseholdCategories"
-            component={HouseholdCategoriesScreen}
-          />
+          <MainStack.Screen name="HouseholdDetail" component={HouseholdDetailScreen} />
+          <MainStack.Screen name="HouseholdItems" component={HouseholdItemsScreen} />
+          <MainStack.Screen name="HouseholdCategories" component={HouseholdCategoriesScreen} />
         </>
       )}
     </MainStack.Navigator>
@@ -102,7 +85,7 @@ export default function RootNavigator() {
     getDb().then(initializeAuth).catch(console.error);
   }, []);
 
-  if (status === "unknown") {
+  if (status === 'unknown') {
     return (
       <View style={styles.splash}>
         <ActivityIndicator size="large" testID="splash-indicator" />
@@ -112,7 +95,7 @@ export default function RootNavigator() {
 
   return (
     <NavigationContainer>
-      {status === "authenticated" ? <MainNavigator /> : <AuthNavigator />}
+      {status === 'authenticated' ? <MainNavigator /> : <AuthNavigator />}
     </NavigationContainer>
   );
 }
@@ -120,7 +103,7 @@ export default function RootNavigator() {
 const styles = StyleSheet.create({
   splash: {
     flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

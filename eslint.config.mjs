@@ -35,6 +35,18 @@ export default [
       'react/react-in-jsx-scope': 'off',
       // TypeScript provides superior prop-type safety; this rule is redundant in TS projects.
       'react/prop-types': 'off',
+      // AGENTS.md: always use curly braces, even for single-line blocks
+      'curly': ['error', 'all'],
+      // AGENTS.md: prefer const over let
+      'prefer-const': 'error',
+      // AGENTS.md: no namespace imports (import * as X) — import named members instead
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'ImportNamespaceSpecifier',
+          message: "Do not use namespace imports ('import * as X'). Import only the members you need ('import { foo } from ...').",
+        },
+      ],
     },
   },
   {

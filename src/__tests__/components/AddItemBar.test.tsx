@@ -10,14 +10,18 @@ jest.mock('@/hooks/useItemSuggestions', () => ({
 jest.mock('@/components/KitchenOwlIcon', () => {
   const React = require('react');
   const { View } = require('react-native');
-  function KitchenOwlIcon() { return React.createElement(View, null); }
+  function KitchenOwlIcon() {
+    return React.createElement(View, null);
+  }
   return KitchenOwlIcon;
 });
 
 jest.mock('@/components/icons/CameraIcon', () => {
   const React = require('react');
   const { View } = require('react-native');
-  function CameraIcon() { return React.createElement(View, null); }
+  function CameraIcon() {
+    return React.createElement(View, null);
+  }
   return CameraIcon;
 });
 

@@ -5,7 +5,8 @@ import { useHouseholdStore } from '@/store/householdStore';
 import { Colors, Spacing, Radii, FontSize } from '@/theme';
 
 export default function ListPickerModal() {
-  const { allLists, activeLocalId, listPickerVisible, setListPickerVisible, switchToList } = useListNav();
+  const { allLists, activeLocalId, listPickerVisible, setListPickerVisible, switchToList } =
+    useListNav();
   const householdId = useHouseholdStore((s) => s.selectedHousehold?.id ?? 0);
 
   return (
@@ -28,7 +29,9 @@ export default function ListPickerModal() {
               onPress={() => switchToList(list, householdId)}
               activeOpacity={0.7}
             >
-              <Text style={[styles.rowText, list.localId === activeLocalId && styles.rowTextActive]}>
+              <Text
+                style={[styles.rowText, list.localId === activeLocalId && styles.rowTextActive]}
+              >
                 {list.name}
               </Text>
               {list.isDirty && <View style={styles.dirtyDot} />}

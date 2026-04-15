@@ -70,7 +70,9 @@ describe('ListsSection', () => {
     render(<ListsSection />);
     fireEvent.press(screen.getByText('+ New list'));
     fireEvent.changeText(screen.getByPlaceholderText('e.g. Weekend Shop'), 'Farmers Market');
-    await act(async () => { fireEvent.press(screen.getByText('Create list')); });
+    await act(async () => {
+      fireEvent.press(screen.getByText('Create list'));
+    });
     expect(mockCreateList).toHaveBeenCalledWith('Farmers Market');
   });
 
@@ -88,7 +90,9 @@ describe('ListsSection', () => {
     render(<ListsSection />);
     fireEvent.press(screen.getByText('Weekly Shop'));
     fireEvent.changeText(screen.getByDisplayValue('Weekly Shop'), 'Big Shop');
-    await act(async () => { fireEvent.press(screen.getByText('Save changes')); });
+    await act(async () => {
+      fireEvent.press(screen.getByText('Save changes'));
+    });
     expect(mockRenameList).toHaveBeenCalledWith(1, 'Big Shop');
   });
 
@@ -97,7 +101,9 @@ describe('ListsSection', () => {
     mockHook({ lists: sampleLists });
     render(<ListsSection />);
     fireEvent.press(screen.getByText('Weekly Shop'));
-    await act(async () => { fireEvent.press(screen.getByText('Delete list')); });
+    await act(async () => {
+      fireEvent.press(screen.getByText('Delete list'));
+    });
     expect(mockDeleteList).toHaveBeenCalledWith(1);
   });
 });

@@ -7,9 +7,19 @@ import { Colors, Spacing, Radii, FontSize } from '@/theme';
 
 export default function TrolleySection() {
   const doneItems = useListDetailStore(useShallow((s) => s.items.filter((i) => i.isChecked)));
-  const { editingId, setEditingId, toggleDone, toggleImportant, deleteItem, saveItem, clearTrolley } = useItemActions();
+  const {
+    editingId,
+    setEditingId,
+    toggleDone,
+    toggleImportant,
+    deleteItem,
+    saveItem,
+    clearTrolley,
+  } = useItemActions();
 
-  if (doneItems.length === 0) return null;
+  if (doneItems.length === 0) {
+    return null;
+  }
 
   return (
     <View style={styles.section}>

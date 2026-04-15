@@ -413,9 +413,13 @@ export const FONT_FAMILY = 'Items';
 
 /** Returns the Unicode string character for the given icon key, or null if not found. */
 export function getIconChar(iconKey: string | null | undefined): string | null {
-  if (!iconKey) return null;
+  if (!iconKey) {
+    return null;
+  }
   const codepoint = ICON_CODEPOINTS[iconKey];
-  if (codepoint === undefined) return null;
+  if (codepoint === undefined) {
+    return null;
+  }
   return String.fromCodePoint(codepoint);
 }
 

@@ -96,7 +96,7 @@ export type SyncOp = {
   readonly listLocalId: string | null;
   readonly createdAt: number;
   readonly attempts: number;
-}
+};
 
 // ── Internal SQLite row ──────────────────────────────────────────────────────
 
@@ -106,7 +106,7 @@ type SyncQueueRow = {
   list_local_id: string | null;
   created_at: number;
   attempts: number;
-}
+};
 
 function rowToOp(row: SyncQueueRow): SyncOp {
   const payload = SyncPayloadSchema.parse(JSON.parse(row.payload));
@@ -148,10 +148,7 @@ export async function remove(id: string): Promise<void> {
 
 export async function incrementAttempts(id: string): Promise<void> {
   const db = await getDb();
-  await db.runAsync(
-    `UPDATE sync_queue SET attempts = attempts + 1 WHERE id = ?`,
-    [id]
-  );
+  await db.runAsync(`UPDATE sync_queue SET attempts = attempts + 1 WHERE id = ?`, [id]);
 }
 
 export async function clearAll(): Promise<void> {
@@ -169,6 +166,8 @@ export async function removePendingCheckItem(itemLocalId: string): Promise<boole
   const matching = ops.filter(
     (op) => op.payload.opType === 'CHECK_ITEM' && op.payload.itemLocalId === itemLocalId
   );
-  for (const op of matching) await remove(op.id);
+  for (const op of matching) {
+    await remove(op.id);
+  }
   return matching.length > 0;
 }

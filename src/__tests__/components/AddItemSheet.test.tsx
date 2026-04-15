@@ -42,14 +42,14 @@ describe('AddItemSheet', () => {
   it('calls onAdd with trimmed name and description', async () => {
     const onAdd = jest.fn().mockResolvedValue(undefined);
     const onClose = jest.fn();
-    const { getByTestId } = render(
-      <AddItemSheet visible onClose={onClose} onAdd={onAdd} />
-    );
+    const { getByTestId } = render(<AddItemSheet visible onClose={onClose} onAdd={onAdd} />);
 
     fireEvent.changeText(getByTestId('item-name-input'), '  Milk  ');
     fireEvent.changeText(getByTestId('item-desc-input'), '2L');
 
-    await act(async () => { fireEvent.press(getByTestId('add-item-button')); });
+    await act(async () => {
+      fireEvent.press(getByTestId('add-item-button'));
+    });
 
     await waitFor(() => expect(onAdd).toHaveBeenCalledWith('Milk', '2L'));
   });
@@ -57,12 +57,12 @@ describe('AddItemSheet', () => {
   it('closes and clears fields after successful add', async () => {
     const onAdd = jest.fn().mockResolvedValue(undefined);
     const onClose = jest.fn();
-    const { getByTestId } = render(
-      <AddItemSheet visible onClose={onClose} onAdd={onAdd} />
-    );
+    const { getByTestId } = render(<AddItemSheet visible onClose={onClose} onAdd={onAdd} />);
 
     fireEvent.changeText(getByTestId('item-name-input'), 'Bread');
-    await act(async () => { fireEvent.press(getByTestId('add-item-button')); });
+    await act(async () => {
+      fireEvent.press(getByTestId('add-item-button'));
+    });
 
     await waitFor(() => expect(onClose).toHaveBeenCalled());
   });
@@ -85,7 +85,9 @@ describe('AddItemSheet', () => {
 
     const { getByText, getByTestId } = render(<AddItemSheet {...makeProps()} />);
 
-    await act(async () => { fireEvent.press(getByText('Milk')); });
+    await act(async () => {
+      fireEvent.press(getByText('Milk'));
+    });
 
     expect(getByTestId('item-name-input').props.value).toBe('Milk');
   });

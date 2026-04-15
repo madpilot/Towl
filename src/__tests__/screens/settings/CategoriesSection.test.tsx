@@ -70,7 +70,9 @@ describe('CategoriesSection', () => {
     render(<CategoriesSection />);
     fireEvent.press(screen.getByText('+ Add category'));
     fireEvent.changeText(screen.getByPlaceholderText('e.g. Frozen'), 'Bakery');
-    await act(async () => { fireEvent.press(screen.getByText('Add category')); });
+    await act(async () => {
+      fireEvent.press(screen.getByText('Add category'));
+    });
     expect(mockCreateCategory).toHaveBeenCalledWith('Bakery');
   });
 
@@ -88,7 +90,9 @@ describe('CategoriesSection', () => {
     render(<CategoriesSection />);
     fireEvent.press(screen.getByTestId('edit-category-1'));
     fireEvent.changeText(screen.getByDisplayValue('Produce'), 'Fresh Produce');
-    await act(async () => { fireEvent.press(screen.getByText('Save changes')); });
+    await act(async () => {
+      fireEvent.press(screen.getByText('Save changes'));
+    });
     expect(mockUpdateCategory).toHaveBeenCalledWith(1, 'Fresh Produce');
   });
 
@@ -97,7 +101,9 @@ describe('CategoriesSection', () => {
     mockHook({ categories: sampleCategories });
     render(<CategoriesSection />);
     fireEvent.press(screen.getByTestId('edit-category-1'));
-    await act(async () => { fireEvent.press(screen.getByText('Delete category')); });
+    await act(async () => {
+      fireEvent.press(screen.getByText('Delete category'));
+    });
     expect(mockDeleteCategory).toHaveBeenCalledWith(1);
   });
 });

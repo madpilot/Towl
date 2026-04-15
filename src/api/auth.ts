@@ -27,7 +27,7 @@ export type AuthResponse = z.infer<typeof AuthResponseSchema>;
 export async function login(
   serverUrl: string,
   username: string,
-  password: string,
+  password: string
 ): Promise<AuthResponse> {
   const client = ApiClientManager.unauthenticated(serverUrl);
   const res = await client.post<unknown>('/auth', { username, password, device: 'Towl' });
@@ -41,7 +41,9 @@ export async function testConnection(serverUrl: string): Promise<boolean> {
     return true;
   } catch (err: unknown) {
     // A 405 or 4xx from /api/auth still means the server is reachable
-    if (isAxiosError(err) && err.response) return true;
+    if (isAxiosError(err) && err.response) {
+      return true;
+    }
     return false;
   }
 }

@@ -91,7 +91,11 @@ describe('updateProfile', () => {
 describe('revokeSession', () => {
   it('sends DELETE /auth/:sessionId', async () => {
     const mockDelete = jest.fn().mockResolvedValue({ data: {} });
-    const apiWithDelete = new AuthApi({ get: mockGet, post: mockPost, delete: mockDelete } as unknown as ApiClientManager);
+    const apiWithDelete = new AuthApi({
+      get: mockGet,
+      post: mockPost,
+      delete: mockDelete,
+    } as unknown as ApiClientManager);
 
     await apiWithDelete.revokeSession(1407);
 

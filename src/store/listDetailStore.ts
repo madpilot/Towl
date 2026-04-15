@@ -1,9 +1,24 @@
 import { create } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
-import * as SecureStore from 'expo-secure-store';
-import * as itemsDb from '@/db/items';
-import * as listsDb from '@/db/lists';
-import * as syncManager from '@/sync/syncManager';
+import { getItemAsync, setItemAsync } from 'expo-secure-store';
+import {
+  clearExpiredCheckedItems,
+  getItemsForList,
+  upsertItemFromServer,
+  removeItemsDeletedOnServer,
+  checkItem,
+  uncheckItem,
+  clearCheckedItems,
+  toggleItemImportant,
+  updateItemNameAndIcon,
+  addItemLocally,
+  softDeleteItem,
+  hardDeleteItem,
+  getItem,
+  updateItemCategory,
+} from '@/db/items';
+import { getAllLists, upsertListFromServer } from '@/db/lists';
+import { enqueue as syncManagerEnqueue, removePendingCheckItem } from '@/sync/syncManager';
 import { useAuthStore } from '@/store/authStore';
 import { matchItem } from '@/data/foodMatcher';
 import { recordItemUsed } from '@/db/history';
@@ -42,8 +57,18 @@ type ListDetailState = {
   toggleDone: (localId: string) => Promise<void>;
   toggleImportant: (localId: string) => Promise<void>;
   deleteItem: (localId: string) => Promise<void>;
-  saveItem: (localId: string, name: string, description: string, iconKey: string | null) => Promise<void>;
-  addItem: (name: string, description: string, iconKey: string | null, category: string) => Promise<void>;
+  saveItem: (
+    localId: string,
+    name: string,
+    description: string,
+    iconKey: string | null
+  ) => Promise<void>;
+  addItem: (
+    name: string,
+    description: string,
+    iconKey: string | null,
+    category: string
+  ) => Promise<void>;
   clearTrolley: () => Promise<void>;
   moveItemToCategory: (localId: string, categoryId: number | null) => Promise<void>;
 
@@ -54,47 +79,68 @@ type ListDetailState = {
 // ─── Store ───────────────────────────────────────────────────────────────────
 
 export const useListDetailStore = create<ListDetailState>((set, get) => {
-
   // ── Private helpers ────────────────────────────────────────────────────────
 
   async function loadItems(localId: string): Promise<void> {
     // Auto-expire checked items that have been in the trolley for over 4 hours.
-    await itemsDb.clearExpiredCheckedItems(localId, Date.now() - 4 * 60 * 60 * 1000);
-    const rows = await itemsDb.getItemsForList(localId);
+    await clearExpiredCheckedItems(localId, Date.now() - 4 * 60 * 60 * 1000);
+    const rows = await getItemsForList(localId);
     set({ items: rows });
   }
 
-  async function getServerDefaultList(householdId: number, lists: LocalList[]): Promise<LocalList | null> {
+  async function getServerDefaultList(
+    householdId: number,
+    lists: LocalList[]
+  ): Promise<LocalList | null> {
     const householdsApi = useAuthStore.getState().householdsApi;
-    if (!householdsApi) return null;
+    if (!householdsApi) {
+      return null;
+    }
     try {
       const detail = await householdsApi.getHousehold(householdId);
       const defaultServerId = detail.default_shopping_list?.id;
-      if (!defaultServerId) return null;
+      if (!defaultServerId) {
+        return null;
+      }
       return lists.find((l) => l.serverId === defaultServerId) ?? null;
     } catch {
       return null;
     }
   }
 
-  async function syncFromServer(localId: string, serverId: number | null, householdId: number): Promise<void> {
-    if (serverId === null) return;
+  async function syncFromServer(
+    localId: string,
+    serverId: number | null,
+    householdId: number
+  ): Promise<void> {
+    if (serverId === null) {
+      return;
+    }
     const api = useAuthStore.getState().shoppingListsApi;
     try {
-      const serverLists = await api?.getShoppingLists(householdId) ?? [];
+      const serverLists = (await api?.getShoppingLists(householdId)) ?? [];
       const apiList = serverLists.find((l) => l.id === serverId);
-      if (!apiList) return;
+      if (!apiList) {
+        return;
+      }
       for (const apiItem of apiList.items) {
         const match = matchItem(apiItem.icon ?? apiItem.name);
-        await itemsDb.upsertItemFromServer(
-          apiItem.id, localId, apiItem.name, apiItem.description,
-          match.iconKey, match.category,
+        await upsertItemFromServer(
+          apiItem.id,
+          localId,
+          apiItem.name,
+          apiItem.description,
+          match.iconKey,
+          match.category,
           apiItem.category?.id ?? null,
           apiItem.category?.name ?? null,
           apiItem.category?.ordering ?? null
         );
       }
-      await itemsDb.removeItemsDeletedOnServer(localId, apiList.items.map((i) => i.id));
+      await removeItemsDeletedOnServer(
+        localId,
+        apiList.items.map((i) => i.id)
+      );
       await loadItems(localId);
     } catch {
       // Offline or transient failure — local data is fine.
@@ -121,18 +167,18 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
     bootstrap: async (householdId, restoreLastList) => {
       set({ loading: true, items: [], activeLocalId: null, activeServerId: null, activeName: '' });
 
-      let lists = await listsDb.getAllLists(householdId);
+      let lists = await getAllLists(householdId);
 
       // Fresh install — SQLite is empty. Seed lists from the server before
       // proceeding so the rest of bootstrap has something to work with.
       if (lists.length === 0) {
         const api = useAuthStore.getState().shoppingListsApi;
         try {
-          const serverLists = await api?.getShoppingLists(householdId) ?? [];
+          const serverLists = (await api?.getShoppingLists(householdId)) ?? [];
           for (const sl of serverLists) {
-            await listsDb.upsertListFromServer(sl.id, householdId, sl.name);
+            await upsertListFromServer(sl.id, householdId, sl.name);
           }
-          lists = await listsDb.getAllLists(householdId);
+          lists = await getAllLists(householdId);
         } catch {
           // Offline on first launch — nothing to show yet.
         }
@@ -147,14 +193,18 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
 
       let initial: LocalList;
       if (restoreLastList) {
-        const lastId = await SecureStore.getItemAsync(SECURE_STORE_KEYS.LAST_LIST_LOCAL_ID);
+        const lastId = await getItemAsync(SECURE_STORE_KEYS.LAST_LIST_LOCAL_ID);
         const savedList = lastId ? lists.find((l) => l.localId === lastId) : null;
         initial = savedList ?? (await getServerDefaultList(householdId, lists)) ?? lists[0];
       } else {
         initial = (await getServerDefaultList(householdId, lists)) ?? lists[0];
       }
 
-      set({ activeLocalId: initial.localId, activeServerId: initial.serverId, activeName: initial.name });
+      set({
+        activeLocalId: initial.localId,
+        activeServerId: initial.serverId,
+        activeName: initial.name,
+      });
       await loadItems(initial.localId);
       set({ loading: false });
       void syncFromServer(initial.localId, initial.serverId, householdId);
@@ -163,7 +213,9 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
 
     refresh: async (householdId) => {
       const { activeLocalId, activeServerId } = get();
-      if (!activeLocalId) return;
+      if (!activeLocalId) {
+        return;
+      }
       set({ refreshing: true });
       await syncFromServer(activeLocalId, activeServerId, householdId);
       void get().fetchCategories(householdId);
@@ -172,7 +224,9 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
 
     reloadAfterSync: async () => {
       const { activeLocalId } = get();
-      if (activeLocalId) await loadItems(activeLocalId);
+      if (activeLocalId) {
+        await loadItems(activeLocalId);
+      }
     },
 
     switchToList: async (list, householdId) => {
@@ -184,7 +238,7 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
         items: [],
         loading: true,
       });
-      await SecureStore.setItemAsync(SECURE_STORE_KEYS.LAST_LIST_LOCAL_ID, list.localId);
+      await setItemAsync(SECURE_STORE_KEYS.LAST_LIST_LOCAL_ID, list.localId);
       await loadItems(list.localId);
       set({ loading: false });
       void syncFromServer(list.localId, list.serverId, householdId);
@@ -193,20 +247,29 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
     toggleDone: async (localId) => {
       const { items, activeLocalId, activeServerId } = get();
       const item = items.find((i) => i.localId === localId);
-      if (!item) return;
+      if (!item) {
+        return;
+      }
 
       if (!item.isChecked) {
         // ── Checking off: move into trolley, remove from server list ──────────
         const checkedAt = Date.now();
-        await itemsDb.checkItem(localId, checkedAt);
-        const freshItem = await itemsDb.getItem(localId);
+        await checkItem(localId, checkedAt);
+        const freshItem = await getItem(localId);
         if (
-          freshItem?.serverId !== null && freshItem?.serverId !== undefined
-          && activeServerId !== null && activeLocalId !== null
+          freshItem?.serverId !== null &&
+          freshItem?.serverId !== undefined &&
+          activeServerId !== null &&
+          activeLocalId !== null
         ) {
-          await syncManager.enqueue(
-            { opType: 'CHECK_ITEM', listServerId: activeServerId,
-              itemServerId: freshItem.serverId, itemLocalId: localId, removedAt: checkedAt },
+          await syncManagerEnqueue(
+            {
+              opType: 'CHECK_ITEM',
+              listServerId: activeServerId,
+              itemServerId: freshItem.serverId,
+              itemLocalId: localId,
+              removedAt: checkedAt,
+            },
             activeLocalId
           );
         }
@@ -217,18 +280,27 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
         });
       } else {
         // ── Unchecking: return item to active list ────────────────────────────
-        const hadPendingOp = await syncManager.removePendingCheckItem(localId);
-        const freshItem = await itemsDb.getItem(localId);
-        const needsReAdd = !hadPendingOp
-          && freshItem?.serverId !== null && freshItem?.serverId !== undefined
-          && activeServerId !== null && activeLocalId !== null;
+        const hadPendingOp = await removePendingCheckItem(localId);
+        const freshItem = await getItem(localId);
+        const needsReAdd =
+          !hadPendingOp &&
+          freshItem?.serverId !== null &&
+          freshItem?.serverId !== undefined &&
+          activeServerId !== null &&
+          activeLocalId !== null;
 
-        await itemsDb.uncheckItem(localId, needsReAdd);
+        await uncheckItem(localId, needsReAdd);
 
         if (needsReAdd && freshItem && activeServerId !== null && activeLocalId !== null) {
-          await syncManager.enqueue(
-            { opType: 'ADD_ITEM', listServerId: activeServerId, listLocalId: activeLocalId,
-              itemLocalId: localId, name: freshItem.name, description: freshItem.description },
+          await syncManagerEnqueue(
+            {
+              opType: 'ADD_ITEM',
+              listServerId: activeServerId,
+              listLocalId: activeLocalId,
+              itemLocalId: localId,
+              name: freshItem.name,
+              description: freshItem.description,
+            },
             activeLocalId
           );
         }
@@ -245,78 +317,135 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
     toggleImportant: async (localId) => {
       const { items, activeLocalId, activeServerId } = get();
       const item = items.find((i) => i.localId === localId);
-      if (!item) return;
+      if (!item) {
+        return;
+      }
       const isImportant = item.isImportant;
-      await itemsDb.toggleItemImportant(localId, !isImportant);
-      const freshItem = await itemsDb.getItem(localId);
-      if (freshItem?.serverId !== null && freshItem?.serverId !== undefined
-          && activeServerId !== null && activeLocalId !== null) {
-        const serverDescription = freshItem.isImportant ? `!${freshItem.description}` : freshItem.description;
-        await syncManager.enqueue(
-          { opType: 'UPDATE_ITEM_DESC', listServerId: activeServerId,
-            itemServerId: freshItem.serverId, description: serverDescription },
+      await toggleItemImportant(localId, !isImportant);
+      const freshItem = await getItem(localId);
+      if (
+        freshItem?.serverId !== null &&
+        freshItem?.serverId !== undefined &&
+        activeServerId !== null &&
+        activeLocalId !== null
+      ) {
+        const serverDescription = freshItem.isImportant
+          ? `!${freshItem.description}`
+          : freshItem.description;
+        await syncManagerEnqueue(
+          {
+            opType: 'UPDATE_ITEM_DESC',
+            listServerId: activeServerId,
+            itemServerId: freshItem.serverId,
+            description: serverDescription,
+          },
           activeLocalId
         );
       }
-      set({ items: items.map((i) => i.localId === localId ? { ...i, isImportant: !isImportant } : i) });
+      set({
+        items: items.map((i) => (i.localId === localId ? { ...i, isImportant: !isImportant } : i)),
+      });
     },
 
     deleteItem: async (localId) => {
       const { activeLocalId, activeServerId, items } = get();
-      await itemsDb.softDeleteItem(localId);
-      const freshItem = await itemsDb.getItem(localId);
-      if (freshItem?.serverId !== null && freshItem?.serverId !== undefined
-          && activeServerId !== null && activeLocalId !== null) {
-        await syncManager.enqueue(
-          { opType: 'REMOVE_ITEM', listServerId: activeServerId,
-            itemServerId: freshItem.serverId, itemLocalId: localId, removedAt: Date.now() },
+      await softDeleteItem(localId);
+      const freshItem = await getItem(localId);
+      if (
+        freshItem?.serverId !== null &&
+        freshItem?.serverId !== undefined &&
+        activeServerId !== null &&
+        activeLocalId !== null
+      ) {
+        await syncManagerEnqueue(
+          {
+            opType: 'REMOVE_ITEM',
+            listServerId: activeServerId,
+            itemServerId: freshItem.serverId,
+            itemLocalId: localId,
+            removedAt: Date.now(),
+          },
           activeLocalId
         );
       } else {
-        await itemsDb.hardDeleteItem(localId);
+        await hardDeleteItem(localId);
       }
       set({ items: items.filter((i) => i.localId !== localId) });
     },
 
     saveItem: async (localId, name, description, iconKey) => {
       const { activeLocalId, activeServerId, items } = get();
-      await itemsDb.updateItemNameAndIcon(localId, name, description, iconKey);
-      const freshItem = await itemsDb.getItem(localId);
-      if (freshItem?.serverId !== null && freshItem?.serverId !== undefined
-          && activeServerId !== null && activeLocalId !== null) {
-        const category = freshItem.serverCategoryId !== null
-          ? { id: freshItem.serverCategoryId, name: freshItem.serverCategoryName ?? '',
-              ordering: freshItem.serverCategoryOrdering ?? 0 }
-          : null;
-        await syncManager.enqueue(
-          { opType: 'UPDATE_ITEM', listServerId: activeServerId, itemServerId: freshItem.serverId,
-            itemLocalId: localId, name, description, iconKey, category },
+      await updateItemNameAndIcon(localId, name, description, iconKey);
+      const freshItem = await getItem(localId);
+      if (
+        freshItem?.serverId !== null &&
+        freshItem?.serverId !== undefined &&
+        activeServerId !== null &&
+        activeLocalId !== null
+      ) {
+        const category =
+          freshItem.serverCategoryId !== null
+            ? {
+                id: freshItem.serverCategoryId,
+                name: freshItem.serverCategoryName ?? '',
+                ordering: freshItem.serverCategoryOrdering ?? 0,
+              }
+            : null;
+        await syncManagerEnqueue(
+          {
+            opType: 'UPDATE_ITEM',
+            listServerId: activeServerId,
+            itemServerId: freshItem.serverId,
+            itemLocalId: localId,
+            name,
+            description,
+            iconKey,
+            category,
+          },
           activeLocalId
         );
         // description is a per-list-instance field; the catalog endpoint (UPDATE_ITEM) does not
         // persist it to the shoppinglist. Sync via the dedicated per-list endpoint as well.
         const serverDescription = freshItem.isImportant ? `!${description}` : description;
-        await syncManager.enqueue(
-          { opType: 'UPDATE_ITEM_DESC', listServerId: activeServerId,
-            itemServerId: freshItem.serverId, description: serverDescription },
+        await syncManagerEnqueue(
+          {
+            opType: 'UPDATE_ITEM_DESC',
+            listServerId: activeServerId,
+            itemServerId: freshItem.serverId,
+            description: serverDescription,
+          },
           activeLocalId
         );
       }
-      set({ items: items.map((i) => i.localId === localId ? { ...i, name, description, iconKey } : i) });
+      set({
+        items: items.map((i) => (i.localId === localId ? { ...i, name, description, iconKey } : i)),
+      });
     },
 
     addItem: async (name, description, iconKey, category) => {
       const { activeLocalId, activeServerId, items } = get();
-      if (!activeLocalId) return;
+      if (!activeLocalId) {
+        return;
+      }
       const match = iconKey ? { iconKey, category } : matchItem(name);
-      const newItem = await itemsDb.addItemLocally(
-        activeLocalId, name, description, match.iconKey, match.category
+      const newItem = await addItemLocally(
+        activeLocalId,
+        name,
+        description,
+        match.iconKey,
+        match.category
       );
       await recordItemUsed(name, match.iconKey, match.category);
       if (activeServerId !== null) {
-        await syncManager.enqueue(
-          { opType: 'ADD_ITEM', listServerId: activeServerId, listLocalId: activeLocalId,
-            itemLocalId: newItem.localId, name, description },
+        await syncManagerEnqueue(
+          {
+            opType: 'ADD_ITEM',
+            listServerId: activeServerId,
+            listLocalId: activeLocalId,
+            itemLocalId: newItem.localId,
+            name,
+            description,
+          },
           activeLocalId
         );
       }
@@ -325,15 +454,19 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
 
     clearTrolley: async () => {
       const { activeLocalId, items } = get();
-      if (!activeLocalId) return;
+      if (!activeLocalId) {
+        return;
+      }
       // Items were already removed from the server when each was checked off.
-      await itemsDb.clearCheckedItems(activeLocalId);
+      await clearCheckedItems(activeLocalId);
       set({ items: items.filter((i) => !i.isChecked) });
     },
 
     fetchCategories: async (householdId) => {
       const householdsApi = useAuthStore.getState().householdsApi;
-      if (!householdsApi) return;
+      if (!householdsApi) {
+        return;
+      }
       try {
         const categories = await householdsApi.getCategories(householdId);
         set({ allCategories: categories });
@@ -344,26 +477,27 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
 
     moveItemToCategory: async (localId, categoryId) => {
       const { activeLocalId, activeServerId, items, allCategories } = get();
-      const category = categoryId !== null
-        ? (allCategories.find((c) => c.id === categoryId) ?? null)
-        : null;
+      const category =
+        categoryId !== null ? (allCategories.find((c) => c.id === categoryId) ?? null) : null;
 
       const newName = category?.name ?? 'Uncategorized';
       const newId = category?.id ?? null;
       const newCategoryName = category?.name ?? null;
       const newOrdering = category?.ordering ?? null;
 
-      await itemsDb.updateItemCategory(localId, newName, newId, newCategoryName, newOrdering);
+      await updateItemCategory(localId, newName, newId, newCategoryName, newOrdering);
 
-      const freshItem = await itemsDb.getItem(localId);
+      const freshItem = await getItem(localId);
       if (
-        freshItem?.serverId !== null && freshItem?.serverId !== undefined
-        && activeServerId !== null && activeLocalId !== null
+        freshItem?.serverId !== null &&
+        freshItem?.serverId !== undefined &&
+        activeServerId !== null &&
+        activeLocalId !== null
       ) {
         const serverCategory = category
           ? { id: category.id, name: category.name, ordering: category.ordering }
           : null;
-        await syncManager.enqueue(
+        await syncManagerEnqueue(
           {
             opType: 'UPDATE_ITEM',
             listServerId: activeServerId,
@@ -400,28 +534,32 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
 
 /** State and actions for the list header / picker. */
 export function useListNav() {
-  return useListDetailStore(useShallow((s) => ({
-    activeName: s.activeName,
-    allLists: s.allLists,
-    listPickerVisible: s.listPickerVisible,
-    activeLocalId: s.activeLocalId,
-    refreshing: s.refreshing,
-    setListPickerVisible: s.setListPickerVisible,
-    switchToList: s.switchToList,
-    refresh: s.refresh,
-  })));
+  return useListDetailStore(
+    useShallow((s) => ({
+      activeName: s.activeName,
+      allLists: s.allLists,
+      listPickerVisible: s.listPickerVisible,
+      activeLocalId: s.activeLocalId,
+      refreshing: s.refreshing,
+      setListPickerVisible: s.setListPickerVisible,
+      switchToList: s.switchToList,
+      refresh: s.refresh,
+    }))
+  );
 }
 
 /** Item-level handlers passed to SwipeableItem and CategorySection. */
 export function useItemActions() {
-  return useListDetailStore(useShallow((s) => ({
-    editingId: s.editingId,
-    setEditingId: s.setEditingId,
-    toggleDone: s.toggleDone,
-    toggleImportant: s.toggleImportant,
-    deleteItem: s.deleteItem,
-    saveItem: s.saveItem,
-    addItem: s.addItem,
-    clearTrolley: s.clearTrolley,
-  })));
+  return useListDetailStore(
+    useShallow((s) => ({
+      editingId: s.editingId,
+      setEditingId: s.setEditingId,
+      toggleDone: s.toggleDone,
+      toggleImportant: s.toggleImportant,
+      deleteItem: s.deleteItem,
+      saveItem: s.saveItem,
+      addItem: s.addItem,
+      clearTrolley: s.clearTrolley,
+    }))
+  );
 }

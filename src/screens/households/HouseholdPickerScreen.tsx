@@ -1,12 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import {
-  Animated,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Animated, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import HouseIcon from '@/components/icons/HouseIcon';
 import { useHouseholdStore, persistAndSelectHousehold } from '@/store/householdStore';
@@ -67,14 +60,18 @@ function HouseholdRow({ household, selected, onPress }: HouseholdRowProps) {
     >
       <HouseIcon color={selected ? Colors.mint : Colors.mintLight} size={24} />
       <View style={{ flex: 1 }}>
-        <Text style={[rowStyles.name, selected && rowStyles.nameSelected]}>
-          {household.name}
-        </Text>
+        <Text style={[rowStyles.name, selected && rowStyles.nameSelected]}>{household.name}</Text>
       </View>
       <View style={[rowStyles.radio, selected && rowStyles.radioSelected]}>
         {selected && (
           <Svg width={10} height={8} viewBox="0 0 10 8" fill="none">
-            <Path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <Path
+              d="M1 4L3.5 6.5L9 1"
+              stroke="white"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </Svg>
         )}
       </View>
@@ -149,7 +146,7 @@ export default function HouseholdPickerScreen({ navigation }: HouseholdPickerScr
   useEffect(() => {
     async function load() {
       try {
-        const results = await householdsApi?.getHouseholds() ?? [];
+        const results = (await householdsApi?.getHouseholds()) ?? [];
         if (results.length === 0) {
           setError('No households found on this server.');
           return;
@@ -174,7 +171,7 @@ export default function HouseholdPickerScreen({ navigation }: HouseholdPickerScr
       }
     }
     void load();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function handleSelect(household: Household) {
@@ -190,7 +187,9 @@ export default function HouseholdPickerScreen({ navigation }: HouseholdPickerScr
 
   async function handleDone() {
     const household = households.find((h) => h.id === selectedId);
-    if (!household) return;
+    if (!household) {
+      return;
+    }
     await persistAndSelectHousehold(household);
     // MainNavigator auto-transitions when selectedHousehold becomes non-null.
   }

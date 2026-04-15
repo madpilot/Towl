@@ -23,10 +23,26 @@ export const Colors = {
  * The last entry is reserved for the "Uncategorized" group (null serverCategoryId).
  */
 export const CATEGORY_PALETTE = [
-  '#d6f5e0', '#ddf0ff', '#ffd6d6', '#fff3d0', '#ead6ff',
-  '#cce8ff', '#ffe8cc', '#e8e8ff', '#d4f0ff', '#ffd6cc',
-  '#ffd6f5', '#ffe0f0', '#e4f5e0', '#f0e8ff', '#e0e8ff',
-  '#e8e4d4', '#d4e8ff', '#d4f4e0', '#fff4e0', '#f4e0ff',
+  '#d6f5e0',
+  '#ddf0ff',
+  '#ffd6d6',
+  '#fff3d0',
+  '#ead6ff',
+  '#cce8ff',
+  '#ffe8cc',
+  '#e8e8ff',
+  '#d4f0ff',
+  '#ffd6cc',
+  '#ffd6f5',
+  '#ffe0f0',
+  '#e4f5e0',
+  '#f0e8ff',
+  '#e0e8ff',
+  '#e8e4d4',
+  '#d4e8ff',
+  '#d4f4e0',
+  '#fff4e0',
+  '#f4e0ff',
   '#f0f0f0', // last slot: uncategorized / fallback
 ] as const;
 

@@ -20,8 +20,12 @@ jest.mock('react-native-gesture-handler', () => {
 
   // Fluent Pan gesture builder — captures onUpdate/onEnd callbacks.
   const pan = {
-    activeOffsetX: function () { return pan; },
-    failOffsetY: function () { return pan; },
+    activeOffsetX: function () {
+      return pan;
+    },
+    failOffsetY: function () {
+      return pan;
+    },
     onUpdate: function (cb: GestureCbs['onUpdate']) {
       gestureCbs.onUpdate = cb;
       return pan;
@@ -47,7 +51,9 @@ jest.mock('react-native-svg', () => {
   function Svg({ children }: { children?: React.ReactNode }) {
     return React.createElement(View, { testID: 'svg' }, children);
   }
-  function Path() { return null; }
+  function Path() {
+    return null;
+  }
   return { __esModule: true, default: Svg, Svg, Path };
 });
 
@@ -63,7 +69,9 @@ jest.mock('@/components/KitchenOwlIcon', () => {
 jest.mock('@/components/IconPicker', () => {
   const React = require('react');
   const { View } = require('react-native');
-  function IconPicker() { return React.createElement(View, null); }
+  function IconPicker() {
+    return React.createElement(View, null);
+  }
   return IconPicker;
 });
 
@@ -116,16 +124,12 @@ beforeEach(() => {
 describe('SwipeableItem', () => {
   describe('rendering', () => {
     it('renders the item name', () => {
-      const { getByText } = render(
-        <SwipeableItem item={makeItem()} {...makeHandlers()} />
-      );
+      const { getByText } = render(<SwipeableItem item={makeItem()} {...makeHandlers()} />);
       expect(getByText('Apples')).toBeTruthy();
     });
 
     it('renders the check button', () => {
-      const { getByRole } = render(
-        <SwipeableItem item={makeItem()} {...makeHandlers()} />
-      );
+      const { getByRole } = render(<SwipeableItem item={makeItem()} {...makeHandlers()} />);
       expect(getByRole('button')).toBeTruthy();
     });
 
@@ -147,10 +151,7 @@ describe('SwipeableItem', () => {
     it('shows edit row when editingId matches', () => {
       const item = makeItem();
       const { getByDisplayValue } = render(
-        <SwipeableItem
-          item={item}
-          {...makeHandlers({ editingId: item.localId })}
-        />
+        <SwipeableItem item={item} {...makeHandlers({ editingId: item.localId })} />
       );
       expect(getByDisplayValue('Apples')).toBeTruthy();
     });
@@ -159,9 +160,7 @@ describe('SwipeableItem', () => {
   describe('check button tap', () => {
     it('calls onToggleDone when check button is pressed', () => {
       const handlers = makeHandlers();
-      const { getByRole } = render(
-        <SwipeableItem item={makeItem()} {...handlers} />
-      );
+      const { getByRole } = render(<SwipeableItem item={makeItem()} {...handlers} />);
       fireEvent.press(getByRole('button'));
       expect(handlers.onToggleDone).toHaveBeenCalledWith('item-1');
     });
@@ -273,9 +272,7 @@ describe('SwipeableItem', () => {
     it('calls setEditingId on double-tap', () => {
       jest.useFakeTimers();
       const handlers = makeHandlers();
-      const { getByTestId } = render(
-        <SwipeableItem item={makeItem()} {...handlers} />
-      );
+      const { getByTestId } = render(<SwipeableItem item={makeItem()} {...handlers} />);
 
       const target = getByTestId('card-tap-target');
       fireEvent.press(target);
@@ -289,9 +286,7 @@ describe('SwipeableItem', () => {
     it('does not call setEditingId on single tap', () => {
       jest.useFakeTimers();
       const handlers = makeHandlers();
-      const { getByTestId } = render(
-        <SwipeableItem item={makeItem()} {...handlers} />
-      );
+      const { getByTestId } = render(<SwipeableItem item={makeItem()} {...handlers} />);
 
       fireEvent.press(getByTestId('card-tap-target'));
       jest.advanceTimersByTime(400);
@@ -305,9 +300,7 @@ describe('SwipeableItem', () => {
     it('calls onSave with trimmed name on submit', () => {
       const item = makeItem();
       const handlers = makeHandlers({ editingId: item.localId });
-      const { getByDisplayValue } = render(
-        <SwipeableItem item={item} {...handlers} />
-      );
+      const { getByDisplayValue } = render(<SwipeableItem item={item} {...handlers} />);
 
       fireEvent.changeText(getByDisplayValue('Apples'), ' Bananas ');
       fireEvent(getByDisplayValue(' Bananas '), 'submitEditing');
@@ -319,9 +312,7 @@ describe('SwipeableItem', () => {
     it('calls setEditingId(null) on cancel when name is empty', () => {
       const item = makeItem();
       const handlers = makeHandlers({ editingId: item.localId });
-      const { getByDisplayValue } = render(
-        <SwipeableItem item={item} {...handlers} />
-      );
+      const { getByDisplayValue } = render(<SwipeableItem item={item} {...handlers} />);
 
       fireEvent.changeText(getByDisplayValue('Apples'), '');
       fireEvent(getByDisplayValue(''), 'submitEditing');

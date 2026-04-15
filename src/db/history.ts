@@ -8,7 +8,7 @@ export type HistoryEntry = {
   category: string;
   useCount: number;
   lastUsedAt: number;
-}
+};
 
 type HistoryRow = {
   id: number;
@@ -18,7 +18,7 @@ type HistoryRow = {
   category: string;
   use_count: number;
   last_used_at: number;
-}
+};
 
 function rowToEntry(row: HistoryRow): HistoryEntry {
   return {

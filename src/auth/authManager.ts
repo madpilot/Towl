@@ -29,11 +29,7 @@ function createApis(serverUrl: string): AuthApi {
   const manager = new ApiClientManager(serverUrl, makeSessionExpiredCallback());
   const api = new AuthApi(manager);
   authApi = api;
-  useAuthStore.getState().setApis(
-    api,
-    new HouseholdsApi(manager),
-    new ShoppingListsApi(manager),
-  );
+  useAuthStore.getState().setApis(api, new HouseholdsApi(manager), new ShoppingListsApi(manager));
   return api;
 }
 
@@ -65,7 +61,7 @@ export async function onLoginSuccess(
   serverUrl: string,
   accessToken: string,
   refreshToken: string,
-  user: { id: number; name: string; username: string; email?: string },
+  user: { id: number; name: string; username: string; email?: string }
 ): Promise<void> {
   await Promise.all([
     TokenStore.instance.saveServerUrl(serverUrl),

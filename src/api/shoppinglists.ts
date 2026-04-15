@@ -55,10 +55,10 @@ export class ShoppingListsApi {
     name: string,
     description?: string
   ): Promise<ApiShoppingListItem> {
-    const res = await this.client.post<unknown>(
-      `/shoppinglist/${listId}/add-item-by-name`,
-      { name, description: description ?? '' }
-    );
+    const res = await this.client.post<unknown>(`/shoppinglist/${listId}/add-item-by-name`, {
+      name,
+      description: description ?? '',
+    });
     return ApiShoppingListItemSchema.parse(res.data);
   }
 
@@ -72,11 +72,7 @@ export class ShoppingListsApi {
     await this.client.delete(`/item/${itemId}`);
   }
 
-  async updateItemDescription(
-    listId: number,
-    itemId: number,
-    description: string
-  ): Promise<void> {
+  async updateItemDescription(listId: number, itemId: number, description: string): Promise<void> {
     await this.client.post(`/shoppinglist/${listId}/item/${itemId}`, { description });
   }
 
@@ -111,10 +107,9 @@ export class ShoppingListsApi {
   }
 
   async searchItems(householdId: number, query: string): Promise<ApiShoppingListItem[]> {
-    const res = await this.client.get<unknown>(
-      `/household/${householdId}/item/search`,
-      { params: { query } }
-    );
+    const res = await this.client.get<unknown>(`/household/${householdId}/item/search`, {
+      params: { query },
+    });
     return z.array(ApiShoppingListItemSchema).parse(res.data);
   }
 

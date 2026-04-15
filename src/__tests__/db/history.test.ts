@@ -2,7 +2,7 @@ jest.mock('expo-sqlite', () => ({
   openDatabaseAsync: jest.fn(),
 }));
 
-import * as SQLite from 'expo-sqlite';
+import { openDatabaseAsync } from 'expo-sqlite';
 
 const mockDb = {
   execAsync: jest.fn(),
@@ -17,7 +17,7 @@ beforeEach(() => {
   mockDb.runAsync.mockResolvedValue(undefined);
   mockDb.getFirstAsync.mockResolvedValue({ version: 1 });
   mockDb.getAllAsync.mockResolvedValue([]);
-  (SQLite.openDatabaseAsync as jest.Mock).mockResolvedValue(mockDb);
+  (openDatabaseAsync as jest.Mock).mockResolvedValue(mockDb);
 });
 
 const getModule = () => require('@/db/history');
@@ -77,20 +77,17 @@ describe('history db', () => {
       const { searchHistory } = getModule();
       await searchHistory('mil', 5);
 
-      expect(mockDb.getAllAsync).toHaveBeenCalledWith(
-        expect.stringContaining('LIKE ?'),
-        ['%mil%', 5]
-      );
+      expect(mockDb.getAllAsync).toHaveBeenCalledWith(expect.stringContaining('LIKE ?'), [
+        '%mil%',
+        5,
+      ]);
     });
 
     it('lowercases and trims the query', async () => {
       const { searchHistory } = getModule();
       await searchHistory('  BUTTER  ', 5);
 
-      expect(mockDb.getAllAsync).toHaveBeenCalledWith(
-        expect.anything(),
-        ['%butter%', 5]
-      );
+      expect(mockDb.getAllAsync).toHaveBeenCalledWith(expect.anything(), ['%butter%', 5]);
     });
   });
 

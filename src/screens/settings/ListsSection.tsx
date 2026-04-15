@@ -1,7 +1,15 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Alert, StyleSheet } from 'react-native';
 import Sheet from '@/components/Sheet';
-import { SectionLabel, Card, Sep, Row, Field, PrimaryBtn, SecondaryBtn } from '@/components/settings';
+import {
+  SectionLabel,
+  Card,
+  Sep,
+  Row,
+  Field,
+  PrimaryBtn,
+  SecondaryBtn,
+} from '@/components/settings';
 import { useListsSection } from '@/store/householdDetailStore';
 import { Colors, Spacing, FontSize } from '@/theme';
 
@@ -14,7 +22,9 @@ export function ListsSection() {
   const [saving, setSaving] = useState(false);
 
   async function handleCreate() {
-    if (!listName.trim()) return;
+    if (!listName.trim()) {
+      return;
+    }
     setSaving(true);
     try {
       await createList(listName.trim());
@@ -28,7 +38,9 @@ export function ListsSection() {
   }
 
   async function handleRename() {
-    if (!listName.trim() || editingListId === null) return;
+    if (!listName.trim() || editingListId === null) {
+      return;
+    }
     setSaving(true);
     try {
       await renameList(editingListId, listName.trim());
@@ -41,7 +53,9 @@ export function ListsSection() {
   }
 
   async function handleDelete() {
-    if (editingListId === null) return;
+    if (editingListId === null) {
+      return;
+    }
     setSaving(true);
     try {
       await deleteList(editingListId);
@@ -67,7 +81,11 @@ export function ListsSection() {
               <Row
                 label={list.name}
                 sub={`${list.items.length} item${list.items.length !== 1 ? 's' : ''}`}
-                onPress={() => { setEditingListId(list.id); setListName(list.name); setModal('edit'); }}
+                onPress={() => {
+                  setEditingListId(list.id);
+                  setListName(list.name);
+                  setModal('edit');
+                }}
               />
               {i < lists.length - 1 && <Sep />}
             </View>
@@ -76,7 +94,10 @@ export function ListsSection() {
         <Sep />
         <TouchableOpacity
           style={styles.addRow}
-          onPress={() => { setListName(''); setModal('new'); }}
+          onPress={() => {
+            setListName('');
+            setModal('new');
+          }}
           activeOpacity={0.7}
         >
           <Text style={styles.addLabel}>+ New list</Text>
@@ -84,14 +105,24 @@ export function ListsSection() {
       </Card>
 
       <Sheet visible={modal === 'new'} title="New list" onClose={() => setModal(null)}>
-        <Field label="List name" value={listName} onChangeText={setListName} placeholder="e.g. Weekend Shop" />
+        <Field
+          label="List name"
+          value={listName}
+          onChangeText={setListName}
+          placeholder="e.g. Weekend Shop"
+        />
         <PrimaryBtn label="Create list" onPress={handleCreate} loading={saving} />
         <SecondaryBtn label="Cancel" onPress={() => setModal(null)} />
         <View style={{ height: Spacing.xl }} />
       </Sheet>
 
       <Sheet visible={modal === 'edit'} title="Edit list" onClose={() => setModal(null)}>
-        <Field label="List name" value={listName} onChangeText={setListName} placeholder="e.g. Weekend Shop" />
+        <Field
+          label="List name"
+          value={listName}
+          onChangeText={setListName}
+          placeholder="e.g. Weekend Shop"
+        />
         <PrimaryBtn label="Save changes" onPress={handleRename} loading={saving} />
         <PrimaryBtn label="Delete list" onPress={handleDelete} loading={saving} danger />
         <SecondaryBtn label="Cancel" onPress={() => setModal(null)} />

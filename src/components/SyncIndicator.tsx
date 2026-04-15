@@ -33,7 +33,9 @@ export default function SyncIndicator() {
       spinAnim.current?.stop();
       spin.setValue(0);
     }
-    return () => { spinAnim.current?.stop(); };
+    return () => {
+      spinAnim.current?.stop();
+    };
   }, [status, spin]);
 
   const rotate = spin.interpolate({
@@ -53,9 +55,7 @@ export default function SyncIndicator() {
     return (
       <View style={styles.row} testID="sync-syncing">
         <Animated.View style={[styles.spinner, { transform: [{ rotate }] }]} />
-        {pendingCount > 0 && (
-          <Text style={styles.countText}>{pendingCount}</Text>
-        )}
+        {pendingCount > 0 && <Text style={styles.countText}>{pendingCount}</Text>}
       </View>
     );
   }

@@ -54,9 +54,9 @@ jest.mock('@/store/authStore', () => ({
   },
 }));
 
-import * as syncQueue from '@/db/syncQueue';
-import * as itemsDb from '@/db/items';
-import * as listsDb from '@/db/lists';
+import { getAll, remove, incrementAttempts } from '@/db/syncQueue';
+import { markItemSynced, hardDeleteItem, markItemCheckSynced, getItem } from '@/db/items';
+import { markListSynced } from '@/db/lists';
 import { useNetworkStore } from '@/sync/connectivityMonitor';
 import { drain } from '@/sync/syncManager';
 
@@ -82,11 +82,11 @@ beforeEach(() => {
   jest.useFakeTimers();
   jest.clearAllMocks();
   (useNetworkStore.getState as jest.Mock).mockReturnValue({ isOnline: true });
-  (syncQueue.getAll as jest.Mock).mockResolvedValue([]);
-  (syncQueue.remove as jest.Mock).mockResolvedValue(undefined);
-  (syncQueue.incrementAttempts as jest.Mock).mockResolvedValue(undefined);
+  (getAll as jest.Mock).mockResolvedValue([]);
+  (remove as jest.Mock).mockResolvedValue(undefined);
+  (incrementAttempts as jest.Mock).mockResolvedValue(undefined);
   // Default: item is not important (matches most test scenarios)
-  (itemsDb.getItem as jest.Mock).mockResolvedValue({ isImportant: false, description: '' });
+  (getItem as jest.Mock).mockResolvedValue({ isImportant: false, description: '' });
 });
 
 afterEach(() => {
@@ -97,7 +97,7 @@ describe('drain()', () => {
   it('does nothing when offline', async () => {
     (useNetworkStore.getState as jest.Mock).mockReturnValue({ isOnline: false });
     await drain();
-    expect(syncQueue.getAll).not.toHaveBeenCalled();
+    expect(getAll).not.toHaveBeenCalled();
   });
 
   it('sets status to idle when queue is empty', async () => {
@@ -107,19 +107,19 @@ describe('drain()', () => {
 
   it('processes ADD_ITEM op and marks item synced', async () => {
     const op = makeAddOp();
-    (syncQueue.getAll as jest.Mock)
-      .mockResolvedValueOnce([op])
-      .mockResolvedValue([]);
+    (getAll as jest.Mock).mockResolvedValueOnce([op]).mockResolvedValue([]);
     mockApi.addItemByName.mockResolvedValue({
-      id: 99, name: 'Milk', description: '',
+      id: 99,
+      name: 'Milk',
+      description: '',
       category: { id: 9, name: '🥛 Dairy', ordering: 0, default_key: 'dairy' },
     });
 
     await drain();
 
     expect(mockApi.addItemByName).toHaveBeenCalledWith(5, 'Milk', '');
-    expect(itemsDb.markItemSynced).toHaveBeenCalledWith('item-local-1', 99, 9, '🥛 Dairy', 0);
-    expect(syncQueue.remove).toHaveBeenCalledWith('op-1');
+    expect(markItemSynced).toHaveBeenCalledWith('item-local-1', 99, 9, '🥛 Dairy', 0);
+    expect(remove).toHaveBeenCalledWith('op-1');
   });
 
   it('processes CREATE_LIST op and marks list synced', async () => {
@@ -135,36 +135,30 @@ describe('drain()', () => {
         name: 'Groceries',
       },
     };
-    (syncQueue.getAll as jest.Mock)
-      .mockResolvedValueOnce([op])
-      .mockResolvedValue([]);
+    (getAll as jest.Mock).mockResolvedValueOnce([op]).mockResolvedValue([]);
     mockApi.createShoppingList.mockResolvedValue({ id: 42 });
 
     await drain();
 
     expect(mockApi.createShoppingList).toHaveBeenCalledWith('Groceries', 1);
-    expect(listsDb.markListSynced).toHaveBeenCalledWith('list-local-1', 42);
-    expect(syncQueue.remove).toHaveBeenCalledWith('op-2');
+    expect(markListSynced).toHaveBeenCalledWith('list-local-1', 42);
+    expect(remove).toHaveBeenCalledWith('op-2');
   });
 
   it('increments attempts on retryable error', async () => {
     const op = makeAddOp();
-    (syncQueue.getAll as jest.Mock)
-      .mockResolvedValueOnce([op])
-      .mockResolvedValue([op]);
+    (getAll as jest.Mock).mockResolvedValueOnce([op]).mockResolvedValue([op]);
     mockApi.addItemByName.mockRejectedValue(new Error('Network error'));
 
     await drain();
 
-    expect(syncQueue.incrementAttempts).toHaveBeenCalledWith('op-1');
-    expect(syncQueue.remove).not.toHaveBeenCalled();
+    expect(incrementAttempts).toHaveBeenCalledWith('op-1');
+    expect(remove).not.toHaveBeenCalled();
   });
 
   it('removes op without retry on 4xx non-retryable error', async () => {
     const op = makeAddOp();
-    (syncQueue.getAll as jest.Mock)
-      .mockResolvedValueOnce([op])
-      .mockResolvedValue([]);
+    (getAll as jest.Mock).mockResolvedValueOnce([op]).mockResolvedValue([]);
 
     const axiosErr = Object.assign(new Error('Unprocessable'), {
       isAxiosError: true,
@@ -174,8 +168,8 @@ describe('drain()', () => {
 
     await drain();
 
-    expect(syncQueue.remove).toHaveBeenCalledWith('op-1');
-    expect(syncQueue.incrementAttempts).not.toHaveBeenCalled();
+    expect(remove).toHaveBeenCalledWith('op-1');
+    expect(incrementAttempts).not.toHaveBeenCalled();
   });
 
   it('processes UPDATE_ITEM op and calls updateItem API', async () => {
@@ -195,24 +189,24 @@ describe('drain()', () => {
         category: { id: 9, name: '🥛 Dairy', ordering: 0 },
       },
     };
-    (syncQueue.getAll as jest.Mock)
-      .mockResolvedValueOnce([op])
-      .mockResolvedValue([]);
+    (getAll as jest.Mock).mockResolvedValueOnce([op]).mockResolvedValue([]);
     mockApi.updateItem.mockResolvedValue(undefined);
 
     await drain();
 
-    expect(mockApi.updateItem).toHaveBeenCalledWith(12, 'Almond Milk', '2 bunches', 'milk_carton', { id: 9, name: '🥛 Dairy', ordering: 0 });
-    expect(itemsDb.markItemCheckSynced).toHaveBeenCalledWith('item-local-1');
-    expect(syncQueue.remove).toHaveBeenCalledWith('op-upd');
+    expect(mockApi.updateItem).toHaveBeenCalledWith(12, 'Almond Milk', '2 bunches', 'milk_carton', {
+      id: 9,
+      name: '🥛 Dairy',
+      ordering: 0,
+    });
+    expect(markItemCheckSynced).toHaveBeenCalledWith('item-local-1');
+    expect(remove).toHaveBeenCalledWith('op-upd');
   });
 
   it('ADD_ITEM: prepends ! to description when item isImportant=true', async () => {
     const op = makeAddOp();
-    (syncQueue.getAll as jest.Mock)
-      .mockResolvedValueOnce([op])
-      .mockResolvedValue([]);
-    (itemsDb.getItem as jest.Mock).mockResolvedValue({ isImportant: true, description: '' });
+    (getAll as jest.Mock).mockResolvedValueOnce([op]).mockResolvedValue([]);
+    (getItem as jest.Mock).mockResolvedValue({ isImportant: true, description: '' });
     mockApi.addItemByName.mockResolvedValue({ id: 99, name: 'Milk', description: '!' });
 
     await drain();
@@ -222,10 +216,8 @@ describe('drain()', () => {
 
   it('ADD_ITEM: does not prepend ! when item isImportant=false', async () => {
     const op = makeAddOp();
-    (syncQueue.getAll as jest.Mock)
-      .mockResolvedValueOnce([op])
-      .mockResolvedValue([]);
-    (itemsDb.getItem as jest.Mock).mockResolvedValue({ isImportant: false, description: '' });
+    (getAll as jest.Mock).mockResolvedValueOnce([op]).mockResolvedValue([]);
+    (getItem as jest.Mock).mockResolvedValue({ isImportant: false, description: '' });
     mockApi.addItemByName.mockResolvedValue({ id: 99, name: 'Milk', description: '' });
 
     await drain();
@@ -250,15 +242,19 @@ describe('drain()', () => {
         category: null,
       },
     };
-    (syncQueue.getAll as jest.Mock)
-      .mockResolvedValueOnce([op])
-      .mockResolvedValue([]);
-    (itemsDb.getItem as jest.Mock).mockResolvedValue({ isImportant: true, description: 'two pints' });
+    (getAll as jest.Mock).mockResolvedValueOnce([op]).mockResolvedValue([]);
+    (getItem as jest.Mock).mockResolvedValue({ isImportant: true, description: 'two pints' });
     mockApi.updateItem.mockResolvedValue(undefined);
 
     await drain();
 
-    expect(mockApi.updateItem).toHaveBeenCalledWith(12, 'Almond Milk', '!two pints', 'milk_carton', null);
+    expect(mockApi.updateItem).toHaveBeenCalledWith(
+      12,
+      'Almond Milk',
+      '!two pints',
+      'milk_carton',
+      null
+    );
   });
 
   it('UPDATE_ITEM: does not prepend ! when item isImportant=false', async () => {
@@ -278,10 +274,8 @@ describe('drain()', () => {
         category: null,
       },
     };
-    (syncQueue.getAll as jest.Mock)
-      .mockResolvedValueOnce([op])
-      .mockResolvedValue([]);
-    (itemsDb.getItem as jest.Mock).mockResolvedValue({ isImportant: false, description: 'two pints' });
+    (getAll as jest.Mock).mockResolvedValueOnce([op]).mockResolvedValue([]);
+    (getItem as jest.Mock).mockResolvedValue({ isImportant: false, description: 'two pints' });
     mockApi.updateItem.mockResolvedValue(undefined);
 
     await drain();
@@ -291,22 +285,18 @@ describe('drain()', () => {
 
   it('drops ops that have exceeded MAX_SYNC_RETRIES', async () => {
     const op = makeAddOp({ attempts: 999 });
-    (syncQueue.getAll as jest.Mock)
-      .mockResolvedValueOnce([op])
-      .mockResolvedValue([]);
+    (getAll as jest.Mock).mockResolvedValueOnce([op]).mockResolvedValue([]);
 
     await drain();
 
-    expect(syncQueue.remove).toHaveBeenCalledWith('op-1');
+    expect(remove).toHaveBeenCalledWith('op-1');
     expect(mockApi.addItemByName).not.toHaveBeenCalled();
   });
 
   describe('syncVersion', () => {
     it('bumps syncVersion after a successful op is removed', async () => {
       const op = makeAddOp();
-      (syncQueue.getAll as jest.Mock)
-        .mockResolvedValueOnce([op])
-        .mockResolvedValue([]);
+      (getAll as jest.Mock).mockResolvedValueOnce([op]).mockResolvedValue([]);
       mockApi.addItemByName.mockResolvedValue({ id: 99, name: 'Milk', description: '' });
 
       await drain();
@@ -316,9 +306,7 @@ describe('drain()', () => {
 
     it('bumps syncVersion when a max-retries op is dropped', async () => {
       const op = makeAddOp({ attempts: 999 });
-      (syncQueue.getAll as jest.Mock)
-        .mockResolvedValueOnce([op])
-        .mockResolvedValue([]);
+      (getAll as jest.Mock).mockResolvedValueOnce([op]).mockResolvedValue([]);
 
       await drain();
 
@@ -327,9 +315,7 @@ describe('drain()', () => {
 
     it('bumps syncVersion when a non-retryable op is removed', async () => {
       const op = makeAddOp();
-      (syncQueue.getAll as jest.Mock)
-        .mockResolvedValueOnce([op])
-        .mockResolvedValue([]);
+      (getAll as jest.Mock).mockResolvedValueOnce([op]).mockResolvedValue([]);
       const axiosErr = Object.assign(new Error('Bad Request'), {
         isAxiosError: true,
         response: { status: 400 },
@@ -342,7 +328,7 @@ describe('drain()', () => {
     });
 
     it('does not bump syncVersion when queue is empty', async () => {
-      (syncQueue.getAll as jest.Mock).mockResolvedValue([]);
+      (getAll as jest.Mock).mockResolvedValue([]);
 
       await drain();
 
@@ -351,14 +337,12 @@ describe('drain()', () => {
 
     it('does not bump syncVersion when op fails with a retryable error', async () => {
       const op = makeAddOp();
-      (syncQueue.getAll as jest.Mock)
-        .mockResolvedValueOnce([op])
-        .mockResolvedValue([op]);
+      (getAll as jest.Mock).mockResolvedValueOnce([op]).mockResolvedValue([op]);
       mockApi.addItemByName.mockRejectedValue(new Error('Network error'));
 
       await drain();
 
-      expect(syncQueue.remove).not.toHaveBeenCalled();
+      expect(remove).not.toHaveBeenCalled();
       expect(mockBumpSyncVersion).not.toHaveBeenCalled();
     });
   });
@@ -377,16 +361,14 @@ describe('drain()', () => {
         removedAt: 1700000000000,
       },
     };
-    (syncQueue.getAll as jest.Mock)
-      .mockResolvedValueOnce([op])
-      .mockResolvedValue([]);
+    (getAll as jest.Mock).mockResolvedValueOnce([op]).mockResolvedValue([]);
     mockApi.removeItemFromList.mockResolvedValue(undefined);
 
     await drain();
 
     expect(mockApi.removeItemFromList).toHaveBeenCalledWith(5, 77, 1700000000000);
-    expect(itemsDb.hardDeleteItem).toHaveBeenCalledWith('item-local-1');
-    expect(syncQueue.remove).toHaveBeenCalledWith('op-remove');
+    expect(hardDeleteItem).toHaveBeenCalledWith('item-local-1');
+    expect(remove).toHaveBeenCalledWith('op-remove');
   });
 
   it('REMOVE_ITEM: treats 404 as success (item already gone from server)', async () => {
@@ -403,9 +385,7 @@ describe('drain()', () => {
         removedAt: 1700000000000,
       },
     };
-    (syncQueue.getAll as jest.Mock)
-      .mockResolvedValueOnce([op])
-      .mockResolvedValue([]);
+    (getAll as jest.Mock).mockResolvedValueOnce([op]).mockResolvedValue([]);
     const notFound = Object.assign(new Error('Not Found'), {
       isAxiosError: true,
       response: { status: 404 },
@@ -414,8 +394,8 @@ describe('drain()', () => {
 
     await drain();
 
-    expect(syncQueue.remove).toHaveBeenCalledWith('op-remove-404');
-    expect(itemsDb.hardDeleteItem).not.toHaveBeenCalled();
+    expect(remove).toHaveBeenCalledWith('op-remove-404');
+    expect(hardDeleteItem).not.toHaveBeenCalled();
   });
 
   it('processes CHECK_ITEM op: calls removeItemFromList and marks item check-synced', async () => {
@@ -432,17 +412,15 @@ describe('drain()', () => {
         removedAt: 1700000000000,
       },
     };
-    (syncQueue.getAll as jest.Mock)
-      .mockResolvedValueOnce([op])
-      .mockResolvedValue([]);
+    (getAll as jest.Mock).mockResolvedValueOnce([op]).mockResolvedValue([]);
     mockApi.removeItemFromList.mockResolvedValue(undefined);
 
     await drain();
 
     expect(mockApi.removeItemFromList).toHaveBeenCalledWith(5, 77, 1700000000000);
-    expect(itemsDb.markItemCheckSynced).toHaveBeenCalledWith('item-local-1');
-    expect(itemsDb.hardDeleteItem).not.toHaveBeenCalled();
-    expect(syncQueue.remove).toHaveBeenCalledWith('op-check');
+    expect(markItemCheckSynced).toHaveBeenCalledWith('item-local-1');
+    expect(hardDeleteItem).not.toHaveBeenCalled();
+    expect(remove).toHaveBeenCalledWith('op-check');
   });
 
   it('CHECK_ITEM: treats 404 as success (item already removed from server)', async () => {
@@ -459,9 +437,7 @@ describe('drain()', () => {
         removedAt: 1700000000000,
       },
     };
-    (syncQueue.getAll as jest.Mock)
-      .mockResolvedValueOnce([op])
-      .mockResolvedValue([]);
+    (getAll as jest.Mock).mockResolvedValueOnce([op]).mockResolvedValue([]);
     const notFound = Object.assign(new Error('Not Found'), {
       isAxiosError: true,
       response: { status: 404 },
@@ -470,14 +446,14 @@ describe('drain()', () => {
 
     await drain();
 
-    expect(syncQueue.remove).toHaveBeenCalledWith('op-check-404');
-    expect(itemsDb.markItemCheckSynced).not.toHaveBeenCalled();
+    expect(remove).toHaveBeenCalledWith('op-check-404');
+    expect(markItemCheckSynced).not.toHaveBeenCalled();
   });
 
   it('resets draining flag after completion so a follow-up drain processes remaining ops', async () => {
     const op = makeAddOp();
     const op2 = makeAddOp({ id: 'op-2' });
-    (syncQueue.getAll as jest.Mock)
+    (getAll as jest.Mock)
       .mockResolvedValueOnce([op])
       .mockResolvedValueOnce([op2])
       .mockResolvedValueOnce([op2])

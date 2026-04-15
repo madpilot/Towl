@@ -1,4 +1,10 @@
-import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
+import axios, {
+  AxiosError,
+  AxiosInstance,
+  AxiosRequestConfig,
+  AxiosResponse,
+  InternalAxiosRequestConfig,
+} from 'axios';
 import { TokenStore } from '@/auth/tokenStore';
 import { useSyncStore } from '@/store/syncStore';
 
@@ -46,7 +52,9 @@ export class ApiClientManager {
           // Wait for the in-flight refresh to complete, then replay.
           return new Promise((resolve, reject) => {
             this.subscribeToRefresh((token) => {
-              if (!token) return reject(error);
+              if (!token) {
+                return reject(error);
+              }
               config.headers.Authorization = `Bearer ${token}`;
               resolve(instance(config));
             });
@@ -81,8 +89,14 @@ export class ApiClientManager {
       return config;
     });
     instance.interceptors.response.use(
-      (response) => { useSyncStore.getState().decrementRequestCount(); return response; },
-      (error: unknown) => { useSyncStore.getState().decrementRequestCount(); return Promise.reject(error); }
+      (response) => {
+        useSyncStore.getState().decrementRequestCount();
+        return response;
+      },
+      (error: unknown) => {
+        useSyncStore.getState().decrementRequestCount();
+        return Promise.reject(error);
+      }
     );
 
     this.axiosInstance = instance;
@@ -100,7 +114,11 @@ export class ApiClientManager {
     return this.axiosInstance.get<T>(url, config);
   }
 
-  post<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+  post<T = unknown>(
+    url: string,
+    data?: unknown,
+    config?: AxiosRequestConfig
+  ): Promise<AxiosResponse<T>> {
     return this.axiosInstance.post<T>(url, data, config);
   }
 
@@ -113,13 +131,17 @@ export class ApiClientManager {
   }
 
   private notifyRefreshSubscribers(token: string | null): void {
-    for (const cb of this.refreshSubscribers) cb(token);
+    for (const cb of this.refreshSubscribers) {
+      cb(token);
+    }
     this.refreshSubscribers = [];
   }
 
   private async performRefresh(instance: AxiosInstance): Promise<string> {
     const baseURL = instance.defaults.baseURL;
-    if (!baseURL) throw new Error('API client has no baseURL configured');
+    if (!baseURL) {
+      throw new Error('API client has no baseURL configured');
+    }
 
     const tokens = await TokenStore.instance.getTokens();
 
@@ -146,7 +168,9 @@ export class ApiClientManager {
 
     // Step 2: try the long-lived token.
     const llt = tokens?.llt ?? (await TokenStore.instance.getLlt());
-    if (!llt) throw new Error('No valid token available for refresh');
+    if (!llt) {
+      throw new Error('No valid token available for refresh');
+    }
 
     const res = await axios.get<{ access_token: string; refresh_token: string }>(
       `${baseURL}/auth/refresh`,

@@ -5,7 +5,7 @@ jest.mock('expo-sqlite', () => ({
 
 jest.mock('expo-crypto', () => ({ randomUUID: jest.fn() }));
 
-import * as SQLite from 'expo-sqlite';
+import { openDatabaseAsync } from 'expo-sqlite';
 import { randomUUID } from 'expo-crypto';
 import type { AddItemPayload, RemoveItemPayload } from '@/db/syncQueue';
 
@@ -30,7 +30,7 @@ beforeEach(() => {
   mockDb.getFirstAsync.mockResolvedValue({ version: 1 }); // schema already at v1
   mockDb.getAllAsync.mockResolvedValue([]);
 
-  (SQLite.openDatabaseAsync as jest.Mock).mockResolvedValue(mockDb);
+  (openDatabaseAsync as jest.Mock).mockResolvedValue(mockDb);
   (randomUUID as jest.Mock).mockImplementation(() => `test-uuid-${++uuidCounter}`);
 });
 
@@ -135,10 +135,9 @@ describe('syncQueue', () => {
     it('calls DELETE with the correct id', async () => {
       const { remove } = getModule();
       await remove('abc-123');
-      expect(mockDb.runAsync).toHaveBeenCalledWith(
-        'DELETE FROM sync_queue WHERE id = ?',
-        ['abc-123']
-      );
+      expect(mockDb.runAsync).toHaveBeenCalledWith('DELETE FROM sync_queue WHERE id = ?', [
+        'abc-123',
+      ]);
     });
   });
 
@@ -190,7 +189,13 @@ describe('syncQueue', () => {
         removedAt: 1700000000000,
       };
       mockDb.getAllAsync.mockResolvedValueOnce([
-        { id: 'q-id', payload: JSON.stringify(payload), list_local_id: 'l1', created_at: 1000, attempts: 0 },
+        {
+          id: 'q-id',
+          payload: JSON.stringify(payload),
+          list_local_id: 'l1',
+          created_at: 1000,
+          attempts: 0,
+        },
       ]);
 
       const ops = await getAll();
@@ -210,9 +215,21 @@ describe('syncQueue', () => {
 
     it('removes matching CHECK_ITEM op and returns true', async () => {
       const { removePendingCheckItem } = getModule();
-      const payload = { opType: 'CHECK_ITEM', listServerId: 1, itemServerId: 2, itemLocalId: 'item-abc', removedAt: 1700000000000 };
+      const payload = {
+        opType: 'CHECK_ITEM',
+        listServerId: 1,
+        itemServerId: 2,
+        itemLocalId: 'item-abc',
+        removedAt: 1700000000000,
+      };
       mockDb.getAllAsync.mockResolvedValueOnce([
-        { id: 'op-1', payload: JSON.stringify(payload), list_local_id: null, created_at: 1000, attempts: 0 },
+        {
+          id: 'op-1',
+          payload: JSON.stringify(payload),
+          list_local_id: null,
+          created_at: 1000,
+          attempts: 0,
+        },
       ]);
 
       const found = await removePendingCheckItem('item-abc');
@@ -222,9 +239,21 @@ describe('syncQueue', () => {
 
     it('does not remove ops for different items', async () => {
       const { removePendingCheckItem } = getModule();
-      const payload = { opType: 'CHECK_ITEM', listServerId: 1, itemServerId: 2, itemLocalId: 'item-other', removedAt: 1700000000000 };
+      const payload = {
+        opType: 'CHECK_ITEM',
+        listServerId: 1,
+        itemServerId: 2,
+        itemLocalId: 'item-other',
+        removedAt: 1700000000000,
+      };
       mockDb.getAllAsync.mockResolvedValueOnce([
-        { id: 'op-2', payload: JSON.stringify(payload), list_local_id: null, created_at: 1000, attempts: 0 },
+        {
+          id: 'op-2',
+          payload: JSON.stringify(payload),
+          list_local_id: null,
+          created_at: 1000,
+          attempts: 0,
+        },
       ]);
 
       const found = await removePendingCheckItem('item-abc');
