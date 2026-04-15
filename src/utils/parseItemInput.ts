@@ -8,48 +8,66 @@ export type ParseResult = {
 };
 
 /**
- * Common function words that indicate a description prefix rather than the
- * start of an item name. Only applied to leading tokens — once a non-filtered
- * token is encountered, filtering stops.
+ * Matches purely numeric tokens ("10", "500") and numbers joined to a unit
+ * or multiplier suffix ("500g", "1L", "2x", "1.5kg", "250ml").
+ */
+const QUANTITY_RE = /^\d+(?:\.\d+)?[a-zA-Z]*$/;
+
+/**
+ * Words that are never catalog item names and should be treated as description
+ * prefixes when they appear at the start of the input.
+ *
+ * Includes:
+ *   - Common articles, prepositions and conjunctions
+ *   - Vague quantifiers
+ *   - Standalone food measurement units (for inputs like "500 g chicken")
  */
 const STOP_WORDS = new Set([
-  'a', 'an', 'the',
-  'of', 'for', 'with', 'and', 'or', 'to', 'in', 'on', 'at', 'by',
-  'some', 'x',
+  // Articles, conjunctions, prepositions
+  'a', 'an', 'the', 'and', 'or',
+  'of', 'for', 'with', 'to', 'in', 'on', 'at', 'by',
+  // Vague quantifiers / filler words
+  'some', 'x', 'stuff', 'things',
+  // Standalone food measurement units
+  'g', 'kg', 'mg', 'ml', 'l', 'cl', 'dl',
+  'lb', 'lbs', 'oz', 'fl',
+  'cup', 'cups', 'tsp', 'tbsp',
+  'teaspoon', 'teaspoons', 'tablespoon', 'tablespoons',
+  'pint', 'pints', 'litre', 'litres', 'liter', 'liters',
+  'piece', 'pieces', 'slice', 'slices', 'pc', 'pcs',
 ]);
 
 /**
- * Returns true for tokens that are almost certainly description words rather
- * than the start of a catalog item name:
- *   - Tokens whose first character is a digit ("500g", "1L", "10", "2x")
- *   - Common English function words unlikely to be catalog item names
+ * Returns true for tokens that are description words rather than the start
+ * of a catalog item name:
+ *   - Purely numeric or number-with-unit tokens ("10", "500g", "1L", "2x", "1.5kg")
+ *   - Common function words and standalone food measurement units
  */
 function isDescriptionToken(token: string): boolean {
-  return /^\d/.test(token) || STOP_WORDS.has(token.toLowerCase());
+  return QUANTITY_RE.test(token) || STOP_WORDS.has(token.toLowerCase());
 }
 
 /**
- * Splits a free-text input (e.g. "500g of Chicken Mince") into a canonical
- * name and a description prefix by first filtering obvious description words
- * then querying the server catalog one token at a time.
+ * Splits a free-text grocery input into a canonical item name and a
+ * description prefix by filtering obvious quantity/modifier tokens from the
+ * left, then making a single catalog search for the remainder.
  *
  * Algorithm:
- *   1. Pre-filter: advance past leading digit-tokens and stop words without
- *      any API calls — they are never catalog item names.
- *      Stop as soon as the first non-filtered token is reached.
- *        "500g of Chicken Mince" → skip "500g", "of"; start at "Chicken"
- *        "10 fillets of fish"   → skip "10" only; "of"/"fish" stay in suffix
- *   2. From the first non-filtered token, search one token at a time:
- *        results = await searchFn(tokens[i])
- *        if results is empty: token is a description word → continue
- *        otherwise: anchor found — item name starts here
- *          suffix      = tokens[i … end].join(' ')
- *          description = tokens[0 … i-1].join(' ')
- *          exactMatch  = results.find(r.name ≅ suffix)
- *          if found   → use that catalog entry's name/icon/category
- *          if not     → suffix becomes a new item name; icon/category from
- *                        the result matching tokens[i] alone, or results[0]
- *   3. Fallback: name = raw input, description = ''
+ *   1. Pre-filter: advance past leading quantity expressions and stop words
+ *      without any API calls. Stop at the first "real" word.
+ *        description   = filtered leading tokens  ("500g of")
+ *        nameCandidate = remaining tokens          ("beef stock")
+ *   2. Search nameCandidate as a single query.
+ *        exact result match  → use catalog name / icon / category
+ *        no exact match      → use nameCandidate as name; icon/category from results[0]
+ *        search throws/empty → use nameCandidate with no icon/category
+ *   3. Edge case — all tokens filtered: return raw input with empty description.
+ *
+ * Examples:
+ *   "500g of beef stock"  → desc="500g of",  search "beef stock"
+ *   "10 fillets of fish"  → desc="10",        search "fillets of fish"
+ *   "stuff for salad"     → desc="stuff for", search "salad"
+ *   "2x chicken breast"   → desc="2x",        search "chicken breast"
  */
 export async function parseItemInput(
   raw: string,
@@ -58,51 +76,45 @@ export async function parseItemInput(
   const trimmed = raw.trim();
   const tokens = trimmed.split(/\s+/);
 
-  // Step 1 — pre-filter: skip obvious description tokens from the left.
+  // Step 1 — pre-filter leading description tokens without API calls.
   let startIndex = 0;
   while (startIndex < tokens.length && isDescriptionToken(tokens[startIndex])) {
     startIndex++;
   }
 
-  // Step 2 — search loop starting from the first non-filtered token.
-  for (let i = startIndex; i < tokens.length; i++) {
-    let results: ServerItem[];
-    try {
-      results = await searchFn(tokens[i]);
-    } catch {
-      continue;
-    }
-    if (results.length === 0) continue;
+  // Edge case: every token was filtered — nothing meaningful to search.
+  if (startIndex === tokens.length) {
+    return { name: trimmed, description: '', iconKey: null, category: 'Other' };
+  }
 
-    const suffix = tokens.slice(i).join(' ');
-    const description = tokens.slice(0, i).join(' ');
-    const suffixLower = suffix.toLowerCase();
+  const description = tokens.slice(0, startIndex).join(' ');
+  const nameCandidate = tokens.slice(startIndex).join(' ');
+  const nameLower = nameCandidate.toLowerCase();
 
-    // Check if any catalog result exactly matches the full remaining input.
-    const exactMatch = results.find(
-      (r) => r.name.trim().toLowerCase() === suffixLower
-    );
-    if (exactMatch) {
-      return {
-        name: exactMatch.name,
-        description,
-        iconKey: exactMatch.icon ?? null,
-        category: exactMatch.category?.name ?? 'Other',
-      };
-    }
+  // Step 2 — single catalog search for the unfiltered portion.
+  let results: ServerItem[] = [];
+  try {
+    results = await searchFn(nameCandidate);
+  } catch {
+    // Offline or transient failure — fall through to raw name.
+  }
 
-    // No exact match — the remaining input becomes a new item name.
-    // Prefer icon/category from the result that matches the anchor token alone.
-    const anchorResult =
-      results.find((r) => r.name.trim().toLowerCase() === tokens[i].toLowerCase())
-      ?? results[0];
+  const exactMatch = results.find(
+    (r) => r.name.trim().toLowerCase() === nameLower
+  );
+  if (exactMatch) {
     return {
-      name: suffix,
+      name: exactMatch.name,
       description,
-      iconKey: anchorResult.icon ?? null,
-      category: anchorResult.category?.name ?? 'Other',
+      iconKey: exactMatch.icon ?? null,
+      category: exactMatch.category?.name ?? 'Other',
     };
   }
 
-  return { name: trimmed, description: '', iconKey: null, category: 'Other' };
+  return {
+    name: nameCandidate,
+    description,
+    iconKey: results[0]?.icon ?? null,
+    category: results[0]?.category?.name ?? 'Other',
+  };
 }
