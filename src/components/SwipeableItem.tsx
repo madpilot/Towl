@@ -548,24 +548,8 @@ function SwipeRowContent({
           style={backStyles.buttonRow}
           pointerEvents={buttonsVisible ? 'box-none' : 'none'}
         >
-          {/* Delete — behind star (rendered first, lower z-order).
-              Starts hidden behind the star and slides right to its own
-              position as the card opens. */}
-          <Animated.View style={[backStyles.deleteContainer, deleteSlide]}>
-            <TouchableOpacity
-              style={[backStyles.actionButton, backStyles.deleteButton]}
-              onPress={handleDeletePress}
-              activeOpacity={0.85}
-              accessibilityRole="button"
-              accessibilityLabel="Delete"
-              disabled={!buttonsVisible}
-            >
-              <IconTrash color={Colors.white} size={22} />
-            </TouchableOpacity>
-          </Animated.View>
-
-          {/* Star / undo — in front (rendered second, higher z-order).
-              Stays fixed at the left edge; delete slides out from behind it. */}
+          {/* Star / undo — at the back (rendered first, lowest z-order).
+              Fixed at the left edge; delete slides away to reveal it. */}
           <Animated.View style={[backStyles.starContainer, starSlide]}>
             <TouchableOpacity
               style={[
@@ -583,6 +567,22 @@ function SwipeRowContent({
               ) : (
                 <IconStar color={Colors.yellow} size={22} filled={item.isImportant} />
               )}
+            </TouchableOpacity>
+          </Animated.View>
+
+          {/* Delete — in the middle (rendered second, higher z-order than star).
+              Starts at x=0 covering the star, slides right to its own position
+              revealing the star behind it. */}
+          <Animated.View style={[backStyles.deleteContainer, deleteSlide]}>
+            <TouchableOpacity
+              style={[backStyles.actionButton, backStyles.deleteButton]}
+              onPress={handleDeletePress}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel="Delete"
+              disabled={!buttonsVisible}
+            >
+              <IconTrash color={Colors.white} size={22} />
             </TouchableOpacity>
           </Animated.View>
         </View>
