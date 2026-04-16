@@ -280,9 +280,7 @@ describe('SwipeableItem', () => {
 
     it('closes buttons when swiping back past CLOSE_THRESHOLD', () => {
       const handlers = makeHandlers();
-      const { getByLabelText, queryByLabelText } = render(
-        <SwipeableItem item={makeItem()} {...handlers} />
-      );
+      const { getByLabelText } = render(<SwipeableItem item={makeItem()} {...handlers} />);
 
       // Lock open.
       act(() => {
@@ -296,8 +294,8 @@ describe('SwipeableItem', () => {
         gestureCbs.onStart?.({});
         gestureCbs.onEnd?.({ translationX: -50, velocityX: 0 });
       });
-      expect(queryByLabelText('Favourite')).toBeNull();
-      expect(queryByLabelText('Delete')).toBeNull();
+      expect(getByLabelText('Favourite').props.accessibilityState?.disabled).toBe(true);
+      expect(getByLabelText('Delete').props.accessibilityState?.disabled).toBe(true);
     });
 
     it('stays open when swipe back is short of CLOSE_THRESHOLD', () => {
@@ -321,7 +319,7 @@ describe('SwipeableItem', () => {
 
     it('closes buttons on a card tap when locked', () => {
       const handlers = makeHandlers();
-      const { getByTestId, queryByLabelText } = render(
+      const { getByTestId, getByLabelText } = render(
         <SwipeableItem item={makeItem()} {...handlers} />
       );
 
@@ -331,7 +329,7 @@ describe('SwipeableItem', () => {
 
       fireEvent.press(getByTestId('card-tap-target'));
 
-      expect(queryByLabelText('Favourite')).toBeNull();
+      expect(getByLabelText('Favourite').props.accessibilityState?.disabled).toBe(true);
     });
   });
 

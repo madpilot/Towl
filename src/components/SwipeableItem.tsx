@@ -484,6 +484,25 @@ function SwipeRowContent({
     transform: [{ translateX: translateX.value }],
   }));
 
+  // ── Sliding-door button animation ────────────────────────────
+  // Both buttons start stacked at LOCK_OFFSET (the card's resting left edge)
+  // and slide left to their final positions as the card moves right.
+  // The star button travels the full LOCK_OFFSET distance; the delete button
+  // travels only the remaining gap, so the star glides over the delete as
+  // they spread apart — like two sliding doors opening.
+
+  const starSlide = useAnimatedStyle(() => {
+    const progress = Math.min(1, Math.max(0, translateX.value / LOCK_OFFSET));
+    return { transform: [{ translateX: LOCK_OFFSET * (1 - progress) }] };
+  });
+
+  const deleteSlide = useAnimatedStyle(() => {
+    const progress = Math.min(1, Math.max(0, translateX.value / LOCK_OFFSET));
+    return {
+      transform: [{ translateX: (LOCK_OFFSET - BUTTON_WIDTH - BUTTON_GAP) * (1 - progress) }],
+    };
+  });
+
   // Only colour the back for the left-swipe (done) zone; the right side is
   // handled by the button backgrounds themselves.
   const backStyle = useAnimatedStyle(() => {
@@ -522,11 +541,31 @@ function SwipeRowContent({
     <View style={rowStyles.row}>
       {/* ── Back reveal ── */}
       <Animated.View style={[StyleSheet.absoluteFill, backStyles.container, backStyle]}>
-        {/* Right-swipe action buttons. Only mounted once the card has snapped
-            open so they are never tappable (or findable in tests) while hidden. */}
-        {buttonsVisible && (
-          <View style={backStyles.buttonRow}>
-            {/* Star / undo button — first revealed as the user swipes right */}
+        {/* Right-swipe action buttons. Always rendered so they are visible the
+            moment the user begins dragging; disabled until the card snaps open. */}
+        <View
+          style={backStyles.buttonRow}
+          pointerEvents={buttonsVisible ? 'box-none' : 'none'}
+        >
+          {/* Delete — behind (rendered first, lower z-order).
+              Slides from LOCK_OFFSET to its resting position so the star can
+              glide over it as they spread apart like sliding doors. */}
+          <Animated.View style={[backStyles.deleteContainer, deleteSlide]}>
+            <TouchableOpacity
+              style={[backStyles.actionButton, backStyles.deleteButton]}
+              onPress={handleDeletePress}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel="Delete"
+              disabled={!buttonsVisible}
+            >
+              <IconTrash color={Colors.white} size={22} />
+            </TouchableOpacity>
+          </Animated.View>
+
+          {/* Star / undo — in front (rendered second, higher z-order).
+              Slides all the way to the left, gliding over the delete button. */}
+          <Animated.View style={[backStyles.starContainer, starSlide]}>
             <TouchableOpacity
               style={[
                 backStyles.actionButton,
@@ -536,6 +575,7 @@ function SwipeRowContent({
               activeOpacity={0.85}
               accessibilityRole="button"
               accessibilityLabel={item.isChecked ? 'Undo' : 'Favourite'}
+              disabled={!buttonsVisible}
             >
               {item.isChecked ? (
                 <IconUndo color={Colors.mint} size={22} />
@@ -543,19 +583,8 @@ function SwipeRowContent({
                 <IconStar color={Colors.yellow} size={22} filled={item.isImportant} />
               )}
             </TouchableOpacity>
-
-            {/* Delete button — revealed after the star button */}
-            <TouchableOpacity
-              style={[backStyles.actionButton, backStyles.deleteButton]}
-              onPress={handleDeletePress}
-              activeOpacity={0.85}
-              accessibilityRole="button"
-              accessibilityLabel="Delete"
-            >
-              <IconTrash color={Colors.white} size={22} />
-            </TouchableOpacity>
-          </View>
-        )}
+          </Animated.View>
+        </View>
 
         {/* Left-swipe done indicator */}
         {backZone === 'done' && (
@@ -688,19 +717,29 @@ const backStyles = StyleSheet.create({
     borderRadius: Radii.lg,
     overflow: 'hidden',
   },
-  // Two action buttons revealed when swiping right. Laid out left-to-right
-  // starting at the left edge of the row; the card sliding right uncovers them.
+  // Container for the two sliding-door action buttons.
   buttonRow: {
     position: 'absolute',
     left: 0,
     top: 0,
     bottom: 0,
     width: LOCK_OFFSET,
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    gap: BUTTON_GAP,
-    paddingRight: BUTTON_GAP, // gap between last button and card edge
-    paddingVertical: BUTTON_GAP, // gap between buttons and row top/bottom
+  },
+  // Star / undo button — final resting position at the left edge.
+  starContainer: {
+    position: 'absolute',
+    left: 0,
+    top: BUTTON_GAP,
+    bottom: BUTTON_GAP,
+    width: BUTTON_WIDTH,
+  },
+  // Delete button — final resting position just right of the star.
+  deleteContainer: {
+    position: 'absolute',
+    left: BUTTON_WIDTH + BUTTON_GAP,
+    top: BUTTON_GAP,
+    bottom: BUTTON_GAP,
+    width: BUTTON_WIDTH,
   },
   actionButton: {
     flex: 1,
