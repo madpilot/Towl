@@ -82,6 +82,35 @@ describe('parseItemInput', () => {
       expect(result).toEqual({ name: '500g of', description: '', iconKey: null, category: 'Other' });
       expect(searchFn).not.toHaveBeenCalled();
     });
+
+    it('filters mathjs + operator between quantity tokens', async () => {
+      const searchFn = alwaysReturns([]);
+      const result = await parseItemInput('250g + 150g Beef Mince', searchFn);
+      expect(result.description).toBe('250g + 150g');
+      expect(result.name).toBe('Beef Mince');
+      expect(searchFn).toHaveBeenCalledWith('Beef Mince');
+    });
+
+    it('filters mathjs - operator between quantity tokens', async () => {
+      const searchFn = alwaysReturns([]);
+      const result = await parseItemInput('500ml - 250ml Chicken Stock', searchFn);
+      expect(result.description).toBe('500ml - 250ml');
+      expect(result.name).toBe('Chicken Stock');
+    });
+
+    it('filters mathjs * operator between quantity tokens', async () => {
+      const searchFn = alwaysReturns([]);
+      const result = await parseItemInput('2 * 500g Beef Mince', searchFn);
+      expect(result.description).toBe('2 * 500g');
+      expect(result.name).toBe('Beef Mince');
+    });
+
+    it('filters mathjs / operator between quantity tokens', async () => {
+      const searchFn = alwaysReturns([]);
+      const result = await parseItemInput('1 / 2 kg Rice', searchFn);
+      expect(result.description).toBe('1 / 2 kg');
+      expect(result.name).toBe('Rice');
+    });
   });
 
   // ── Search: single call for the unfiltered portion ───────────────────────────

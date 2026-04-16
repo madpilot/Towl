@@ -306,6 +306,17 @@ export async function toggleItemImportant(localId: string, important: boolean): 
   ]);
 }
 
+export async function updateItemDescription(
+  localId: string,
+  description: string
+): Promise<void> {
+  const db = await getDb();
+  await db.runAsync(
+    'UPDATE local_items SET description = ?, is_dirty = 1 WHERE local_id = ?',
+    [description, localId]
+  );
+}
+
 export async function updateItemNameAndIcon(
   localId: string,
   name: string,

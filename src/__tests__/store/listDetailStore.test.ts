@@ -23,6 +23,13 @@ jest.mock('@/db/items', () => ({
   clearExpiredCheckedItems: jest.fn(),
   toggleItemImportant: jest.fn(),
   updateItemNameAndIcon: jest.fn(),
+  updateItemDescription: jest.fn(),
+}));
+
+jest.mock('@/utils/mergeQuantities', () => ({
+  mergeQuantities: jest.fn((existing: string, incoming: string) =>
+    existing && incoming ? `${existing} + ${incoming}` : existing || incoming
+  ),
 }));
 
 jest.mock('@/db/lists', () => ({
@@ -66,10 +73,12 @@ import {
   clearExpiredCheckedItems,
   toggleItemImportant,
   updateItemNameAndIcon,
+  updateItemDescription,
 } from '@/db/items';
 import { getAllLists } from '@/db/lists';
 import { enqueue, removePendingCheckItem } from '@/sync/syncManager';
 import { recordItemUsed } from '@/db/history';
+import { mergeQuantities } from '@/utils/mergeQuantities';
 import { useListDetailStore } from '@/store/listDetailStore';
 import type { LocalItem } from '@/db/items';
 import type { LocalList } from '@/db/lists';
@@ -516,6 +525,133 @@ describe('addItem', () => {
     await useListDetailStore.getState().addItem('Bread', '', null, 'Other');
 
     expect(addItemLocally).not.toHaveBeenCalled();
+  });
+});
+
+// ─── addItem — duplicate merging ──────────────────────────────────────────────
+
+describe('addItem — duplicate merging', () => {
+  const existingItem = makeItem({
+    localId: 'item-milk',
+    serverId: 100,
+    name: 'Milk',
+    description: '3L',
+    isChecked: false,
+    isImportant: false,
+  });
+
+  beforeEach(() => {
+    useListDetailStore.setState({
+      items: [existingItem],
+      activeLocalId: 'list-local-1',
+      activeServerId: 5,
+    });
+    (updateItemDescription as jest.Mock).mockResolvedValue(undefined);
+    (mergeQuantities as jest.Mock).mockImplementation(
+      (existing: string, incoming: string) =>
+        existing && incoming ? `${existing} + ${incoming}` : existing || incoming
+    );
+  });
+
+  it('merges description instead of adding a new item when name matches', async () => {
+    await useListDetailStore.getState().addItem('Milk', '2L', null, 'Dairy');
+
+    expect(mergeQuantities).toHaveBeenCalledWith('3L', '2L');
+    expect(updateItemDescription).toHaveBeenCalledWith('item-milk', '3L + 2L');
+    expect(addItemLocally).not.toHaveBeenCalled();
+  });
+
+  it('updates store state with merged description', async () => {
+    await useListDetailStore.getState().addItem('Milk', '2L', null, 'Dairy');
+
+    const { items } = useListDetailStore.getState();
+    expect(items).toHaveLength(1);
+    expect(items[0].description).toBe('3L + 2L');
+  });
+
+  it('enqueues UPDATE_ITEM_DESC when existing item has a serverId', async () => {
+    await useListDetailStore.getState().addItem('Milk', '2L', null, 'Dairy');
+
+    expect(enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        opType: 'UPDATE_ITEM_DESC',
+        listServerId: 5,
+        itemServerId: 100,
+        description: '3L + 2L',
+      }),
+      'list-local-1'
+    );
+  });
+
+  it('prefixes ! in server description for important items', async () => {
+    useListDetailStore.setState({
+      items: [{ ...existingItem, isImportant: true }],
+    });
+
+    await useListDetailStore.getState().addItem('Milk', '2L', null, 'Dairy');
+
+    expect(enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        opType: 'UPDATE_ITEM_DESC',
+        description: '!3L + 2L',
+      }),
+      'list-local-1'
+    );
+  });
+
+  it('skips enqueue when existing item has no serverId', async () => {
+    useListDetailStore.setState({
+      items: [{ ...existingItem, serverId: null }],
+    });
+
+    await useListDetailStore.getState().addItem('Milk', '2L', null, 'Dairy');
+
+    expect(enqueue).not.toHaveBeenCalled();
+    expect(updateItemDescription).toHaveBeenCalled();
+  });
+
+  it('skips enqueue when list has no serverId', async () => {
+    useListDetailStore.setState({ activeServerId: null });
+
+    await useListDetailStore.getState().addItem('Milk', '2L', null, 'Dairy');
+
+    expect(enqueue).not.toHaveBeenCalled();
+    expect(updateItemDescription).toHaveBeenCalled();
+  });
+
+  it('matches name case-insensitively', async () => {
+    await useListDetailStore.getState().addItem('MILK', '2L', null, 'Dairy');
+
+    expect(mergeQuantities).toHaveBeenCalledWith('3L', '2L');
+    expect(addItemLocally).not.toHaveBeenCalled();
+  });
+
+  it('does not merge with checked items — adds a fresh item', async () => {
+    useListDetailStore.setState({
+      items: [{ ...existingItem, isChecked: true }],
+    });
+    (addItemLocally as jest.Mock).mockResolvedValue(
+      makeItem({ localId: 'new-item', name: 'Milk', description: '2L' })
+    );
+
+    await useListDetailStore.getState().addItem('Milk', '2L', null, 'Dairy');
+
+    expect(addItemLocally).toHaveBeenCalled();
+    expect(updateItemDescription).not.toHaveBeenCalled();
+  });
+
+  it('does not merge with soft-deleted items — adds a fresh item', async () => {
+    useListDetailStore.setState({
+      items: [{ ...existingItem, isDeleted: true }],
+    });
+    (addItemLocally as jest.Mock).mockResolvedValue(
+      makeItem({ localId: 'new-item', name: 'Milk', description: '2L' })
+    );
+
+    await useListDetailStore.getState().addItem('Milk', '2L', null, 'Dairy');
+
+    expect(addItemLocally).toHaveBeenCalled();
+    expect(updateItemDescription).not.toHaveBeenCalled();
   });
 });
 

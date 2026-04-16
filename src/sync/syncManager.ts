@@ -168,6 +168,7 @@ async function dispatchPayload(api: ShoppingListsApi, payload: SyncPayload): Pro
         payload.itemServerId,
         payload.description
       );
+      await markItemCheckSynced(payload.itemLocalId);
       break;
     }
 
