@@ -21,6 +21,8 @@ const QUANTITY_RE = /^\d+(?:\.\d+)?[a-zA-Z]*$/;
  *   - Common articles, prepositions and conjunctions
  *   - Vague quantifiers
  *   - Standalone food measurement units (for inputs like "500 g chicken")
+ *   - mathjs arithmetic operators so chained quantities like "250g + 150g Beef Mince"
+ *     keep the full expression in the description
  */
 const STOP_WORDS = new Set([
   // Articles, conjunctions, prepositions
@@ -35,6 +37,8 @@ const STOP_WORDS = new Set([
   'teaspoon', 'teaspoons', 'tablespoon', 'tablespoons',
   'pint', 'pints', 'litre', 'litres', 'liter', 'liters',
   'piece', 'pieces', 'slice', 'slices', 'pc', 'pcs',
+  // mathjs arithmetic operators (allow chained quantity expressions)
+  '+', '-', '*', '/',
 ]);
 
 /**
