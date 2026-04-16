@@ -27,6 +27,7 @@ export const UpdateItemDescPayloadSchema = z.object({
   opType: z.literal('UPDATE_ITEM_DESC'),
   listServerId: z.number(),
   itemServerId: z.number(),
+  itemLocalId: z.string(),
   description: z.string(),
 });
 export type UpdateItemDescPayload = z.infer<typeof UpdateItemDescPayloadSchema>;

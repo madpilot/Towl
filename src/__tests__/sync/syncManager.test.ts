@@ -283,6 +283,30 @@ describe('drain()', () => {
     expect(mockApi.updateItem).toHaveBeenCalledWith(12, 'Almond Milk', 'two pints', null, null);
   });
 
+  it('processes UPDATE_ITEM_DESC op: calls updateItemDescription and clears dirty flag', async () => {
+    const op = {
+      id: 'op-desc',
+      attempts: 0,
+      listLocalId: 'list-local-1',
+      createdAt: Date.now(),
+      payload: {
+        opType: 'UPDATE_ITEM_DESC' as const,
+        listServerId: 5,
+        itemServerId: 12,
+        itemLocalId: 'item-local-1',
+        description: '2L',
+      },
+    };
+    (getAll as jest.Mock).mockResolvedValueOnce([op]).mockResolvedValue([]);
+    mockApi.updateItemDescription.mockResolvedValue(undefined);
+
+    await drain();
+
+    expect(mockApi.updateItemDescription).toHaveBeenCalledWith(5, 12, '2L');
+    expect(markItemCheckSynced).toHaveBeenCalledWith('item-local-1');
+    expect(remove).toHaveBeenCalledWith('op-desc');
+  });
+
   it('drops ops that have exceeded MAX_SYNC_RETRIES', async () => {
     const op = makeAddOp({ attempts: 999 });
     (getAll as jest.Mock).mockResolvedValueOnce([op]).mockResolvedValue([]);

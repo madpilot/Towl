@@ -339,6 +339,7 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
             opType: 'UPDATE_ITEM_DESC',
             listServerId: activeServerId,
             itemServerId: freshItem.serverId,
+            itemLocalId: localId,
             description: serverDescription,
           },
           activeLocalId
@@ -414,6 +415,7 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
             opType: 'UPDATE_ITEM_DESC',
             listServerId: activeServerId,
             itemServerId: freshItem.serverId,
+            itemLocalId: localId,
             description: serverDescription,
           },
           activeLocalId
@@ -449,6 +451,7 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
               opType: 'UPDATE_ITEM_DESC',
               listServerId: activeServerId,
               itemServerId: existing.serverId,
+              itemLocalId: existing.localId,
               description: serverDescription,
             },
             activeLocalId
