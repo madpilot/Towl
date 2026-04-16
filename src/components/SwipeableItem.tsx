@@ -66,8 +66,9 @@ const DOUBLE_TAP_MS = 280;
 
 // Right-swipe locking: the card snaps open to reveal two tappable buttons.
 const BUTTON_WIDTH = 72; // width of each action button
-const LOCK_OFFSET = BUTTON_WIDTH * 2; // 144 — card travels this far right
-const OPEN_THRESHOLD = LOCK_OFFSET / 3; // 48 — drag past this to snap open
+const BUTTON_GAP = 4; // gap between buttons, and between last button and card
+const LOCK_OFFSET = BUTTON_WIDTH * 2 + BUTTON_GAP * 2; // card travel to fully reveal buttons
+const OPEN_THRESHOLD = 48; // drag past this to snap open
 const CLOSE_THRESHOLD = 30; // swipe back this far (when locked) to close
 
 const LEFT_TRAVEL_MAX = 72;
@@ -687,13 +688,18 @@ const backStyles = StyleSheet.create({
     left: 0,
     top: 0,
     bottom: 0,
-    width: LOCK_OFFSET, // 144 — exactly wide enough for two BUTTON_WIDTH buttons
+    width: LOCK_OFFSET,
     flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: BUTTON_GAP,
+    paddingRight: BUTTON_GAP, // gap between last button and card edge
+    paddingVertical: BUTTON_GAP, // gap between buttons and row top/bottom
   },
   actionButton: {
-    width: BUTTON_WIDTH,
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: Radii.md,
   },
   starButton: {
     backgroundColor: '#fffae8',
