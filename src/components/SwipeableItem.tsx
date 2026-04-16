@@ -488,7 +488,14 @@ function SwipeRowContent({
   // handled by the button backgrounds themselves.
   const backStyle = useAnimatedStyle(() => {
     const x = translateX.value;
-    const bg = x < -SWIPE_DONE_PX ? (item.isChecked ? '#ffe8cc' : Colors.mintLight) : 'transparent';
+    const bg =
+      x < -SWIPE_DONE_PX
+        ? item.isChecked
+          ? '#ffe8cc'
+          : Colors.mintLight
+        : x > 0
+          ? Colors.mintBg
+          : 'transparent';
     return { backgroundColor: bg };
   });
 
