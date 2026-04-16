@@ -11,6 +11,7 @@ import {
   clearCheckedItems,
   toggleItemImportant,
   updateItemNameAndIcon,
+  updateItemDescription,
   addItemLocally,
   softDeleteItem,
   hardDeleteItem,
@@ -21,6 +22,7 @@ import { getAllLists, upsertListFromServer } from '@/db/lists';
 import { enqueue as syncManagerEnqueue, removePendingCheckItem } from '@/sync/syncManager';
 import { useAuthStore } from '@/store/authStore';
 import { matchItem } from '@/data/foodMatcher';
+import { mergeQuantities } from '@/utils/mergeQuantities';
 import { recordItemUsed } from '@/db/history';
 import { SECURE_STORE_KEYS } from '@/utils/constants';
 import type { LocalItem } from '@/db/items';
@@ -427,6 +429,39 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
       if (!activeLocalId) {
         return;
       }
+
+      // If a non-checked, non-deleted item with the same name already exists,
+      // merge the quantities rather than inserting a duplicate row.
+      const nameLower = name.trim().toLowerCase();
+      const existing = items.find(
+        (i) => !i.isChecked && !i.isDeleted && i.name.toLowerCase() === nameLower
+      );
+
+      if (existing !== undefined) {
+        const mergedDescription = mergeQuantities(existing.description, description);
+        await updateItemDescription(existing.localId, mergedDescription);
+        if (existing.serverId !== null && activeServerId !== null) {
+          const serverDescription = existing.isImportant
+            ? `!${mergedDescription}`
+            : mergedDescription;
+          await syncManagerEnqueue(
+            {
+              opType: 'UPDATE_ITEM_DESC',
+              listServerId: activeServerId,
+              itemServerId: existing.serverId,
+              description: serverDescription,
+            },
+            activeLocalId
+          );
+        }
+        set({
+          items: items.map((i) =>
+            i.localId === existing.localId ? { ...i, description: mergedDescription } : i
+          ),
+        });
+        return;
+      }
+
       const match = iconKey ? { iconKey, category } : matchItem(name);
       const newItem = await addItemLocally(
         activeLocalId,
