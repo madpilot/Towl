@@ -73,7 +73,7 @@ const CLOSE_THRESHOLD = 30; // swipe back this far (when locked) to close
 
 const LEFT_TRAVEL_MAX = 72;
 
-const SPRING = { damping: 20, stiffness: 200 } as const;
+const SPRING = { damping: 38, stiffness: 200 } as const;
 
 // ─── SVG icon components ──────────────────────────────────────────
 
