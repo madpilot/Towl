@@ -485,21 +485,22 @@ function SwipeRowContent({
   }));
 
   // ── Sliding-door button animation ────────────────────────────
-  // Both buttons start stacked at LOCK_OFFSET (the card's resting left edge)
-  // and slide left to their final positions as the card moves right.
-  // The star button travels the full LOCK_OFFSET distance; the delete button
-  // travels only the remaining gap, so the star glides over the delete as
-  // they spread apart — like two sliding doors opening.
+  // Star stays fixed at the left edge throughout the swipe.
+  // Delete starts hidden behind the star (same x = 0) and slides right to
+  // its resting position as the card opens — emerging from under the star's
+  // right edge like one panel of a sliding door.
 
   const starSlide = useAnimatedStyle(() => {
-    const progress = Math.min(1, Math.max(0, translateX.value / LOCK_OFFSET));
-    return { transform: [{ translateX: LOCK_OFFSET * (1 - progress) }] };
+    // Star doesn't move — no transform needed.
+    return {};
   });
 
   const deleteSlide = useAnimatedStyle(() => {
     const progress = Math.min(1, Math.max(0, translateX.value / LOCK_OFFSET));
+    // At progress=0 the delete container is shifted fully left (behind the star).
+    // At progress=1 it sits at its natural position to the right of the star.
     return {
-      transform: [{ translateX: (LOCK_OFFSET - BUTTON_WIDTH - BUTTON_GAP) * (1 - progress) }],
+      transform: [{ translateX: -(BUTTON_WIDTH + BUTTON_GAP) * (1 - progress) }],
     };
   });
 
@@ -547,9 +548,9 @@ function SwipeRowContent({
           style={backStyles.buttonRow}
           pointerEvents={buttonsVisible ? 'box-none' : 'none'}
         >
-          {/* Delete — behind (rendered first, lower z-order).
-              Slides from LOCK_OFFSET to its resting position so the star can
-              glide over it as they spread apart like sliding doors. */}
+          {/* Delete — behind star (rendered first, lower z-order).
+              Starts hidden behind the star and slides right to its own
+              position as the card opens. */}
           <Animated.View style={[backStyles.deleteContainer, deleteSlide]}>
             <TouchableOpacity
               style={[backStyles.actionButton, backStyles.deleteButton]}
@@ -564,7 +565,7 @@ function SwipeRowContent({
           </Animated.View>
 
           {/* Star / undo — in front (rendered second, higher z-order).
-              Slides all the way to the left, gliding over the delete button. */}
+              Stays fixed at the left edge; delete slides out from behind it. */}
           <Animated.View style={[backStyles.starContainer, starSlide]}>
             <TouchableOpacity
               style={[
