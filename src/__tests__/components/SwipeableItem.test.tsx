@@ -1,14 +1,16 @@
 /**
  * Tests for SwipeableItem.
  *
- * react-native-gesture-handler is mocked to capture the Pan gesture's onUpdate
- * and onEnd callbacks so tests can drive them without real native gestures.
+ * react-native-gesture-handler is mocked to capture the Pan gesture's
+ * onStart / onUpdate / onEnd callbacks so tests can drive them without
+ * real native gestures.
  * react-native-reanimated is mocked via jest.setup.ts (runOnJS = identity,
  * withSpring = identity, useSharedValue = plain object).
  */
 
 // Capture Pan gesture callbacks so tests can invoke them directly.
 type GestureCbs = {
+  onStart?: (e: object) => void;
   onUpdate?: (e: { translationX: number }) => void;
   onEnd?: (e: { translationX: number; velocityX: number }) => void;
 };
@@ -18,12 +20,16 @@ jest.mock('react-native-gesture-handler', () => {
   const React = require('react');
   const { View } = require('react-native');
 
-  // Fluent Pan gesture builder — captures onUpdate/onEnd callbacks.
+  // Fluent Pan gesture builder — captures onStart/onUpdate/onEnd callbacks.
   const pan = {
     activeOffsetX: function () {
       return pan;
     },
     failOffsetY: function () {
+      return pan;
+    },
+    onStart: function (cb: GestureCbs['onStart']) {
+      gestureCbs.onStart = cb;
       return pan;
     },
     onUpdate: function (cb: GestureCbs['onUpdate']) {
@@ -117,6 +123,7 @@ function makeHandlers(overrides: Partial<SwipeableItemHandlers> = {}): Swipeable
 
 beforeEach(() => {
   jest.clearAllMocks();
+  delete gestureCbs.onStart;
   delete gestureCbs.onUpdate;
   delete gestureCbs.onEnd;
 });
@@ -129,16 +136,16 @@ describe('SwipeableItem', () => {
     });
 
     it('renders the check button', () => {
-      const { getByRole } = render(<SwipeableItem item={makeItem()} {...makeHandlers()} />);
-      expect(getByRole('button')).toBeTruthy();
+      const { getByTestId } = render(<SwipeableItem item={makeItem()} {...makeHandlers()} />);
+      expect(getByTestId('check-button')).toBeTruthy();
     });
 
     it('shows strikethrough name and check icon when checked', () => {
-      const { getByText, getByRole } = render(
+      const { getByText, getByTestId } = render(
         <SwipeableItem item={makeItem({ isChecked: true })} {...makeHandlers()} />
       );
       expect(getByText('Apples')).toBeTruthy();
-      expect(getByRole('button')).toBeTruthy();
+      expect(getByTestId('check-button')).toBeTruthy();
     });
 
     it('shows star badge when item is important', () => {
@@ -160,13 +167,13 @@ describe('SwipeableItem', () => {
   describe('check button tap', () => {
     it('calls onToggleDone when check button is pressed', () => {
       const handlers = makeHandlers();
-      const { getByRole } = render(<SwipeableItem item={makeItem()} {...handlers} />);
-      fireEvent.press(getByRole('button'));
+      const { getByTestId } = render(<SwipeableItem item={makeItem()} {...handlers} />);
+      fireEvent.press(getByTestId('check-button'));
       expect(handlers.onToggleDone).toHaveBeenCalledWith('item-1');
     });
   });
 
-  describe('swipe left — short (done)', () => {
+  describe('swipe left — done', () => {
     it('calls onToggleDone when released past DONE threshold', () => {
       const handlers = makeHandlers();
       render(<SwipeableItem item={makeItem()} {...handlers} />);
@@ -190,71 +197,144 @@ describe('SwipeableItem', () => {
     });
   });
 
-  describe('swipe left — long (delete removed)', () => {
-    it('does not call onDelete when swiped far left', () => {
+  describe('swipe right — lock and reveal buttons', () => {
+    it('does not trigger any action when swipe is below OPEN_THRESHOLD', () => {
       const handlers = makeHandlers();
       render(<SwipeableItem item={makeItem()} {...handlers} />);
 
       act(() => {
-        gestureCbs.onEnd?.({ translationX: -185, velocityX: 0 });
+        gestureCbs.onEnd?.({ translationX: 30, velocityX: 0 });
       });
 
+      expect(handlers.onToggleImportant).not.toHaveBeenCalled();
       expect(handlers.onDelete).not.toHaveBeenCalled();
     });
-  });
 
-  describe('swipe right — important (short)', () => {
-    it('calls onToggleImportant when released past STAR threshold', () => {
+    it('reveals star and delete buttons when swipe exceeds OPEN_THRESHOLD', () => {
       const handlers = makeHandlers();
-      render(<SwipeableItem item={makeItem()} {...handlers} />);
-
-      act(() => {
-        gestureCbs.onEnd?.({ translationX: 40, velocityX: 0 });
-      });
-
-      expect(handlers.onToggleImportant).toHaveBeenCalledWith('item-1');
-    });
-
-    it('does not trigger when short of star threshold', () => {
-      const handlers = makeHandlers();
-      render(<SwipeableItem item={makeItem()} {...handlers} />);
-
-      act(() => {
-        gestureCbs.onEnd?.({ translationX: 20, velocityX: 0 });
-      });
-
-      expect(handlers.onToggleImportant).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('swipe right — long (delete)', () => {
-    it('calls onDelete when released past DELETE threshold', () => {
-      const handlers = makeHandlers();
-      render(<SwipeableItem item={makeItem()} {...handlers} />);
-
-      act(() => {
-        gestureCbs.onEnd?.({ translationX: 115, velocityX: 0 });
-      });
-
-      expect(handlers.onDelete).toHaveBeenCalledWith('item-1');
-      expect(handlers.onToggleImportant).not.toHaveBeenCalled();
-    });
-
-    it('does not call onDelete when released between star and delete thresholds', () => {
-      const handlers = makeHandlers();
-      render(<SwipeableItem item={makeItem()} {...handlers} />);
+      const { getByLabelText } = render(<SwipeableItem item={makeItem()} {...handlers} />);
 
       act(() => {
         gestureCbs.onEnd?.({ translationX: 60, velocityX: 0 });
       });
 
+      expect(getByLabelText('Favourite')).toBeTruthy();
+      expect(getByLabelText('Delete')).toBeTruthy();
+      expect(handlers.onToggleImportant).not.toHaveBeenCalled();
       expect(handlers.onDelete).not.toHaveBeenCalled();
+    });
+
+    it('calls onToggleImportant when the star button is pressed', () => {
+      const handlers = makeHandlers();
+      const { getByLabelText } = render(<SwipeableItem item={makeItem()} {...handlers} />);
+
+      act(() => {
+        gestureCbs.onEnd?.({ translationX: 60, velocityX: 0 });
+      });
+      fireEvent.press(getByLabelText('Favourite'));
+
       expect(handlers.onToggleImportant).toHaveBeenCalledWith('item-1');
+      expect(handlers.onDelete).not.toHaveBeenCalled();
+    });
+
+    it('shows undo button (not star) for checked items', () => {
+      const handlers = makeHandlers();
+      const { getByLabelText, queryByLabelText } = render(
+        <SwipeableItem item={makeItem({ isChecked: true })} {...handlers} />
+      );
+
+      act(() => {
+        gestureCbs.onEnd?.({ translationX: 60, velocityX: 0 });
+      });
+
+      expect(getByLabelText('Undo')).toBeTruthy();
+      expect(queryByLabelText('Favourite')).toBeNull();
+    });
+
+    it('calls onToggleDone (undo) when undo button is pressed on a checked item', () => {
+      const handlers = makeHandlers();
+      const { getByLabelText } = render(
+        <SwipeableItem item={makeItem({ isChecked: true })} {...handlers} />
+      );
+
+      act(() => {
+        gestureCbs.onEnd?.({ translationX: 60, velocityX: 0 });
+      });
+      fireEvent.press(getByLabelText('Undo'));
+
+      expect(handlers.onToggleDone).toHaveBeenCalledWith('item-1');
+    });
+
+    it('calls onDelete when the delete button is pressed', () => {
+      const handlers = makeHandlers();
+      const { getByLabelText } = render(<SwipeableItem item={makeItem()} {...handlers} />);
+
+      act(() => {
+        gestureCbs.onEnd?.({ translationX: 60, velocityX: 0 });
+      });
+      fireEvent.press(getByLabelText('Delete'));
+
+      expect(handlers.onDelete).toHaveBeenCalledWith('item-1');
+      expect(handlers.onToggleImportant).not.toHaveBeenCalled();
+    });
+
+    it('closes buttons when swiping back past CLOSE_THRESHOLD', () => {
+      const handlers = makeHandlers();
+      const { getByLabelText } = render(<SwipeableItem item={makeItem()} {...handlers} />);
+
+      // Lock open.
+      act(() => {
+        gestureCbs.onStart?.({});
+        gestureCbs.onEnd?.({ translationX: 60, velocityX: 0 });
+      });
+      expect(getByLabelText('Favourite')).toBeTruthy();
+
+      // Swipe back far enough to close.
+      act(() => {
+        gestureCbs.onStart?.({});
+        gestureCbs.onEnd?.({ translationX: -50, velocityX: 0 });
+      });
+      expect(getByLabelText('Favourite').props.accessibilityState?.disabled).toBe(true);
+      expect(getByLabelText('Delete').props.accessibilityState?.disabled).toBe(true);
+    });
+
+    it('stays open when swipe back is short of CLOSE_THRESHOLD', () => {
+      const handlers = makeHandlers();
+      const { getByLabelText } = render(<SwipeableItem item={makeItem()} {...handlers} />);
+
+      // Lock open.
+      act(() => {
+        gestureCbs.onStart?.({});
+        gestureCbs.onEnd?.({ translationX: 60, velocityX: 0 });
+      });
+
+      // Swipe back a little — not enough to close.
+      act(() => {
+        gestureCbs.onStart?.({});
+        gestureCbs.onEnd?.({ translationX: -20, velocityX: 0 });
+      });
+
+      expect(getByLabelText('Favourite')).toBeTruthy();
+    });
+
+    it('closes buttons on a card tap when locked', () => {
+      const handlers = makeHandlers();
+      const { getByTestId, getByLabelText } = render(
+        <SwipeableItem item={makeItem()} {...handlers} />
+      );
+
+      act(() => {
+        gestureCbs.onEnd?.({ translationX: 60, velocityX: 0 });
+      });
+
+      fireEvent.press(getByTestId('card-tap-target'));
+
+      expect(getByLabelText('Favourite').props.accessibilityState?.disabled).toBe(true);
     });
   });
 
   describe('back zone visual state', () => {
-    it('transitions through zones as swipe value changes', () => {
+    it('transitions through left-swipe zones without errors', () => {
       render(<SwipeableItem item={makeItem()} {...makeHandlers()} />);
 
       // Should not throw at any zone boundary.
@@ -263,7 +343,6 @@ describe('SwipeableItem', () => {
         gestureCbs.onUpdate?.({ translationX: -40 });
         gestureCbs.onUpdate?.({ translationX: -80 });
         gestureCbs.onUpdate?.({ translationX: 40 });
-        gestureCbs.onUpdate?.({ translationX: 115 });
       });
     });
   });

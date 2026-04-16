@@ -20,14 +20,27 @@ jest.mock('expo-font', () => ({
 // react-native-worklets must be mocked before react-native-reanimated/mock
 // is required, because Reanimated 4's mock.ts imports from ./index which
 // transitively loads the native Worklets module.
-jest.mock('react-native-worklets', () =>
-  require('react-native-worklets/src/mock')
-);
+jest.mock('react-native-worklets', () => require('react-native-worklets/src/mock'));
 
-// react-native-reanimated — use the official RN mock.
-jest.mock('react-native-reanimated', () =>
-  require('react-native-reanimated/mock')
-);
+// react-native-reanimated — use the official RN mock, but override
+// useSharedValue so it persists across re-renders (the library mock creates a
+// fresh object on every call, which causes shared values mutated in gesture
+// callbacks to reset when a state update triggers a re-render).
+jest.mock('react-native-reanimated', () => {
+  const mock = require('react-native-reanimated/mock');
+  const { useRef } = require('react');
+  return {
+    ...mock,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    useSharedValue: function useSharedValue(init: any) {
+      const ref = useRef(null);
+      if (ref.current === null) {
+        ref.current = { value: init };
+      }
+      return ref.current;
+    },
+  };
+});
 
 // react-native-gesture-handler — mock Gesture API so that components using
 // GestureDetector / Gesture.Pan() render without native initialisation.
@@ -40,10 +53,21 @@ jest.mock('react-native-gesture-handler', () => {
   }
 
   const pan = {
-    activeOffsetX: function () { return pan; },
-    failOffsetY: function () { return pan; },
-    onUpdate: function () { return pan; },
-    onEnd: function () { return pan; },
+    activeOffsetX: function () {
+      return pan;
+    },
+    failOffsetY: function () {
+      return pan;
+    },
+    onStart: function () {
+      return pan;
+    },
+    onUpdate: function () {
+      return pan;
+    },
+    onEnd: function () {
+      return pan;
+    },
   };
 
   const Gesture = { Pan: () => pan };
@@ -82,6 +106,12 @@ jest.mock('expo-crypto', () => ({
 jest.mock('expo-haptics', () => ({
   impactAsync: jest.fn().mockResolvedValue(undefined),
   notificationAsync: jest.fn().mockResolvedValue(undefined),
-  ImpactFeedbackStyle: { Light: 'light', Medium: 'medium', Heavy: 'heavy', Soft: 'soft', Rigid: 'rigid' },
+  ImpactFeedbackStyle: {
+    Light: 'light',
+    Medium: 'medium',
+    Heavy: 'heavy',
+    Soft: 'soft',
+    Rigid: 'rigid',
+  },
   NotificationFeedbackType: { Success: 'success', Warning: 'warning', Error: 'error' },
 }));

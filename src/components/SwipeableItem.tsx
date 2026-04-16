@@ -1,13 +1,15 @@
 /**
  * SwipeableItem — shopping list row with gesture-based actions.
  *
- * Gestures (all spring back to resting after release):
- *   Swipe left ≥ 36px   → toggle done
- *   Swipe right ≥ 36px  → toggle important (or undo if item is checked)
- *   Swipe right ≥ 108px → delete
- *   Hold ≥ 500ms        → start category drag (when inside DragDropProvider)
- *   Double-tap card      → enter edit mode
- *   Tap check button     → toggle done
+ * Gestures:
+ *   Swipe left ≥ 36px         → toggle done (springs back to rest)
+ *   Swipe right ≥ 48px        → locks open, revealing star + delete buttons
+ *   Swipe back ≥ 30px (locked) → closes buttons
+ *   Tap star button            → toggle important (or undo check if item is checked)
+ *   Tap delete button          → delete item
+ *   Hold ≥ 500ms               → start category drag (when inside DragDropProvider)
+ *   Double-tap card            → enter edit mode
+ *   Tap check button           → toggle done
  *
  * Uses react-native-gesture-handler's Gesture.Pan() for reliable gesture
  * handling inside ScrollView (activeOffsetX / failOffsetY prevent conflicts)
@@ -58,17 +60,20 @@ function hapticSuccess(): void {
   void notificationAsync(NotificationFeedbackType.Success).catch(() => {});
 }
 
-// ─── Thresholds ───────────────────────────────────────────────────
-const SWIPE_DONE_PX = 36;
-const SWIPE_DELETE_PX = 108;
-const SWIPE_STAR_PX = 36;
+// ─── Thresholds & geometry ────────────────────────────────────────
+const SWIPE_DONE_PX = 36; // left-swipe distance to trigger done
 const DOUBLE_TAP_MS = 280;
 
-// Maximum card travel distances (clamped in onUpdate).
-const LEFT_TRAVEL_MAX = 72;
-const RIGHT_TRAVEL_MAX = 162;
+// Right-swipe locking: the card snaps open to reveal two tappable buttons.
+const BUTTON_WIDTH = 72; // width of each action button
+const BUTTON_GAP = 4; // gap between buttons, and between last button and card
+const LOCK_OFFSET = BUTTON_WIDTH * 2 + BUTTON_GAP * 2; // card travel to fully reveal buttons
+const OPEN_THRESHOLD = 48; // drag past this to snap open
+const CLOSE_THRESHOLD = 30; // swipe back this far (when locked) to close
 
-const SPRING = { damping: 20, stiffness: 200 } as const;
+const LEFT_TRAVEL_MAX = 72;
+
+const SPRING = { damping: 38, stiffness: 200 } as const;
 
 // ─── SVG icon components ──────────────────────────────────────────
 
@@ -162,7 +167,7 @@ export type SwipeableItemHandlers = {
 type SwipeableItemProps = SwipeableItemHandlers & { item: LocalItem };
 
 // Zone shown in the back reveal area while dragging.
-type BackZone = 'none' | 'done' | 'delete' | 'star';
+type BackZone = 'none' | 'done';
 
 // ─── Public component ─────────────────────────────────────────────
 
@@ -335,10 +340,17 @@ function SwipeRowContent({
   onEdit,
 }: SwipeRowContentProps) {
   const translateX = useSharedValue(0);
+  // Captures translateX at the start of each gesture so panning from a
+  // locked position (translateX = LOCK_OFFSET) works correctly.
+  const startOffset = useSharedValue(0);
+  // Tracks locked state on the UI thread so onEnd can read it in a worklet.
+  const isLocked = useSharedValue(0);
   // UI-thread zone tracker avoids calling runOnJS on every frame.
-  const currentZone = useSharedValue(0); // 0=none 1=done 2=delete 3=star
+  const currentZone = useSharedValue(0); // 0=none 1=done
 
   const [backZone, setBackZone] = useState<BackZone>('none');
+  // Whether the card is snapped open and the action buttons are tappable.
+  const [buttonsVisible, setButtonsVisible] = useState(false);
   const lastTapRef = useRef(0);
 
   const dragDrop = useDragDrop();
@@ -352,6 +364,32 @@ function SwipeRowContent({
     onToggleDone();
   }, [item.isChecked, onToggleDone]);
 
+  // ── Close buttons (JS-thread helper) ─────────────────────────
+  // Called from button onPress handlers and handlePress. Safe to call on the
+  // JS thread — Reanimated shared values can be written from either thread.
+
+  const closeButtons = useCallback(() => {
+    translateX.value = withSpring(0, SPRING);
+    isLocked.value = 0;
+    setButtonsVisible(false);
+  }, [translateX, isLocked]);
+
+  // ── Button handlers ───────────────────────────────────────────
+
+  const handleStarPress = useCallback(() => {
+    closeButtons();
+    if (item.isChecked) {
+      onToggleDone();
+    } else {
+      onToggleImportant();
+    }
+  }, [closeButtons, item.isChecked, onToggleDone, onToggleImportant]);
+
+  const handleDeletePress = useCallback(() => {
+    closeButtons();
+    onDelete();
+  }, [closeButtons, onDelete]);
+
   // ── Gesture ───────────────────────────────────────────────────
 
   // Swipe pan — activates after horizontal movement; drives swipe actions.
@@ -360,46 +398,55 @@ function SwipeRowContent({
     .activeOffsetX([-10, 10])
     // Fail (hand off to ScrollView) if vertical movement exceeds 15 px first.
     .failOffsetY([-15, 15])
+    .onStart(() => {
+      // Capture current card position so panning from locked state is relative.
+      startOffset.value = translateX.value;
+    })
     .onUpdate((e) => {
-      const x = Math.max(-LEFT_TRAVEL_MAX, Math.min(RIGHT_TRAVEL_MAX, e.translationX));
+      const raw = startOffset.value + e.translationX;
+      // Clamp: can't go right past LOCK_OFFSET or left past LEFT_TRAVEL_MAX.
+      const x = Math.max(-LEFT_TRAVEL_MAX, Math.min(LOCK_OFFSET, raw));
       translateX.value = x;
 
-      const zone =
-        x < -SWIPE_DONE_PX
-          ? 1 // done
-          : x > SWIPE_DELETE_PX
-            ? 3 // delete (right long)
-            : x > SWIPE_STAR_PX
-              ? 2 // star / undo (right short)
-              : 0;
-
+      // Only track the left-swipe (done) zone; right side uses locked buttons.
+      const zone = x < -SWIPE_DONE_PX ? 1 : 0;
       if (zone !== currentZone.value) {
         currentZone.value = zone;
-        const name: BackZone =
-          zone === 1 ? 'done' : zone === 2 ? 'star' : zone === 3 ? 'delete' : 'none';
-        runOnJS(updateZone)(name);
+        runOnJS(updateZone)(zone === 1 ? 'done' : 'none');
         runOnJS(hapticLight)();
       }
     })
     .onEnd((e) => {
-      if (e.translationX < -SWIPE_DONE_PX) {
+      const finalX = startOffset.value + e.translationX;
+
+      if (isLocked.value === 1) {
+        // Card is locked open. Swiping back far enough closes the buttons;
+        // otherwise snap back to the locked position.
+        if (e.translationX < -CLOSE_THRESHOLD) {
+          translateX.value = withSpring(0, SPRING);
+          isLocked.value = 0;
+          runOnJS(setButtonsVisible)(false);
+        } else {
+          translateX.value = withSpring(LOCK_OFFSET, SPRING);
+        }
+      } else if (finalX < -SWIPE_DONE_PX) {
+        // Left swipe → toggle done.
         if (!item.isChecked) {
           runOnJS(hapticSuccess)();
         }
         runOnJS(onToggleDone)();
-      } else if (e.translationX > SWIPE_DELETE_PX) {
-        runOnJS(onDelete)();
-      } else if (e.translationX > SWIPE_STAR_PX) {
-        // Checked (trolley) items: right-swipe short = undo back to list.
-        // Unchecked items: right-swipe short = toggle important.
-        if (item.isChecked) {
-          runOnJS(onToggleDone)();
-        } else {
-          runOnJS(onToggleImportant)();
-        }
+        translateX.value = withSpring(0, SPRING);
+      } else if (finalX > OPEN_THRESHOLD) {
+        // Right swipe past threshold → snap open and reveal action buttons.
+        translateX.value = withSpring(LOCK_OFFSET, SPRING);
+        isLocked.value = 1;
+        runOnJS(hapticLight)();
+        runOnJS(setButtonsVisible)(true);
+      } else {
+        // Short drag — spring back to rest.
+        translateX.value = withSpring(0, SPRING);
       }
 
-      translateX.value = withSpring(0, SPRING);
       currentZone.value = 0;
       runOnJS(updateZone)('none');
     });
@@ -437,6 +484,28 @@ function SwipeRowContent({
     transform: [{ translateX: translateX.value }],
   }));
 
+  // ── Sliding-door button animation ────────────────────────────
+  // Star stays fixed at the left edge throughout the swipe.
+  // Delete starts hidden behind the star (same x = 0) and slides right to
+  // its resting position as the card opens — emerging from under the star's
+  // right edge like one panel of a sliding door.
+
+  const starSlide = useAnimatedStyle(() => {
+    // Star doesn't move — no transform needed.
+    return {};
+  });
+
+  const deleteSlide = useAnimatedStyle(() => {
+    const progress = Math.min(1, Math.max(0, translateX.value / LOCK_OFFSET));
+    // At progress=0 the delete container is shifted fully left (behind the star).
+    // At progress=1 it sits at its natural position to the right of the star.
+    return {
+      transform: [{ translateX: -(BUTTON_WIDTH + BUTTON_GAP) * (1 - progress) }],
+    };
+  });
+
+  // Only colour the back for the left-swipe (done) zone; the right side is
+  // handled by the button backgrounds themselves.
   const backStyle = useAnimatedStyle(() => {
     const x = translateX.value;
     const bg =
@@ -444,19 +513,20 @@ function SwipeRowContent({
         ? item.isChecked
           ? '#ffe8cc'
           : Colors.mintLight
-        : x > SWIPE_DELETE_PX
-          ? Colors.deleteRed
-          : x > SWIPE_STAR_PX
-            ? item.isChecked
-              ? '#ffe8cc'
-              : '#fffae8'
-            : 'transparent';
+        : x > 0
+          ? Colors.mintBg
+          : 'transparent';
     return { backgroundColor: bg };
   });
 
   // ── Press / double-tap ────────────────────────────────────────
 
   const handlePress = useCallback(() => {
+    // If buttons are open, a tap on the card closes them without any action.
+    if (buttonsVisible) {
+      closeButtons();
+      return;
+    }
     const now = Date.now();
     if (now - lastTapRef.current < DOUBLE_TAP_MS) {
       lastTapRef.current = 0;
@@ -464,7 +534,7 @@ function SwipeRowContent({
     } else {
       lastTapRef.current = now;
     }
-  }, [onEdit]);
+  }, [buttonsVisible, closeButtons, onEdit]);
 
   // ─────────────────────────────────────────────────────────────
 
@@ -472,15 +542,52 @@ function SwipeRowContent({
     <View style={rowStyles.row}>
       {/* ── Back reveal ── */}
       <Animated.View style={[StyleSheet.absoluteFill, backStyles.container, backStyle]}>
-        {(backZone === 'star' || backZone === 'delete') && (
-          <View style={backStyles.leftZone}>
-            {backZone === 'delete' && <IconTrash color={Colors.deleteRedStrong} size={24} />}
-            {backZone === 'star' && item.isChecked && <IconUndo color={Colors.mint} size={24} />}
-            {backZone === 'star' && !item.isChecked && (
-              <IconStar color={Colors.yellow} size={24} filled={item.isImportant} />
-            )}
-          </View>
-        )}
+        {/* Right-swipe action buttons. Always rendered so they are visible the
+            moment the user begins dragging; disabled until the card snaps open. */}
+        <View
+          style={backStyles.buttonRow}
+          pointerEvents={buttonsVisible ? 'box-none' : 'none'}
+        >
+          {/* Star / undo — at the back (rendered first, lowest z-order).
+              Fixed at the left edge; delete slides away to reveal it. */}
+          <Animated.View style={[backStyles.starContainer, starSlide]}>
+            <TouchableOpacity
+              style={[
+                backStyles.actionButton,
+                item.isChecked ? backStyles.undoButton : backStyles.starButton,
+              ]}
+              onPress={handleStarPress}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel={item.isChecked ? 'Undo' : 'Favourite'}
+              disabled={!buttonsVisible}
+            >
+              {item.isChecked ? (
+                <IconUndo color={Colors.mint} size={22} />
+              ) : (
+                <IconStar color={Colors.yellow} size={22} filled={item.isImportant} />
+              )}
+            </TouchableOpacity>
+          </Animated.View>
+
+          {/* Delete — in the middle (rendered second, higher z-order than star).
+              Starts at x=0 covering the star, slides right to its own position
+              revealing the star behind it. */}
+          <Animated.View style={[backStyles.deleteContainer, deleteSlide]}>
+            <TouchableOpacity
+              style={[backStyles.actionButton, backStyles.deleteButton]}
+              onPress={handleDeletePress}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel="Delete"
+              disabled={!buttonsVisible}
+            >
+              <IconTrash color={Colors.white} size={22} />
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
+
+        {/* Left-swipe done indicator */}
         {backZone === 'done' && (
           <View style={backStyles.rightZone}>
             {item.isChecked ? (
@@ -527,7 +634,9 @@ function SwipeRowContent({
             onPress={handleCheckButtonPress}
             activeOpacity={0.8}
             accessibilityRole="button"
+            accessibilityLabel="Check"
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            testID="check-button"
           >
             {item.isChecked && <IconCheck color={Colors.white} size={14} />}
           </TouchableOpacity>
@@ -609,14 +718,44 @@ const backStyles = StyleSheet.create({
     borderRadius: Radii.lg,
     overflow: 'hidden',
   },
-  leftZone: {
+  // Container for the two sliding-door action buttons.
+  buttonRow: {
     position: 'absolute',
     left: 0,
     top: 0,
     bottom: 0,
-    width: 56,
+    width: LOCK_OFFSET,
+  },
+  // Star / undo button — final resting position at the left edge.
+  starContainer: {
+    position: 'absolute',
+    left: 0,
+    top: BUTTON_GAP,
+    bottom: BUTTON_GAP,
+    width: BUTTON_WIDTH,
+  },
+  // Delete button — final resting position just right of the star.
+  deleteContainer: {
+    position: 'absolute',
+    left: BUTTON_WIDTH + BUTTON_GAP,
+    top: BUTTON_GAP,
+    bottom: BUTTON_GAP,
+    width: BUTTON_WIDTH,
+  },
+  actionButton: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: Radii.md,
+  },
+  starButton: {
+    backgroundColor: '#fffae8',
+  },
+  undoButton: {
+    backgroundColor: Colors.mintLight,
+  },
+  deleteButton: {
+    backgroundColor: Colors.deleteRedStrong,
   },
   rightZone: {
     position: 'absolute',
