@@ -1,3 +1,5 @@
-export function generateServerDescription(description: string, isImportant: boolean): string {
-  return isImportant ? `!${description}` : description;
+import type { LocalItem } from '@/db/items';
+
+export function generateServerDescription(item: LocalItem): string {
+  return item.isImportant ? `!${item.description}` : item.description;
 }

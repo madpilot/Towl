@@ -123,7 +123,9 @@ async function dispatchPayload(api: ShoppingListsApi, payload: SyncPayload): Pro
   switch (payload.opType) {
     case 'ADD_ITEM': {
       const addItem = await getItem(payload.itemLocalId);
-      const addDescription = generateServerDescription(payload.description, addItem?.isImportant ?? false);
+      const addDescription = addItem
+        ? generateServerDescription({ ...addItem, description: payload.description })
+        : payload.description;
       const result = await api.addItemByName(payload.listServerId, payload.name, addDescription);
       await markItemSynced(
         payload.itemLocalId,
@@ -175,7 +177,9 @@ async function dispatchPayload(api: ShoppingListsApi, payload: SyncPayload): Pro
 
     case 'UPDATE_ITEM': {
       const updateItem = await getItem(payload.itemLocalId);
-      const updateDescription = generateServerDescription(payload.description, updateItem?.isImportant ?? false);
+      const updateDescription = updateItem
+        ? generateServerDescription({ ...updateItem, description: payload.description })
+        : payload.description;
       await api.updateItem(
         payload.itemServerId,
         payload.name,

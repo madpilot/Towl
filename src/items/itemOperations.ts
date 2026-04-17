@@ -45,7 +45,7 @@ export async function addItem(params: {
           listServerId: activeServerId,
           itemServerId: existing.serverId,
           itemLocalId: existing.localId,
-          description: generateServerDescription(mergedDescription, existing.isImportant),
+          description: generateServerDescription({ ...existing, description: mergedDescription }),
         },
         activeLocalId
       );
@@ -146,7 +146,7 @@ export async function toggleImportant(params: {
         listServerId: activeServerId,
         itemServerId: item.serverId,
         itemLocalId: item.localId,
-        description: generateServerDescription(item.description, newIsImportant),
+        description: generateServerDescription({ ...item, isImportant: newIsImportant }),
       },
       activeLocalId
     );
@@ -217,7 +217,7 @@ export async function saveItem(params: {
         listServerId: activeServerId,
         itemServerId: item.serverId,
         itemLocalId: item.localId,
-        description: generateServerDescription(description, item.isImportant),
+        description: generateServerDescription({ ...item, description }),
       },
       activeLocalId
     );
