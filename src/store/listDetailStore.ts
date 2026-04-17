@@ -182,6 +182,14 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
     },
 
     bootstrap: async (householdId, restoreLastList) => {
+      const { activeLocalId, activeServerId } = get();
+      if (activeLocalId) {
+        // Already loaded — refresh in background without disrupting the UI.
+        void get().syncLists(householdId);
+        void syncFromServer(activeLocalId, activeServerId, householdId);
+        return;
+      }
+
       set({ loading: true, items: [], activeLocalId: null, activeServerId: null, activeName: '' });
 
       let lists = await getAllLists(householdId);

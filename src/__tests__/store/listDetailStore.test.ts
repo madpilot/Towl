@@ -260,6 +260,23 @@ describe('bootstrap', () => {
     expect(useListDetailStore.getState().activeLocalId).toBe('list-local-1');
   });
 
+  it('skips full reload and fires background refresh when already loaded', async () => {
+    useListDetailStore.setState({
+      activeLocalId: 'list-local-1',
+      activeServerId: 5,
+      items: [makeItem()],
+      loading: false,
+    });
+
+    await useListDetailStore.getState().bootstrap(1, false);
+
+    // Should not have cleared items or started loading
+    expect(useListDetailStore.getState().loading).toBe(false);
+    expect(useListDetailStore.getState().items).toHaveLength(1);
+    // Should not have called getItemsForList for a fresh load
+    expect(getItemsForList).not.toHaveBeenCalled();
+  });
+
   it('sets loading: false and no active list when no lists exist', async () => {
     (getAllLists as jest.Mock).mockResolvedValue([]);
 
