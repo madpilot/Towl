@@ -46,11 +46,14 @@ export async function getAllLists(householdId: number): Promise<LocalList[]> {
 export async function upsertListFromServer(
   serverId: number,
   householdId: number,
-  name: string,
-  existingLocalId?: string
+  name: string
 ): Promise<LocalList> {
   const db = await getDb();
-  const localId = existingLocalId ?? randomUUID();
+  const existing = await db.getFirstAsync<ListRow>(
+    'SELECT * FROM local_lists WHERE server_id = ?',
+    [serverId]
+  );
+  const localId = existing?.local_id ?? randomUUID();
   await db.runAsync(
     `INSERT INTO local_lists (local_id, server_id, household_id, name, is_dirty, is_deleted, last_synced)
      VALUES (?, ?, ?, ?, 0, 0, ?)
@@ -109,6 +112,30 @@ export async function hardDeleteList(localId: string): Promise<void> {
   const db = await getDb();
   await db.runAsync('DELETE FROM local_lists WHERE local_id = ?', [localId]);
   await db.runAsync('DELETE FROM local_items WHERE list_local_id = ?', [localId]);
+}
+
+export async function removeListsDeletedOnServer(
+  householdId: number,
+  serverIds: number[]
+): Promise<void> {
+  const db = await getDb();
+  if (serverIds.length === 0) {
+    await db.runAsync(
+      `DELETE FROM local_lists
+       WHERE household_id = ? AND server_id IS NOT NULL AND is_deleted = 0`,
+      [householdId]
+    );
+  } else {
+    const placeholders = serverIds.map(() => '?').join(',');
+    await db.runAsync(
+      `DELETE FROM local_lists
+       WHERE household_id = ?
+         AND server_id IS NOT NULL
+         AND is_deleted = 0
+         AND server_id NOT IN (${placeholders})`,
+      [householdId, ...serverIds]
+    );
+  }
 }
 
 export async function getListByServerId(serverId: number): Promise<LocalList | null> {

@@ -21,6 +21,7 @@ jest.mock('@/db/items', () => ({
 jest.mock('@/db/lists', () => ({
   getAllLists: jest.fn(),
   upsertListFromServer: jest.fn(),
+  removeListsDeletedOnServer: jest.fn(),
 }));
 
 jest.mock('@/items/itemOperations', () => ({
@@ -51,7 +52,7 @@ jest.mock('@/data/foodMatcher', () => ({
 
 import { getItemAsync, setItemAsync } from 'expo-secure-store';
 import { getItemsForList, clearCheckedItems, clearExpiredCheckedItems } from '@/db/items';
-import { getAllLists } from '@/db/lists';
+import { getAllLists, upsertListFromServer, removeListsDeletedOnServer } from '@/db/lists';
 import {
   addItem as addItemOp,
   checkItem as checkItemOp,
@@ -121,6 +122,8 @@ beforeEach(() => {
   (getItemsForList as jest.Mock).mockResolvedValue([]);
   (clearExpiredCheckedItems as jest.Mock).mockResolvedValue(undefined);
   (getAllLists as jest.Mock).mockResolvedValue([]);
+  (upsertListFromServer as jest.Mock).mockResolvedValue(undefined);
+  (removeListsDeletedOnServer as jest.Mock).mockResolvedValue(undefined);
   (mockGetShoppingLists as jest.Mock).mockResolvedValue([]);
   (mockGetCategories as jest.Mock).mockResolvedValue([]);
   (mockGetHousehold as jest.Mock).mockResolvedValue({
@@ -138,6 +141,43 @@ beforeEach(() => {
   (saveItemOp as jest.Mock).mockResolvedValue(makeItem());
   (moveItemToCategoryOp as jest.Mock).mockResolvedValue(makeItem());
   (addItemOp as jest.Mock).mockResolvedValue({ action: 'added', item: makeItem({ localId: 'new-item', name: 'Bread' }) });
+});
+
+// ─── syncLists ────────────────────────────────────────────────────────────────
+
+describe('syncLists', () => {
+  it('fetches from server, upserts each list, and removes deleted ones', async () => {
+    const serverLists = [{ id: 5, name: 'Weekly', items: [] }];
+    mockGetShoppingLists.mockResolvedValue(serverLists);
+    (getAllLists as jest.Mock).mockResolvedValue([makeList()]);
+
+    await useListDetailStore.getState().syncLists(1);
+
+    expect(mockGetShoppingLists).toHaveBeenCalledWith(1);
+    expect(upsertListFromServer).toHaveBeenCalledWith(5, 1, 'Weekly');
+    expect(removeListsDeletedOnServer).toHaveBeenCalledWith(1, [5]);
+  });
+
+  it('updates allLists from SQLite after syncing', async () => {
+    const lists = [makeList()];
+    mockGetShoppingLists.mockResolvedValue([{ id: 5, name: 'Weekly', items: [] }]);
+    (getAllLists as jest.Mock).mockResolvedValue(lists);
+
+    await useListDetailStore.getState().syncLists(1);
+
+    expect(useListDetailStore.getState().allLists).toEqual(lists);
+  });
+
+  it('keeps existing allLists when API call fails', async () => {
+    const existingLists = [makeList()];
+    (getAllLists as jest.Mock).mockResolvedValue(existingLists);
+    mockGetShoppingLists.mockRejectedValue(new Error('Network error'));
+
+    await useListDetailStore.getState().syncLists(1);
+
+    expect(useListDetailStore.getState().allLists).toEqual(existingLists);
+    expect(upsertListFromServer).not.toHaveBeenCalled();
+  });
 });
 
 // ─── bootstrap ───────────────────────────────────────────────────────────────

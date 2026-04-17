@@ -8,7 +8,7 @@ import {
   removeItemsDeletedOnServer,
   clearCheckedItems,
 } from '@/db/items';
-import { getAllLists, upsertListFromServer } from '@/db/lists';
+import { getAllLists, upsertListFromServer, removeListsDeletedOnServer } from '@/db/lists';
 import { useAuthStore } from '@/store/authStore';
 import { matchItem } from '@/data/foodMatcher';
 import { SECURE_STORE_KEYS } from '@/utils/constants';
@@ -44,6 +44,7 @@ type ListDetailState = {
   setEditingId: (id: string | null) => void;
 
   // Lifecycle
+  syncLists: (householdId: number) => Promise<void>;
   bootstrap: (householdId: number, restoreLastList: boolean) => Promise<void>;
   refresh: (householdId: number) => Promise<void>;
   reloadAfterSync: () => Promise<void>;
@@ -162,27 +163,38 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
     setListPickerVisible: (v) => set({ listPickerVisible: v }),
     setEditingId: (id) => set({ editingId: id }),
 
+    syncLists: async (householdId) => {
+      let lists = await getAllLists(householdId);
+      const api = useAuthStore.getState().shoppingListsApi;
+      if (api) {
+        try {
+          const serverLists = await api.getShoppingLists(householdId);
+          for (const sl of serverLists) {
+            await upsertListFromServer(sl.id, householdId, sl.name);
+          }
+          await removeListsDeletedOnServer(householdId, serverLists.map((l) => l.id));
+          lists = await getAllLists(householdId);
+        } catch {
+          // Offline — keep existing SQLite data.
+        }
+      }
+      set({ allLists: lists });
+    },
+
     bootstrap: async (householdId, restoreLastList) => {
       set({ loading: true, items: [], activeLocalId: null, activeServerId: null, activeName: '' });
 
       let lists = await getAllLists(householdId);
 
-      // Fresh install — SQLite is empty. Seed lists from the server before
-      // proceeding so the rest of bootstrap has something to work with.
       if (lists.length === 0) {
-        const api = useAuthStore.getState().shoppingListsApi;
-        try {
-          const serverLists = (await api?.getShoppingLists(householdId)) ?? [];
-          for (const sl of serverLists) {
-            await upsertListFromServer(sl.id, householdId, sl.name);
-          }
-          lists = await getAllLists(householdId);
-        } catch {
-          // Offline on first launch — nothing to show yet.
-        }
+        // Nothing cached yet (first launch) — must wait for the server.
+        await get().syncLists(householdId);
+        lists = get().allLists;
+      } else {
+        // Cached data available — show it immediately, refresh in background.
+        set({ allLists: lists });
+        void get().syncLists(householdId);
       }
-
-      set({ allLists: lists });
 
       if (lists.length === 0) {
         set({ loading: false });

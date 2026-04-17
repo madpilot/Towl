@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react-native';
 
 jest.mock('@/store/householdDetailStore');
+jest.mock('@/store/listDetailStore', () => ({ useListDetailStore: { getState: jest.fn(() => ({ syncLists: jest.fn() })) } }));
 jest.mock('@/components/Sheet', () => {
   const { View } = require('react-native');
   function Sheet({ visible, children }: { visible: boolean; children: React.ReactNode }) {

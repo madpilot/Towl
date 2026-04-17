@@ -2,6 +2,7 @@ import { Alert } from 'react-native';
 import { create } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
 import { useAuthStore } from './authStore';
+import { useListDetailStore } from './listDetailStore';
 import type { ApiShoppingList } from '@/api/shoppinglists';
 import type { HouseholdCategory, HouseholdMember } from '@/api/households';
 
@@ -134,24 +135,33 @@ export const useHouseholdDetailStore = create<HouseholdDetailState>((set, get) =
     }
     const created = await shoppingListsApi.createShoppingList(name, householdId);
     set((s) => ({ lists: [...s.lists, created] }));
+    await useListDetailStore.getState().syncLists(householdId);
   },
 
   renameList: async (id, name) => {
+    const { householdId } = get();
     const { shoppingListsApi } = useAuthStore.getState();
     if (!shoppingListsApi) {
       return;
     }
     await shoppingListsApi.renameShoppingList(id, name);
     set((s) => ({ lists: s.lists.map((l) => (l.id === id ? { ...l, name } : l)) }));
+    if (householdId !== null) {
+      await useListDetailStore.getState().syncLists(householdId);
+    }
   },
 
   deleteList: async (id) => {
+    const { householdId } = get();
     const { shoppingListsApi } = useAuthStore.getState();
     if (!shoppingListsApi) {
       return;
     }
     await shoppingListsApi.deleteShoppingList(id);
     set((s) => ({ lists: s.lists.filter((l) => l.id !== id) }));
+    if (householdId !== null) {
+      await useListDetailStore.getState().syncLists(householdId);
+    }
   },
 
   // ── Categories ────────────────────────────────────────────────────────────
