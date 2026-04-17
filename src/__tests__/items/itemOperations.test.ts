@@ -14,7 +14,6 @@ jest.mock('@/db/items', () => ({
   updateItemDescription: jest.fn(),
   updateItemNameAndIcon: jest.fn(),
   updateItemCategory: jest.fn(),
-  getItem: jest.fn(),
 }));
 
 jest.mock('@/sync/syncManager', () => ({
@@ -46,7 +45,6 @@ import {
   updateItemDescription,
   updateItemNameAndIcon,
   updateItemCategory,
-  getItem,
 } from '@/db/items';
 import { enqueue, removePendingCheckItem } from '@/sync/syncManager';
 import { matchItem } from '@/data/foodMatcher';
@@ -92,7 +90,6 @@ beforeEach(() => {
   jest.clearAllMocks();
   (enqueue as jest.Mock).mockResolvedValue(undefined);
   (removePendingCheckItem as jest.Mock).mockResolvedValue(false);
-  (getItem as jest.Mock).mockResolvedValue(makeItem());
   (addItemLocally as jest.Mock).mockResolvedValue(makeItem({ localId: 'new-item', name: 'Bread' }));
   (softDeleteItem as jest.Mock).mockResolvedValue(undefined);
   (hardDeleteItem as jest.Mock).mockResolvedValue(undefined);
@@ -234,21 +231,13 @@ describe('addItem', () => {
 
 describe('checkItem', () => {
   it('calls DB checkItem with a timestamp', async () => {
-    await checkItem({ listContext: LIST_CTX, itemLocalId: 'item-1' });
+    await checkItem({ listContext: LIST_CTX, item: makeItem() });
 
     expect(checkItemDb).toHaveBeenCalledWith('item-1', expect.any(Number));
   });
 
-  it('reads fresh item from DB after the write', async () => {
-    await checkItem({ listContext: LIST_CTX, itemLocalId: 'item-1' });
-
-    expect(getItem).toHaveBeenCalledWith('item-1');
-  });
-
-  it('enqueues CHECK_ITEM when fresh item has a serverId', async () => {
-    (getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: 100 }));
-
-    await checkItem({ listContext: LIST_CTX, itemLocalId: 'item-1' });
+  it('enqueues CHECK_ITEM when item has a serverId', async () => {
+    await checkItem({ listContext: LIST_CTX, item: makeItem({ serverId: 100 }) });
 
     expect(enqueue).toHaveBeenCalledWith(
       expect.objectContaining({ opType: 'CHECK_ITEM', listServerId: 5, itemServerId: 100 }),
@@ -256,23 +245,23 @@ describe('checkItem', () => {
     );
   });
 
-  it('skips enqueue when fresh item has no serverId', async () => {
-    (getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: null }));
-
-    await checkItem({ listContext: LIST_CTX, itemLocalId: 'item-1' });
+  it('skips enqueue when item has no serverId', async () => {
+    await checkItem({ listContext: LIST_CTX, item: makeItem({ serverId: null }) });
 
     expect(enqueue).not.toHaveBeenCalled();
   });
 
   it('skips enqueue when activeServerId is null', async () => {
-    await checkItem({ listContext: NO_SERVER_CTX, itemLocalId: 'item-1' });
+    await checkItem({ listContext: NO_SERVER_CTX, item: makeItem() });
 
     expect(enqueue).not.toHaveBeenCalled();
   });
 
-  it('returns { checkedAt } matching the timestamp written to DB', async () => {
-    const result = await checkItem({ listContext: LIST_CTX, itemLocalId: 'item-1' });
+  it('returns updated item with isChecked=true and matching checkedAt', async () => {
+    const result = await checkItem({ listContext: LIST_CTX, item: makeItem() });
 
+    expect(result.isChecked).toBe(true);
+    expect(result.isDirty).toBe(true);
     expect(result.checkedAt).toBeGreaterThan(0);
     const dbCall = (checkItemDb as jest.Mock).mock.calls[0];
     expect(result.checkedAt).toBe(dbCall[1]);
@@ -283,7 +272,7 @@ describe('checkItem', () => {
 
 describe('uncheckItem', () => {
   it('calls removePendingCheckItem first', async () => {
-    await uncheckItem({ listContext: LIST_CTX, itemLocalId: 'item-1' });
+    await uncheckItem({ listContext: LIST_CTX, item: makeItem() });
 
     expect(removePendingCheckItem).toHaveBeenCalledWith('item-1');
   });
@@ -291,7 +280,7 @@ describe('uncheckItem', () => {
   it('calls DB uncheckItem with isDirty=false when pending op was found', async () => {
     (removePendingCheckItem as jest.Mock).mockResolvedValue(true);
 
-    await uncheckItem({ listContext: LIST_CTX, itemLocalId: 'item-1' });
+    await uncheckItem({ listContext: LIST_CTX, item: makeItem() });
 
     expect(uncheckItemDb).toHaveBeenCalledWith('item-1', false);
     expect(enqueue).not.toHaveBeenCalled();
@@ -299,18 +288,16 @@ describe('uncheckItem', () => {
 
   it('calls DB uncheckItem with isDirty=true when no pending op and item has serverId', async () => {
     (removePendingCheckItem as jest.Mock).mockResolvedValue(false);
-    (getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: 100 }));
 
-    await uncheckItem({ listContext: LIST_CTX, itemLocalId: 'item-1' });
+    await uncheckItem({ listContext: LIST_CTX, item: makeItem({ serverId: 100 }) });
 
     expect(uncheckItemDb).toHaveBeenCalledWith('item-1', true);
   });
 
   it('enqueues ADD_ITEM when no pending op and item has serverId', async () => {
     (removePendingCheckItem as jest.Mock).mockResolvedValue(false);
-    (getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: 100, name: 'Milk', description: '1L' }));
 
-    await uncheckItem({ listContext: LIST_CTX, itemLocalId: 'item-1' });
+    await uncheckItem({ listContext: LIST_CTX, item: makeItem({ serverId: 100, name: 'Milk', description: '1L' }) });
 
     expect(enqueue).toHaveBeenCalledWith(
       expect.objectContaining({ opType: 'ADD_ITEM', listServerId: 5, name: 'Milk' }),
@@ -321,42 +308,40 @@ describe('uncheckItem', () => {
   it('skips enqueue when hadPendingOp is true', async () => {
     (removePendingCheckItem as jest.Mock).mockResolvedValue(true);
 
-    await uncheckItem({ listContext: LIST_CTX, itemLocalId: 'item-1' });
+    await uncheckItem({ listContext: LIST_CTX, item: makeItem() });
 
     expect(enqueue).not.toHaveBeenCalled();
   });
 
-  it('skips enqueue when fresh item has no serverId', async () => {
-    (getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: null }));
-
-    await uncheckItem({ listContext: LIST_CTX, itemLocalId: 'item-1' });
+  it('skips enqueue when item has no serverId', async () => {
+    await uncheckItem({ listContext: LIST_CTX, item: makeItem({ serverId: null }) });
 
     expect(enqueue).not.toHaveBeenCalled();
   });
 
   it('skips enqueue when activeServerId is null', async () => {
-    (getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: 100 }));
-
-    await uncheckItem({ listContext: NO_SERVER_CTX, itemLocalId: 'item-1' });
+    await uncheckItem({ listContext: NO_SERVER_CTX, item: makeItem({ serverId: 100 }) });
 
     expect(enqueue).not.toHaveBeenCalled();
   });
 
-  it('returns { needsReAdd: true } when ADD_ITEM was enqueued', async () => {
+  it('returns updated item with isChecked=false and isDirty=true when ADD_ITEM was enqueued', async () => {
     (removePendingCheckItem as jest.Mock).mockResolvedValue(false);
-    (getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: 100 }));
 
-    const result = await uncheckItem({ listContext: LIST_CTX, itemLocalId: 'item-1' });
+    const result = await uncheckItem({ listContext: LIST_CTX, item: makeItem({ serverId: 100 }) });
 
-    expect(result.needsReAdd).toBe(true);
+    expect(result.isChecked).toBe(false);
+    expect(result.isDirty).toBe(true);
+    expect(result.checkedAt).toBeNull();
   });
 
-  it('returns { needsReAdd: false } when pending op was cancelled', async () => {
+  it('returns updated item with isDirty=false when pending op was cancelled', async () => {
     (removePendingCheckItem as jest.Mock).mockResolvedValue(true);
 
-    const result = await uncheckItem({ listContext: LIST_CTX, itemLocalId: 'item-1' });
+    const result = await uncheckItem({ listContext: LIST_CTX, item: makeItem({ serverId: 100 }) });
 
-    expect(result.needsReAdd).toBe(false);
+    expect(result.isChecked).toBe(false);
+    expect(result.isDirty).toBe(false);
   });
 });
 
@@ -364,21 +349,13 @@ describe('uncheckItem', () => {
 
 describe('toggleImportant', () => {
   it('calls toggleItemImportant with the negated value', async () => {
-    await toggleImportant({ listContext: LIST_CTX, itemLocalId: 'item-1', currentIsImportant: false });
+    await toggleImportant({ listContext: LIST_CTX, item: makeItem({ isImportant: false }) });
 
     expect(toggleItemImportant).toHaveBeenCalledWith('item-1', true);
   });
 
-  it('reads fresh item from DB after the toggle', async () => {
-    await toggleImportant({ listContext: LIST_CTX, itemLocalId: 'item-1', currentIsImportant: false });
-
-    expect(getItem).toHaveBeenCalledWith('item-1');
-  });
-
   it('enqueues UPDATE_ITEM_DESC with ! prefix when toggling to important', async () => {
-    (getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: 100, isImportant: true, description: 'cold pressed' }));
-
-    await toggleImportant({ listContext: LIST_CTX, itemLocalId: 'item-1', currentIsImportant: false });
+    await toggleImportant({ listContext: LIST_CTX, item: makeItem({ serverId: 100, isImportant: false, description: 'cold pressed' }) });
 
     expect(enqueue).toHaveBeenCalledWith(
       expect.objectContaining({ opType: 'UPDATE_ITEM_DESC', description: '!cold pressed' }),
@@ -387,9 +364,7 @@ describe('toggleImportant', () => {
   });
 
   it('enqueues UPDATE_ITEM_DESC without ! prefix when toggling to not important', async () => {
-    (getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: 100, isImportant: false, description: 'cold pressed' }));
-
-    await toggleImportant({ listContext: LIST_CTX, itemLocalId: 'item-1', currentIsImportant: true });
+    await toggleImportant({ listContext: LIST_CTX, item: makeItem({ serverId: 100, isImportant: true, description: 'cold pressed' }) });
 
     expect(enqueue).toHaveBeenCalledWith(
       expect.objectContaining({ opType: 'UPDATE_ITEM_DESC', description: 'cold pressed' }),
@@ -397,18 +372,22 @@ describe('toggleImportant', () => {
     );
   });
 
-  it('skips enqueue when fresh item has no serverId', async () => {
-    (getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: null }));
-
-    await toggleImportant({ listContext: LIST_CTX, itemLocalId: 'item-1', currentIsImportant: false });
+  it('skips enqueue when item has no serverId', async () => {
+    await toggleImportant({ listContext: LIST_CTX, item: makeItem({ serverId: null }) });
 
     expect(enqueue).not.toHaveBeenCalled();
   });
 
   it('skips enqueue when activeServerId is null', async () => {
-    await toggleImportant({ listContext: NO_SERVER_CTX, itemLocalId: 'item-1', currentIsImportant: false });
+    await toggleImportant({ listContext: NO_SERVER_CTX, item: makeItem() });
 
     expect(enqueue).not.toHaveBeenCalled();
+  });
+
+  it('returns updated item with flipped isImportant', async () => {
+    const result = await toggleImportant({ listContext: LIST_CTX, item: makeItem({ isImportant: false }) });
+
+    expect(result.isImportant).toBe(true);
   });
 });
 
@@ -416,21 +395,13 @@ describe('toggleImportant', () => {
 
 describe('deleteItem', () => {
   it('calls softDeleteItem first', async () => {
-    await deleteItem({ listContext: LIST_CTX, itemLocalId: 'item-1' });
+    await deleteItem({ listContext: LIST_CTX, item: makeItem() });
 
     expect(softDeleteItem).toHaveBeenCalledWith('item-1');
   });
 
-  it('reads fresh item from DB to guard against stale state', async () => {
-    await deleteItem({ listContext: LIST_CTX, itemLocalId: 'item-1' });
-
-    expect(getItem).toHaveBeenCalledWith('item-1');
-  });
-
-  it('enqueues REMOVE_ITEM when fresh item has a serverId', async () => {
-    (getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: 100 }));
-
-    await deleteItem({ listContext: LIST_CTX, itemLocalId: 'item-1' });
+  it('enqueues REMOVE_ITEM when item has a serverId', async () => {
+    await deleteItem({ listContext: LIST_CTX, item: makeItem({ serverId: 100 }) });
 
     expect(enqueue).toHaveBeenCalledWith(
       expect.objectContaining({ opType: 'REMOVE_ITEM', listServerId: 5, itemServerId: 100 }),
@@ -439,17 +410,15 @@ describe('deleteItem', () => {
     expect(hardDeleteItem).not.toHaveBeenCalled();
   });
 
-  it('hard-deletes immediately when fresh item has no serverId', async () => {
-    (getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: null }));
-
-    await deleteItem({ listContext: LIST_CTX, itemLocalId: 'item-1' });
+  it('hard-deletes immediately when item has no serverId', async () => {
+    await deleteItem({ listContext: LIST_CTX, item: makeItem({ serverId: null }) });
 
     expect(hardDeleteItem).toHaveBeenCalledWith('item-1');
     expect(enqueue).not.toHaveBeenCalled();
   });
 
   it('hard-deletes when activeServerId is null', async () => {
-    await deleteItem({ listContext: NO_SERVER_CTX, itemLocalId: 'item-1' });
+    await deleteItem({ listContext: NO_SERVER_CTX, item: makeItem() });
 
     expect(hardDeleteItem).toHaveBeenCalledWith('item-1');
     expect(enqueue).not.toHaveBeenCalled();
@@ -459,7 +428,8 @@ describe('deleteItem', () => {
 // ─── saveItem ────────────────────────────────────────────────────────────────
 
 describe('saveItem', () => {
-  const PARAMS = { listContext: LIST_CTX, itemLocalId: 'item-1', name: 'Almond Milk', description: '500g', iconKey: 'milk' };
+  const BASE_ITEM = makeItem({ serverId: 100 });
+  const PARAMS = { listContext: LIST_CTX, item: BASE_ITEM, name: 'Almond Milk', description: '500g', iconKey: 'milk' };
 
   it('calls updateItemNameAndIcon with the new values', async () => {
     await saveItem(PARAMS);
@@ -467,15 +437,7 @@ describe('saveItem', () => {
     expect(updateItemNameAndIcon).toHaveBeenCalledWith('item-1', 'Almond Milk', '500g', 'milk');
   });
 
-  it('reads fresh item from DB after the write', async () => {
-    await saveItem(PARAMS);
-
-    expect(getItem).toHaveBeenCalledWith('item-1');
-  });
-
   it('enqueues UPDATE_ITEM with catalog fields', async () => {
-    (getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: 100, serverCategoryId: null }));
-
     await saveItem(PARAMS);
 
     expect(enqueue).toHaveBeenCalledWith(
@@ -485,8 +447,6 @@ describe('saveItem', () => {
   });
 
   it('enqueues UPDATE_ITEM_DESC as a second op for the per-list description', async () => {
-    (getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: 100, isImportant: false }));
-
     await saveItem(PARAMS);
 
     expect(enqueue).toHaveBeenCalledWith(
@@ -495,10 +455,8 @@ describe('saveItem', () => {
     );
   });
 
-  it('prepends ! in UPDATE_ITEM_DESC when fresh item isImportant', async () => {
-    (getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: 100, isImportant: true }));
-
-    await saveItem(PARAMS);
+  it('prepends ! in UPDATE_ITEM_DESC when item isImportant', async () => {
+    await saveItem({ ...PARAMS, item: makeItem({ serverId: 100, isImportant: true }) });
 
     expect(enqueue).toHaveBeenCalledWith(
       expect.objectContaining({ opType: 'UPDATE_ITEM_DESC', description: '!500g' }),
@@ -507,9 +465,7 @@ describe('saveItem', () => {
   });
 
   it('does not prepend ! in UPDATE_ITEM regardless of importance', async () => {
-    (getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: 100, isImportant: true }));
-
-    await saveItem(PARAMS);
+    await saveItem({ ...PARAMS, item: makeItem({ serverId: 100, isImportant: true }) });
 
     const updateItemCall = (enqueue as jest.Mock).mock.calls.find(
       ([p]) => p.opType === 'UPDATE_ITEM'
@@ -518,11 +474,7 @@ describe('saveItem', () => {
   });
 
   it('includes serverCategory in UPDATE_ITEM when serverCategoryId is set', async () => {
-    (getItem as jest.Mock).mockResolvedValue(
-      makeItem({ serverId: 100, serverCategoryId: 9, serverCategoryName: 'Dairy', serverCategoryOrdering: 1 })
-    );
-
-    await saveItem(PARAMS);
+    await saveItem({ ...PARAMS, item: makeItem({ serverId: 100, serverCategoryId: 9, serverCategoryName: 'Dairy', serverCategoryOrdering: 1 }) });
 
     expect(enqueue).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -534,8 +486,6 @@ describe('saveItem', () => {
   });
 
   it('passes null category in UPDATE_ITEM when serverCategoryId is null', async () => {
-    (getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: 100, serverCategoryId: null }));
-
     await saveItem(PARAMS);
 
     expect(enqueue).toHaveBeenCalledWith(
@@ -544,10 +494,8 @@ describe('saveItem', () => {
     );
   });
 
-  it('skips both enqueue calls when fresh item has no serverId', async () => {
-    (getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: null }));
-
-    await saveItem(PARAMS);
+  it('skips both enqueue calls when item has no serverId', async () => {
+    await saveItem({ ...PARAMS, item: makeItem({ serverId: null }) });
 
     expect(enqueue).not.toHaveBeenCalled();
   });
@@ -557,6 +505,14 @@ describe('saveItem', () => {
 
     expect(enqueue).not.toHaveBeenCalled();
   });
+
+  it('returns updated item with new name, description, iconKey', async () => {
+    const result = await saveItem(PARAMS);
+
+    expect(result.name).toBe('Almond Milk');
+    expect(result.description).toBe('500g');
+    expect(result.iconKey).toBe('milk');
+  });
 });
 
 // ─── moveItemToCategory ───────────────────────────────────────────────────────
@@ -565,21 +521,19 @@ describe('moveItemToCategory', () => {
   const dairyCategory = { id: 9, name: 'Dairy', ordering: 1 };
 
   it('calls updateItemCategory with resolved fields', async () => {
-    await moveItemToCategory({ listContext: LIST_CTX, itemLocalId: 'item-1', category: dairyCategory });
+    await moveItemToCategory({ listContext: LIST_CTX, item: makeItem(), category: dairyCategory });
 
     expect(updateItemCategory).toHaveBeenCalledWith('item-1', 'Dairy', 9, 'Dairy', 1);
   });
 
   it('passes "Uncategorized" and null server fields when category is null', async () => {
-    await moveItemToCategory({ listContext: LIST_CTX, itemLocalId: 'item-1', category: null });
+    await moveItemToCategory({ listContext: LIST_CTX, item: makeItem(), category: null });
 
     expect(updateItemCategory).toHaveBeenCalledWith('item-1', 'Uncategorized', null, null, null);
   });
 
   it('enqueues UPDATE_ITEM with the full item and server category', async () => {
-    (getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: 100, name: 'Milk', description: '1L', iconKey: 'milk_carton' }));
-
-    await moveItemToCategory({ listContext: LIST_CTX, itemLocalId: 'item-1', category: dairyCategory });
+    await moveItemToCategory({ listContext: LIST_CTX, item: makeItem({ serverId: 100, name: 'Milk', description: '1L', iconKey: 'milk_carton' }), category: dairyCategory });
 
     expect(enqueue).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -593,7 +547,7 @@ describe('moveItemToCategory', () => {
   });
 
   it('passes null category in UPDATE_ITEM when no category given', async () => {
-    await moveItemToCategory({ listContext: LIST_CTX, itemLocalId: 'item-1', category: null });
+    await moveItemToCategory({ listContext: LIST_CTX, item: makeItem(), category: null });
 
     expect(enqueue).toHaveBeenCalledWith(
       expect.objectContaining({ opType: 'UPDATE_ITEM', category: null }),
@@ -601,17 +555,33 @@ describe('moveItemToCategory', () => {
     );
   });
 
-  it('skips enqueue when fresh item has no serverId', async () => {
-    (getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: null }));
-
-    await moveItemToCategory({ listContext: LIST_CTX, itemLocalId: 'item-1', category: dairyCategory });
+  it('skips enqueue when item has no serverId', async () => {
+    await moveItemToCategory({ listContext: LIST_CTX, item: makeItem({ serverId: null }), category: dairyCategory });
 
     expect(enqueue).not.toHaveBeenCalled();
   });
 
   it('skips enqueue when activeServerId is null', async () => {
-    await moveItemToCategory({ listContext: NO_SERVER_CTX, itemLocalId: 'item-1', category: dairyCategory });
+    await moveItemToCategory({ listContext: NO_SERVER_CTX, item: makeItem(), category: dairyCategory });
 
     expect(enqueue).not.toHaveBeenCalled();
+  });
+
+  it('returns updated item with new category fields and isDirty=true', async () => {
+    const result = await moveItemToCategory({ listContext: LIST_CTX, item: makeItem(), category: dairyCategory });
+
+    expect(result.category).toBe('Dairy');
+    expect(result.serverCategoryId).toBe(9);
+    expect(result.serverCategoryName).toBe('Dairy');
+    expect(result.serverCategoryOrdering).toBe(1);
+    expect(result.isDirty).toBe(true);
+  });
+
+  it('returns updated item with Uncategorized and null fields when no category', async () => {
+    const result = await moveItemToCategory({ listContext: LIST_CTX, item: makeItem(), category: null });
+
+    expect(result.category).toBe('Uncategorized');
+    expect(result.serverCategoryId).toBeNull();
+    expect(result.serverCategoryName).toBeNull();
   });
 });

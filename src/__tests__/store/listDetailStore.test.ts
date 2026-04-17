@@ -131,12 +131,12 @@ beforeEach(() => {
     default_shopping_list: null,
   });
   // Default op return values
-  (checkItemOp as jest.Mock).mockResolvedValue({ checkedAt: 1000 });
-  (uncheckItemOp as jest.Mock).mockResolvedValue({ needsReAdd: false });
-  (toggleImportantOp as jest.Mock).mockResolvedValue(undefined);
+  (checkItemOp as jest.Mock).mockResolvedValue(makeItem({ isChecked: true, isDirty: true, checkedAt: 1000 }));
+  (uncheckItemOp as jest.Mock).mockResolvedValue(makeItem({ isChecked: false, isDirty: false, checkedAt: null }));
+  (toggleImportantOp as jest.Mock).mockResolvedValue(makeItem({ isImportant: true }));
   (deleteItemOp as jest.Mock).mockResolvedValue(undefined);
-  (saveItemOp as jest.Mock).mockResolvedValue(undefined);
-  (moveItemToCategoryOp as jest.Mock).mockResolvedValue(undefined);
+  (saveItemOp as jest.Mock).mockResolvedValue(makeItem());
+  (moveItemToCategoryOp as jest.Mock).mockResolvedValue(makeItem());
   (addItemOp as jest.Mock).mockResolvedValue({ action: 'added', item: makeItem({ localId: 'new-item', name: 'Bread' }) });
 });
 
@@ -311,12 +311,12 @@ describe('toggleDone', () => {
 
     expect(checkItemOp).toHaveBeenCalledWith({
       listContext: { activeLocalId: 'list-local-1', activeServerId: 5 },
-      itemLocalId: 'item-1',
+      item: expect.objectContaining({ localId: 'item-1' }),
     });
   });
 
   it('updates item to isChecked=true in state after checking', async () => {
-    (checkItemOp as jest.Mock).mockResolvedValue({ checkedAt: 9999 });
+    (checkItemOp as jest.Mock).mockResolvedValue(makeItem({ isChecked: true, isDirty: true, checkedAt: 9999 }));
 
     await useListDetailStore.getState().toggleDone('item-1');
 
@@ -333,13 +333,13 @@ describe('toggleDone', () => {
 
     expect(uncheckItemOp).toHaveBeenCalledWith({
       listContext: { activeLocalId: 'list-local-1', activeServerId: 5 },
-      itemLocalId: 'item-1',
+      item: expect.objectContaining({ localId: 'item-1' }),
     });
   });
 
   it('updates item to isChecked=false in state after unchecking', async () => {
     useListDetailStore.setState({ items: [makeItem({ isChecked: true })] });
-    (uncheckItemOp as jest.Mock).mockResolvedValue({ needsReAdd: true });
+    (uncheckItemOp as jest.Mock).mockResolvedValue(makeItem({ isChecked: false, isDirty: true, checkedAt: null }));
 
     await useListDetailStore.getState().toggleDone('item-1');
 
@@ -351,7 +351,7 @@ describe('toggleDone', () => {
 
   it('sets isDirty=false when needsReAdd is false', async () => {
     useListDetailStore.setState({ items: [makeItem({ isChecked: true })] });
-    (uncheckItemOp as jest.Mock).mockResolvedValue({ needsReAdd: false });
+    (uncheckItemOp as jest.Mock).mockResolvedValue(makeItem({ isChecked: false, isDirty: false, checkedAt: null }));
 
     await useListDetailStore.getState().toggleDone('item-1');
 
@@ -382,8 +382,7 @@ describe('toggleImportant', () => {
 
     expect(toggleImportantOp).toHaveBeenCalledWith({
       listContext: { activeLocalId: 'list-local-1', activeServerId: 5 },
-      itemLocalId: 'item-1',
-      currentIsImportant: false,
+      item: expect.objectContaining({ localId: 'item-1', isImportant: false }),
     });
   });
 
@@ -416,7 +415,7 @@ describe('deleteItem', () => {
 
     expect(deleteItemOp).toHaveBeenCalledWith({
       listContext: { activeLocalId: 'list-local-1', activeServerId: 5 },
-      itemLocalId: 'item-1',
+      item: expect.objectContaining({ localId: 'item-1' }),
     });
   });
 
@@ -449,7 +448,7 @@ describe('saveItem', () => {
 
     expect(saveItemOp).toHaveBeenCalledWith({
       listContext: { activeLocalId: 'list-local-1', activeServerId: 5 },
-      itemLocalId: 'item-1',
+      item: expect.objectContaining({ localId: 'item-1' }),
       name: 'Almond Milk',
       description: '500g',
       iconKey: 'milk',
@@ -457,6 +456,8 @@ describe('saveItem', () => {
   });
 
   it('updates name, description, iconKey in Zustand state', async () => {
+    (saveItemOp as jest.Mock).mockResolvedValue(makeItem({ name: 'Almond Milk', description: '500g', iconKey: 'milk' }));
+
     await useListDetailStore.getState().saveItem('item-1', 'Almond Milk', '500g', 'milk');
 
     const item = useListDetailStore.getState().items[0];
@@ -562,7 +563,7 @@ describe('moveItemToCategory', () => {
 
     expect(moveItemToCategoryOp).toHaveBeenCalledWith({
       listContext: { activeLocalId: 'list-local-1', activeServerId: 5 },
-      itemLocalId: 'item-1',
+      item: expect.objectContaining({ localId: 'item-1' }),
       category: dairyCategory,
     });
   });
@@ -576,6 +577,10 @@ describe('moveItemToCategory', () => {
   });
 
   it('updates category fields in Zustand state', async () => {
+    (moveItemToCategoryOp as jest.Mock).mockResolvedValue(
+      makeItem({ category: 'Dairy', serverCategoryId: 9, serverCategoryName: 'Dairy', isDirty: true })
+    );
+
     await useListDetailStore.getState().moveItemToCategory('item-1', 9);
 
     const item = useListDetailStore.getState().items[0];
@@ -585,6 +590,10 @@ describe('moveItemToCategory', () => {
   });
 
   it('sets Uncategorized when categoryId is null', async () => {
+    (moveItemToCategoryOp as jest.Mock).mockResolvedValue(
+      makeItem({ category: 'Uncategorized', serverCategoryId: null })
+    );
+
     await useListDetailStore.getState().moveItemToCategory('item-1', null);
 
     const item = useListDetailStore.getState().items[0];

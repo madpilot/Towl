@@ -8,13 +8,13 @@ import {
   updateItemDescription,
   updateItemNameAndIcon,
   updateItemCategory,
-  getItem,
 } from '@/db/items';
 import type { LocalItem } from '@/db/items';
 import { enqueue, removePendingCheckItem } from '@/sync/syncManager';
 import { matchItem } from '@/data/foodMatcher';
 import { mergeQuantities } from '@/utils/mergeQuantities';
 import { recordItemUsed } from '@/db/history';
+import { generateServerDescription } from '@/utils/generateServerDescription';
 import type { HouseholdCategory } from '@/api/households';
 
 type ListContext = { activeLocalId: string; activeServerId: number | null };
@@ -39,16 +39,13 @@ export async function addItem(params: {
     const mergedDescription = mergeQuantities(existing.description, description);
     await updateItemDescription(existing.localId, mergedDescription);
     if (existing.serverId !== null && activeServerId !== null) {
-      const serverDescription = existing.isImportant
-        ? `!${mergedDescription}`
-        : mergedDescription;
       await enqueue(
         {
           opType: 'UPDATE_ITEM_DESC',
           listServerId: activeServerId,
           itemServerId: existing.serverId,
           itemLocalId: existing.localId,
-          description: serverDescription,
+          description: generateServerDescription(mergedDescription, existing.isImportant),
         },
         activeLocalId
       );
@@ -83,157 +80,130 @@ export async function addItem(params: {
 
 export async function checkItem(params: {
   listContext: ListContext;
-  itemLocalId: string;
-}): Promise<{ checkedAt: number }> {
-  const { listContext, itemLocalId } = params;
+  item: LocalItem;
+}): Promise<LocalItem> {
+  const { listContext, item } = params;
   const { activeLocalId, activeServerId } = listContext;
 
   const checkedAt = Date.now();
-  await checkItemDb(itemLocalId, checkedAt);
-  const freshItem = await getItem(itemLocalId);
-  if (
-    freshItem?.serverId !== null &&
-    freshItem?.serverId !== undefined &&
-    activeServerId !== null
-  ) {
+  await checkItemDb(item.localId, checkedAt);
+  if (item.serverId !== null && activeServerId !== null) {
     await enqueue(
       {
         opType: 'CHECK_ITEM',
         listServerId: activeServerId,
-        itemServerId: freshItem.serverId,
-        itemLocalId,
+        itemServerId: item.serverId,
+        itemLocalId: item.localId,
         removedAt: checkedAt,
       },
       activeLocalId
     );
   }
-  return { checkedAt };
+  return { ...item, isChecked: true, isDirty: true, checkedAt };
 }
 
 export async function uncheckItem(params: {
   listContext: ListContext;
-  itemLocalId: string;
-}): Promise<{ needsReAdd: boolean }> {
-  const { listContext, itemLocalId } = params;
+  item: LocalItem;
+}): Promise<LocalItem> {
+  const { listContext, item } = params;
   const { activeLocalId, activeServerId } = listContext;
 
-  const hadPendingOp = await removePendingCheckItem(itemLocalId);
-  const freshItem = await getItem(itemLocalId);
-  const needsReAdd =
-    !hadPendingOp &&
-    freshItem?.serverId !== null &&
-    freshItem?.serverId !== undefined &&
-    activeServerId !== null;
+  const hadPendingOp = await removePendingCheckItem(item.localId);
+  const needsReAdd = !hadPendingOp && item.serverId !== null && activeServerId !== null;
 
-  await uncheckItemDb(itemLocalId, needsReAdd);
+  await uncheckItemDb(item.localId, needsReAdd);
 
-  if (needsReAdd && freshItem && activeServerId !== null) {
+  if (needsReAdd && activeServerId !== null) {
     await enqueue(
       {
         opType: 'ADD_ITEM',
         listServerId: activeServerId,
         listLocalId: activeLocalId,
-        itemLocalId,
-        name: freshItem.name,
-        description: freshItem.description,
+        itemLocalId: item.localId,
+        name: item.name,
+        description: item.description,
       },
       activeLocalId
     );
   }
-  return { needsReAdd };
+  return { ...item, isChecked: false, isDirty: needsReAdd, checkedAt: null };
 }
 
 export async function toggleImportant(params: {
   listContext: ListContext;
-  itemLocalId: string;
-  currentIsImportant: boolean;
-}): Promise<void> {
-  const { listContext, itemLocalId, currentIsImportant } = params;
+  item: LocalItem;
+}): Promise<LocalItem> {
+  const { listContext, item } = params;
   const { activeLocalId, activeServerId } = listContext;
 
-  await toggleItemImportant(itemLocalId, !currentIsImportant);
-  const freshItem = await getItem(itemLocalId);
-  if (
-    freshItem?.serverId !== null &&
-    freshItem?.serverId !== undefined &&
-    activeServerId !== null
-  ) {
-    const serverDescription = freshItem.isImportant
-      ? `!${freshItem.description}`
-      : freshItem.description;
+  const newIsImportant = !item.isImportant;
+  await toggleItemImportant(item.localId, newIsImportant);
+  if (item.serverId !== null && activeServerId !== null) {
     await enqueue(
       {
         opType: 'UPDATE_ITEM_DESC',
         listServerId: activeServerId,
-        itemServerId: freshItem.serverId,
-        itemLocalId,
-        description: serverDescription,
+        itemServerId: item.serverId,
+        itemLocalId: item.localId,
+        description: generateServerDescription(item.description, newIsImportant),
       },
       activeLocalId
     );
   }
+  return { ...item, isImportant: newIsImportant };
 }
 
 export async function deleteItem(params: {
   listContext: ListContext;
-  itemLocalId: string;
+  item: LocalItem;
 }): Promise<void> {
-  const { listContext, itemLocalId } = params;
+  const { listContext, item } = params;
   const { activeLocalId, activeServerId } = listContext;
 
-  await softDeleteItem(itemLocalId);
-  const freshItem = await getItem(itemLocalId);
-  if (
-    freshItem?.serverId !== null &&
-    freshItem?.serverId !== undefined &&
-    activeServerId !== null
-  ) {
+  await softDeleteItem(item.localId);
+  if (item.serverId !== null && activeServerId !== null) {
     await enqueue(
       {
         opType: 'REMOVE_ITEM',
         listServerId: activeServerId,
-        itemServerId: freshItem.serverId,
-        itemLocalId,
+        itemServerId: item.serverId,
+        itemLocalId: item.localId,
         removedAt: Date.now(),
       },
       activeLocalId
     );
   } else {
-    await hardDeleteItem(itemLocalId);
+    await hardDeleteItem(item.localId);
   }
 }
 
 export async function saveItem(params: {
   listContext: ListContext;
-  itemLocalId: string;
+  item: LocalItem;
   name: string;
   description: string;
   iconKey: string | null;
-}): Promise<void> {
-  const { listContext, itemLocalId, name, description, iconKey } = params;
+}): Promise<LocalItem> {
+  const { listContext, item, name, description, iconKey } = params;
   const { activeLocalId, activeServerId } = listContext;
 
-  await updateItemNameAndIcon(itemLocalId, name, description, iconKey);
-  const freshItem = await getItem(itemLocalId);
-  if (
-    freshItem?.serverId !== null &&
-    freshItem?.serverId !== undefined &&
-    activeServerId !== null
-  ) {
+  await updateItemNameAndIcon(item.localId, name, description, iconKey);
+  if (item.serverId !== null && activeServerId !== null) {
     const category =
-      freshItem.serverCategoryId !== null
+      item.serverCategoryId !== null
         ? {
-            id: freshItem.serverCategoryId,
-            name: freshItem.serverCategoryName ?? '',
-            ordering: freshItem.serverCategoryOrdering ?? 0,
+            id: item.serverCategoryId,
+            name: item.serverCategoryName ?? '',
+            ordering: item.serverCategoryOrdering ?? 0,
           }
         : null;
     await enqueue(
       {
         opType: 'UPDATE_ITEM',
         listServerId: activeServerId,
-        itemServerId: freshItem.serverId,
-        itemLocalId,
+        itemServerId: item.serverId,
+        itemLocalId: item.localId,
         name,
         description,
         iconKey,
@@ -241,26 +211,26 @@ export async function saveItem(params: {
       },
       activeLocalId
     );
-    const serverDescription = freshItem.isImportant ? `!${description}` : description;
     await enqueue(
       {
         opType: 'UPDATE_ITEM_DESC',
         listServerId: activeServerId,
-        itemServerId: freshItem.serverId,
-        itemLocalId,
-        description: serverDescription,
+        itemServerId: item.serverId,
+        itemLocalId: item.localId,
+        description: generateServerDescription(description, item.isImportant),
       },
       activeLocalId
     );
   }
+  return { ...item, name, description, iconKey };
 }
 
 export async function moveItemToCategory(params: {
   listContext: ListContext;
-  itemLocalId: string;
+  item: LocalItem;
   category: HouseholdCategory | null;
-}): Promise<void> {
-  const { listContext, itemLocalId, category } = params;
+}): Promise<LocalItem> {
+  const { listContext, item, category } = params;
   const { activeLocalId, activeServerId } = listContext;
 
   const categoryName = category?.name ?? 'Uncategorized';
@@ -269,18 +239,13 @@ export async function moveItemToCategory(params: {
   const serverCategoryOrdering = category?.ordering ?? null;
 
   await updateItemCategory(
-    itemLocalId,
+    item.localId,
     categoryName,
     serverCategoryId,
     serverCategoryName,
     serverCategoryOrdering
   );
-  const freshItem = await getItem(itemLocalId);
-  if (
-    freshItem?.serverId !== null &&
-    freshItem?.serverId !== undefined &&
-    activeServerId !== null
-  ) {
+  if (item.serverId !== null && activeServerId !== null) {
     const serverCategory = category
       ? { id: category.id, name: category.name, ordering: category.ordering }
       : null;
@@ -288,14 +253,22 @@ export async function moveItemToCategory(params: {
       {
         opType: 'UPDATE_ITEM',
         listServerId: activeServerId,
-        itemServerId: freshItem.serverId,
-        itemLocalId,
-        name: freshItem.name,
-        description: freshItem.description,
-        iconKey: freshItem.iconKey,
+        itemServerId: item.serverId,
+        itemLocalId: item.localId,
+        name: item.name,
+        description: item.description,
+        iconKey: item.iconKey,
         category: serverCategory,
       },
       activeLocalId
     );
   }
+  return {
+    ...item,
+    category: categoryName,
+    serverCategoryId,
+    serverCategoryName,
+    serverCategoryOrdering,
+    isDirty: true,
+  };
 }

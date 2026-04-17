@@ -251,23 +251,11 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
       const listContext = { activeLocalId, activeServerId };
 
       if (!item.isChecked) {
-        const result = await checkItemOp({ listContext, itemLocalId: localId });
-        set({
-          items: items.map((i) =>
-            i.localId === localId
-              ? { ...i, isChecked: true, isDirty: true, checkedAt: result.checkedAt }
-              : i
-          ),
-        });
+        const updated = await checkItemOp({ listContext, item });
+        set({ items: items.map((i) => (i.localId === localId ? updated : i)) });
       } else {
-        const result = await uncheckItemOp({ listContext, itemLocalId: localId });
-        set({
-          items: items.map((i) =>
-            i.localId === localId
-              ? { ...i, isChecked: false, isDirty: result.needsReAdd, checkedAt: null }
-              : i
-          ),
-        });
+        const updated = await uncheckItemOp({ listContext, item });
+        set({ items: items.map((i) => (i.localId === localId ? updated : i)) });
       }
     },
 
@@ -277,16 +265,11 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
       if (!item || !activeLocalId) {
         return;
       }
-      await toggleImportantOp({
+      const updated = await toggleImportantOp({
         listContext: { activeLocalId, activeServerId },
-        itemLocalId: localId,
-        currentIsImportant: item.isImportant,
+        item,
       });
-      set({
-        items: items.map((i) =>
-          i.localId === localId ? { ...i, isImportant: !item.isImportant } : i
-        ),
-      });
+      set({ items: items.map((i) => (i.localId === localId ? updated : i)) });
     },
 
     deleteItem: async (localId) => {
@@ -294,9 +277,13 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
       if (!activeLocalId) {
         return;
       }
+      const item = items.find((i) => i.localId === localId);
+      if (!item) {
+        return;
+      }
       await deleteItemOp({
         listContext: { activeLocalId, activeServerId },
-        itemLocalId: localId,
+        item,
       });
       set({ items: items.filter((i) => i.localId !== localId) });
     },
@@ -306,16 +293,18 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
       if (!activeLocalId) {
         return;
       }
-      await saveItemOp({
+      const item = items.find((i) => i.localId === localId);
+      if (!item) {
+        return;
+      }
+      const updated = await saveItemOp({
         listContext: { activeLocalId, activeServerId },
-        itemLocalId: localId,
+        item,
         name,
         description,
         iconKey,
       });
-      set({
-        items: items.map((i) => (i.localId === localId ? { ...i, name, description, iconKey } : i)),
-      });
+      set({ items: items.map((i) => (i.localId === localId ? updated : i)) });
     },
 
     addItem: async (name, description, iconKey, category) => {
@@ -370,29 +359,19 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
       if (!activeLocalId) {
         return;
       }
+      const item = items.find((i) => i.localId === localId);
+      if (!item) {
+        return;
+      }
       const category =
         categoryId !== null ? (allCategories.find((c) => c.id === categoryId) ?? null) : null;
 
-      await moveItemToCategoryOp({
+      const updated = await moveItemToCategoryOp({
         listContext: { activeLocalId, activeServerId },
-        itemLocalId: localId,
+        item,
         category,
       });
-
-      set({
-        items: items.map((i) =>
-          i.localId === localId
-            ? {
-                ...i,
-                category: category?.name ?? 'Uncategorized',
-                serverCategoryId: category?.id ?? null,
-                serverCategoryName: category?.name ?? null,
-                serverCategoryOrdering: category?.ordering ?? null,
-                isDirty: true,
-              }
-            : i
-        ),
-      });
+      set({ items: items.map((i) => (i.localId === localId ? updated : i)) });
     },
   };
 });
