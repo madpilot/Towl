@@ -1,6 +1,7 @@
 /**
  * Tests for listDetailStore actions.
- * All DB/sync dependencies are mocked; actions are called directly via getState().
+ * Item DB/sync logic now lives in @/items/itemOperations — that module is mocked
+ * here so each action test focuses purely on: correct op called + Zustand state.
  */
 
 jest.mock('expo-secure-store', () => ({
@@ -10,75 +11,56 @@ jest.mock('expo-secure-store', () => ({
 
 jest.mock('@/db/items', () => ({
   getItemsForList: jest.fn(),
-  getItem: jest.fn(),
-  addItemLocally: jest.fn(),
-  softDeleteItem: jest.fn(),
-  hardDeleteItem: jest.fn(),
   upsertItemFromServer: jest.fn(),
   removeItemsDeletedOnServer: jest.fn(),
-  checkItem: jest.fn(),
-  uncheckItem: jest.fn(),
-  markItemCheckSynced: jest.fn(),
   clearCheckedItems: jest.fn(),
   clearExpiredCheckedItems: jest.fn(),
-  toggleItemImportant: jest.fn(),
-  updateItemNameAndIcon: jest.fn(),
-  updateItemDescription: jest.fn(),
-}));
-
-jest.mock('@/utils/mergeQuantities', () => ({
-  mergeQuantities: jest.fn((existing: string, incoming: string) =>
-    existing && incoming ? `${existing} + ${incoming}` : existing || incoming
-  ),
+  getItem: jest.fn(),
 }));
 
 jest.mock('@/db/lists', () => ({
   getAllLists: jest.fn(),
+  upsertListFromServer: jest.fn(),
 }));
 
-jest.mock('@/sync/syncManager', () => ({
-  enqueue: jest.fn().mockResolvedValue(undefined),
-  removePendingCheckItem: jest.fn().mockResolvedValue(false),
+jest.mock('@/items/itemOperations', () => ({
+  addItem: jest.fn(),
+  checkItem: jest.fn(),
+  uncheckItem: jest.fn(),
+  toggleImportant: jest.fn(),
+  deleteItem: jest.fn(),
+  saveItem: jest.fn(),
+  moveItemToCategory: jest.fn(),
 }));
 
-jest.mock('@/db/history', () => ({
-  recordItemUsed: jest.fn(),
+const mockGetShoppingLists = jest.fn();
+const mockGetHousehold = jest.fn();
+const mockGetCategories = jest.fn();
+jest.mock('@/store/authStore', () => ({
+  useAuthStore: {
+    getState: jest.fn(() => ({
+      shoppingListsApi: { getShoppingLists: mockGetShoppingLists },
+      householdsApi: { getHousehold: mockGetHousehold, getCategories: mockGetCategories },
+    })),
+  },
 }));
 
 jest.mock('@/data/foodMatcher', () => ({
   matchItem: jest.fn(() => ({ iconKey: 'apple', category: 'Produce' })),
 }));
 
-const mockGetShoppingLists = jest.fn();
-const mockGetHousehold = jest.fn();
-jest.mock('@/store/authStore', () => ({
-  useAuthStore: {
-    getState: jest.fn(() => ({
-      shoppingListsApi: { getShoppingLists: mockGetShoppingLists },
-      householdsApi: { getHousehold: mockGetHousehold },
-    })),
-  },
-}));
-
 import { getItemAsync, setItemAsync } from 'expo-secure-store';
-import {
-  getItemsForList,
-  getItem,
-  addItemLocally,
-  softDeleteItem,
-  hardDeleteItem,
-  checkItem,
-  uncheckItem,
-  clearCheckedItems,
-  clearExpiredCheckedItems,
-  toggleItemImportant,
-  updateItemNameAndIcon,
-  updateItemDescription,
-} from '@/db/items';
+import { getItemsForList, clearCheckedItems, clearExpiredCheckedItems } from '@/db/items';
 import { getAllLists } from '@/db/lists';
-import { enqueue, removePendingCheckItem } from '@/sync/syncManager';
-import { recordItemUsed } from '@/db/history';
-import { mergeQuantities } from '@/utils/mergeQuantities';
+import {
+  addItem as addItemOp,
+  checkItem as checkItemOp,
+  uncheckItem as uncheckItemOp,
+  toggleImportant as toggleImportantOp,
+  deleteItem as deleteItemOp,
+  saveItem as saveItemOp,
+  moveItemToCategory as moveItemToCategoryOp,
+} from '@/items/itemOperations';
 import { useListDetailStore } from '@/store/listDetailStore';
 import type { LocalItem } from '@/db/items';
 import type { LocalList } from '@/db/lists';
@@ -124,6 +106,7 @@ const initialState = {
   activeName: '',
   items: [],
   allLists: [],
+  allCategories: [],
   loading: true,
   refreshing: false,
   listPickerVisible: false,
@@ -139,6 +122,7 @@ beforeEach(() => {
   (clearExpiredCheckedItems as jest.Mock).mockResolvedValue(undefined);
   (getAllLists as jest.Mock).mockResolvedValue([]);
   (mockGetShoppingLists as jest.Mock).mockResolvedValue([]);
+  (mockGetCategories as jest.Mock).mockResolvedValue([]);
   (mockGetHousehold as jest.Mock).mockResolvedValue({
     id: 1,
     name: 'Home',
@@ -146,6 +130,14 @@ beforeEach(() => {
     member: [],
     default_shopping_list: null,
   });
+  // Default op return values
+  (checkItemOp as jest.Mock).mockResolvedValue(makeItem({ isChecked: true, isDirty: true, checkedAt: 1000 }));
+  (uncheckItemOp as jest.Mock).mockResolvedValue(makeItem({ isChecked: false, isDirty: false, checkedAt: null }));
+  (toggleImportantOp as jest.Mock).mockResolvedValue(makeItem({ isImportant: true }));
+  (deleteItemOp as jest.Mock).mockResolvedValue(undefined);
+  (saveItemOp as jest.Mock).mockResolvedValue(makeItem());
+  (moveItemToCategoryOp as jest.Mock).mockResolvedValue(makeItem());
+  (addItemOp as jest.Mock).mockResolvedValue({ action: 'added', item: makeItem({ localId: 'new-item', name: 'Bread' }) });
 });
 
 // ─── bootstrap ───────────────────────────────────────────────────────────────
@@ -307,71 +299,103 @@ describe('reloadAfterSync', () => {
 
 describe('toggleDone', () => {
   beforeEach(() => {
-    (checkItem as jest.Mock).mockResolvedValue(undefined);
-    (uncheckItem as jest.Mock).mockResolvedValue(undefined);
-    (getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: 100 }));
-    useListDetailStore.setState({ activeLocalId: 'list-local-1', activeServerId: 5 });
+    useListDetailStore.setState({
+      items: [makeItem()],
+      activeLocalId: 'list-local-1',
+      activeServerId: 5,
+    });
   });
 
-  it('calls checkItem and enqueues CHECK_ITEM when checking an item', async () => {
-    const item = makeItem({ isChecked: false });
-    useListDetailStore.setState({ items: [item] });
+  it('calls checkItemOp with correct list context when checking', async () => {
+    await useListDetailStore.getState().toggleDone('item-1');
+
+    expect(checkItemOp).toHaveBeenCalledWith({
+      listContext: { activeLocalId: 'list-local-1', activeServerId: 5 },
+      item: expect.objectContaining({ localId: 'item-1' }),
+    });
+  });
+
+  it('updates item to isChecked=true in state after checking', async () => {
+    (checkItemOp as jest.Mock).mockResolvedValue(makeItem({ isChecked: true, isDirty: true, checkedAt: 9999 }));
 
     await useListDetailStore.getState().toggleDone('item-1');
 
-    expect(checkItem).toHaveBeenCalledWith('item-1', expect.any(Number));
-    expect(enqueue).toHaveBeenCalledWith(
-      expect.objectContaining({ opType: 'CHECK_ITEM', itemServerId: 100 }),
-      'list-local-1'
-    );
-    expect(useListDetailStore.getState().items[0].isChecked).toBe(true);
+    const item = useListDetailStore.getState().items[0];
+    expect(item.isChecked).toBe(true);
+    expect(item.isDirty).toBe(true);
+    expect(item.checkedAt).toBe(9999);
   });
 
-  it('calls uncheckItem and cancels pending op when unchecking', async () => {
-    const item = makeItem({ isChecked: true });
-    useListDetailStore.setState({ items: [item] });
-    (removePendingCheckItem as jest.Mock).mockResolvedValue(true);
+  it('calls uncheckItemOp with correct list context when unchecking', async () => {
+    useListDetailStore.setState({ items: [makeItem({ isChecked: true })] });
 
     await useListDetailStore.getState().toggleDone('item-1');
 
-    expect(uncheckItem).toHaveBeenCalledWith('item-1', false);
-    expect(enqueue).not.toHaveBeenCalled();
-    expect(useListDetailStore.getState().items[0].isChecked).toBe(false);
+    expect(uncheckItemOp).toHaveBeenCalledWith({
+      listContext: { activeLocalId: 'list-local-1', activeServerId: 5 },
+      item: expect.objectContaining({ localId: 'item-1' }),
+    });
   });
 
-  it('re-adds to server via ADD_ITEM when uncheck has no pending op', async () => {
-    const item = makeItem({ isChecked: true });
-    useListDetailStore.setState({ items: [item] });
-    (removePendingCheckItem as jest.Mock).mockResolvedValue(false);
+  it('updates item to isChecked=false in state after unchecking', async () => {
+    useListDetailStore.setState({ items: [makeItem({ isChecked: true })] });
+    (uncheckItemOp as jest.Mock).mockResolvedValue(makeItem({ isChecked: false, isDirty: true, checkedAt: null }));
 
     await useListDetailStore.getState().toggleDone('item-1');
 
-    expect(enqueue).toHaveBeenCalledWith(
-      expect.objectContaining({ opType: 'ADD_ITEM' }),
-      'list-local-1'
-    );
+    const item = useListDetailStore.getState().items[0];
+    expect(item.isChecked).toBe(false);
+    expect(item.isDirty).toBe(true);
+    expect(item.checkedAt).toBeNull();
+  });
+
+  it('sets isDirty=false when needsReAdd is false', async () => {
+    useListDetailStore.setState({ items: [makeItem({ isChecked: true })] });
+    (uncheckItemOp as jest.Mock).mockResolvedValue(makeItem({ isChecked: false, isDirty: false, checkedAt: null }));
+
+    await useListDetailStore.getState().toggleDone('item-1');
+
+    expect(useListDetailStore.getState().items[0].isDirty).toBe(false);
   });
 
   it('does nothing for unknown localId', async () => {
     useListDetailStore.setState({ items: [] });
     await useListDetailStore.getState().toggleDone('ghost');
-    expect(checkItem).not.toHaveBeenCalled();
-    expect(uncheckItem).not.toHaveBeenCalled();
+    expect(checkItemOp).not.toHaveBeenCalled();
+    expect(uncheckItemOp).not.toHaveBeenCalled();
   });
 });
 
 // ─── toggleImportant ──────────────────────────────────────────────────────────
 
 describe('toggleImportant', () => {
-  it('toggles isImportant and calls toggleItemImportant', async () => {
-    const item = makeItem({ isImportant: false });
-    useListDetailStore.setState({ items: [item] });
-    (toggleItemImportant as jest.Mock).mockResolvedValue(undefined);
+  beforeEach(() => {
+    useListDetailStore.setState({
+      items: [makeItem({ isImportant: false })],
+      activeLocalId: 'list-local-1',
+      activeServerId: 5,
+    });
+  });
 
+  it('calls toggleImportantOp with correct params', async () => {
     await useListDetailStore.getState().toggleImportant('item-1');
 
-    expect(toggleItemImportant).toHaveBeenCalledWith('item-1', true);
+    expect(toggleImportantOp).toHaveBeenCalledWith({
+      listContext: { activeLocalId: 'list-local-1', activeServerId: 5 },
+      item: expect.objectContaining({ localId: 'item-1', isImportant: false }),
+    });
+  });
+
+  it('flips isImportant in Zustand state', async () => {
+    await useListDetailStore.getState().toggleImportant('item-1');
+
     expect(useListDetailStore.getState().items[0].isImportant).toBe(true);
+  });
+
+  it('does nothing for unknown localId', async () => {
+    useListDetailStore.setState({ items: [] });
+    await useListDetailStore.getState().toggleImportant('ghost');
+    expect(toggleImportantOp).not.toHaveBeenCalled();
   });
 });
 
@@ -384,37 +408,27 @@ describe('deleteItem', () => {
       activeLocalId: 'list-local-1',
       activeServerId: 5,
     });
-    (softDeleteItem as jest.Mock).mockResolvedValue(undefined);
-    (hardDeleteItem as jest.Mock).mockResolvedValue(undefined);
   });
 
-  it('enqueues REMOVE_ITEM when item has a serverId', async () => {
-    (getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: 100 }));
-
+  it('calls deleteItemOp with correct params', async () => {
     await useListDetailStore.getState().deleteItem('item-1');
 
-    expect(enqueue).toHaveBeenCalledWith(
-      expect.objectContaining({ opType: 'REMOVE_ITEM', itemServerId: 100 }),
-      'list-local-1'
-    );
-    expect(hardDeleteItem).not.toHaveBeenCalled();
+    expect(deleteItemOp).toHaveBeenCalledWith({
+      listContext: { activeLocalId: 'list-local-1', activeServerId: 5 },
+      item: expect.objectContaining({ localId: 'item-1' }),
+    });
   });
 
-  it('hard-deletes immediately when item has no serverId', async () => {
-    (getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: null }));
-
-    await useListDetailStore.getState().deleteItem('item-1');
-
-    expect(hardDeleteItem).toHaveBeenCalledWith('item-1');
-    expect(enqueue).not.toHaveBeenCalled();
-  });
-
-  it('removes item from state', async () => {
-    (getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: null }));
-
+  it('removes item from Zustand state', async () => {
     await useListDetailStore.getState().deleteItem('item-1');
 
     expect(useListDetailStore.getState().items).toEqual([]);
+  });
+
+  it('does nothing when no activeLocalId', async () => {
+    useListDetailStore.setState({ activeLocalId: null });
+    await useListDetailStore.getState().deleteItem('item-1');
+    expect(deleteItemOp).not.toHaveBeenCalled();
   });
 });
 
@@ -427,231 +441,85 @@ describe('saveItem', () => {
       activeLocalId: 'list-local-1',
       activeServerId: 5,
     });
-    (updateItemNameAndIcon as jest.Mock).mockResolvedValue(undefined);
   });
 
-  it('enqueues UPDATE_ITEM when item has a serverId', async () => {
-    (getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: 100, serverCategoryId: null }));
+  it('calls saveItemOp with correct params', async () => {
+    await useListDetailStore.getState().saveItem('item-1', 'Almond Milk', '500g', 'milk');
 
-    await useListDetailStore.getState().saveItem('item-1', 'Almond Milk', '', 'milk_carton');
-
-    expect(enqueue).toHaveBeenCalledWith(
-      expect.objectContaining({ opType: 'UPDATE_ITEM', itemServerId: 100, name: 'Almond Milk' }),
-      'list-local-1'
-    );
+    expect(saveItemOp).toHaveBeenCalledWith({
+      listContext: { activeLocalId: 'list-local-1', activeServerId: 5 },
+      item: expect.objectContaining({ localId: 'item-1' }),
+      name: 'Almond Milk',
+      description: '500g',
+      iconKey: 'milk',
+    });
   });
 
-  it('also enqueues UPDATE_ITEM_DESC to sync the per-list description', async () => {
-    (getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: 100, isImportant: false }));
+  it('updates name, description, iconKey in Zustand state', async () => {
+    (saveItemOp as jest.Mock).mockResolvedValue(makeItem({ name: 'Almond Milk', description: '500g', iconKey: 'milk' }));
 
-    await useListDetailStore.getState().saveItem('item-1', 'Beef Mince', '500g', 'beef');
+    await useListDetailStore.getState().saveItem('item-1', 'Almond Milk', '500g', 'milk');
 
-    expect(enqueue).toHaveBeenCalledWith(
-      expect.objectContaining({ opType: 'UPDATE_ITEM_DESC', itemServerId: 100, description: '500g' }),
-      'list-local-1'
-    );
+    const item = useListDetailStore.getState().items[0];
+    expect(item.name).toBe('Almond Milk');
+    expect(item.description).toBe('500g');
+    expect(item.iconKey).toBe('milk');
   });
 
-  it('prepends ! to description in UPDATE_ITEM_DESC when item is important', async () => {
-    (getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: 100, isImportant: true }));
-
-    await useListDetailStore.getState().saveItem('item-1', 'Beef Mince', '500g', 'beef');
-
-    expect(enqueue).toHaveBeenCalledWith(
-      expect.objectContaining({ opType: 'UPDATE_ITEM_DESC', description: '!500g' }),
-      'list-local-1'
-    );
-  });
-
-  it('skips enqueue when item has no serverId', async () => {
-    (getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: null }));
-
-    await useListDetailStore.getState().saveItem('item-1', 'New Name', '', null);
-
-    expect(enqueue).not.toHaveBeenCalled();
-  });
-
-  it('updates item in state', async () => {
-    (getItem as jest.Mock).mockResolvedValue(makeItem({ serverId: null }));
-
-    await useListDetailStore.getState().saveItem('item-1', 'Butter', '', 'butter');
-
-    expect(useListDetailStore.getState().items[0].name).toBe('Butter');
-    expect(useListDetailStore.getState().items[0].iconKey).toBe('butter');
+  it('does nothing when no activeLocalId', async () => {
+    useListDetailStore.setState({ activeLocalId: null });
+    await useListDetailStore.getState().saveItem('item-1', 'X', '', null);
+    expect(saveItemOp).not.toHaveBeenCalled();
   });
 });
 
 // ─── addItem ─────────────────────────────────────────────────────────────────
 
 describe('addItem', () => {
-  const newItem = makeItem({ localId: 'new-item', name: 'Bread' });
-
   beforeEach(() => {
     useListDetailStore.setState({ items: [], activeLocalId: 'list-local-1', activeServerId: 5 });
-    (addItemLocally as jest.Mock).mockResolvedValue(newItem);
-    (recordItemUsed as jest.Mock).mockResolvedValue(undefined);
   });
 
-  it('adds item locally, records history, and enqueues ADD_ITEM', async () => {
+  it('calls addItemOp with correct params', async () => {
     await useListDetailStore.getState().addItem('Bread', '', null, 'Other');
 
-    expect(addItemLocally).toHaveBeenCalledWith('list-local-1', 'Bread', '', 'apple', 'Produce');
-    expect(recordItemUsed).toHaveBeenCalled();
-    expect(enqueue).toHaveBeenCalledWith(
-      expect.objectContaining({ opType: 'ADD_ITEM', listServerId: 5 }),
-      'list-local-1'
-    );
+    expect(addItemOp).toHaveBeenCalledWith({
+      listContext: { activeLocalId: 'list-local-1', activeServerId: 5 },
+      currentItems: [],
+      name: 'Bread',
+      description: '',
+      iconKey: null,
+      category: 'Other',
+    });
+  });
+
+  it('appends new item to state when action=added', async () => {
+    const newItem = makeItem({ localId: 'new-item', name: 'Bread' });
+    (addItemOp as jest.Mock).mockResolvedValue({ action: 'added', item: newItem });
+
+    await useListDetailStore.getState().addItem('Bread', '', null, 'Other');
+
     expect(useListDetailStore.getState().items).toContainEqual(newItem);
   });
 
-  it('skips ADD_ITEM enqueue when list has no serverId', async () => {
-    useListDetailStore.setState({ activeServerId: null });
+  it('updates existing item description in state when action=merged', async () => {
+    const existing = makeItem({ localId: 'item-milk', name: 'Milk', description: '3L' });
+    useListDetailStore.setState({ items: [existing], activeLocalId: 'list-local-1', activeServerId: 5 });
+    (addItemOp as jest.Mock).mockResolvedValue({
+      action: 'merged',
+      item: { ...existing, description: '3L + 2L' },
+    });
 
-    await useListDetailStore.getState().addItem('Bread', '', null, 'Other');
+    await useListDetailStore.getState().addItem('Milk', '2L', null, 'Dairy');
 
-    expect(addItemLocally).toHaveBeenCalled();
-    expect(enqueue).not.toHaveBeenCalled();
-  });
-
-  it('uses provided iconKey and category instead of matching', async () => {
-    await useListDetailStore.getState().addItem('Banana', '', 'banana', 'Produce');
-
-    expect(addItemLocally).toHaveBeenCalledWith('list-local-1', 'Banana', '', 'banana', 'Produce');
+    expect(useListDetailStore.getState().items[0].description).toBe('3L + 2L');
+    expect(useListDetailStore.getState().items).toHaveLength(1);
   });
 
   it('does nothing when no activeLocalId', async () => {
     useListDetailStore.setState({ activeLocalId: null });
-
     await useListDetailStore.getState().addItem('Bread', '', null, 'Other');
-
-    expect(addItemLocally).not.toHaveBeenCalled();
-  });
-});
-
-// ─── addItem — duplicate merging ──────────────────────────────────────────────
-
-describe('addItem — duplicate merging', () => {
-  const existingItem = makeItem({
-    localId: 'item-milk',
-    serverId: 100,
-    name: 'Milk',
-    description: '3L',
-    isChecked: false,
-    isImportant: false,
-  });
-
-  beforeEach(() => {
-    useListDetailStore.setState({
-      items: [existingItem],
-      activeLocalId: 'list-local-1',
-      activeServerId: 5,
-    });
-    (updateItemDescription as jest.Mock).mockResolvedValue(undefined);
-    (mergeQuantities as jest.Mock).mockImplementation(
-      (existing: string, incoming: string) =>
-        existing && incoming ? `${existing} + ${incoming}` : existing || incoming
-    );
-  });
-
-  it('merges description instead of adding a new item when name matches', async () => {
-    await useListDetailStore.getState().addItem('Milk', '2L', null, 'Dairy');
-
-    expect(mergeQuantities).toHaveBeenCalledWith('3L', '2L');
-    expect(updateItemDescription).toHaveBeenCalledWith('item-milk', '3L + 2L');
-    expect(addItemLocally).not.toHaveBeenCalled();
-  });
-
-  it('updates store state with merged description', async () => {
-    await useListDetailStore.getState().addItem('Milk', '2L', null, 'Dairy');
-
-    const { items } = useListDetailStore.getState();
-    expect(items).toHaveLength(1);
-    expect(items[0].description).toBe('3L + 2L');
-  });
-
-  it('enqueues UPDATE_ITEM_DESC when existing item has a serverId', async () => {
-    await useListDetailStore.getState().addItem('Milk', '2L', null, 'Dairy');
-
-    expect(enqueue).toHaveBeenCalledWith(
-      expect.objectContaining({
-        opType: 'UPDATE_ITEM_DESC',
-        listServerId: 5,
-        itemServerId: 100,
-        description: '3L + 2L',
-      }),
-      'list-local-1'
-    );
-  });
-
-  it('prefixes ! in server description for important items', async () => {
-    useListDetailStore.setState({
-      items: [{ ...existingItem, isImportant: true }],
-    });
-
-    await useListDetailStore.getState().addItem('Milk', '2L', null, 'Dairy');
-
-    expect(enqueue).toHaveBeenCalledWith(
-      expect.objectContaining({
-        opType: 'UPDATE_ITEM_DESC',
-        description: '!3L + 2L',
-      }),
-      'list-local-1'
-    );
-  });
-
-  it('skips enqueue when existing item has no serverId', async () => {
-    useListDetailStore.setState({
-      items: [{ ...existingItem, serverId: null }],
-    });
-
-    await useListDetailStore.getState().addItem('Milk', '2L', null, 'Dairy');
-
-    expect(enqueue).not.toHaveBeenCalled();
-    expect(updateItemDescription).toHaveBeenCalled();
-  });
-
-  it('skips enqueue when list has no serverId', async () => {
-    useListDetailStore.setState({ activeServerId: null });
-
-    await useListDetailStore.getState().addItem('Milk', '2L', null, 'Dairy');
-
-    expect(enqueue).not.toHaveBeenCalled();
-    expect(updateItemDescription).toHaveBeenCalled();
-  });
-
-  it('matches name case-insensitively', async () => {
-    await useListDetailStore.getState().addItem('MILK', '2L', null, 'Dairy');
-
-    expect(mergeQuantities).toHaveBeenCalledWith('3L', '2L');
-    expect(addItemLocally).not.toHaveBeenCalled();
-  });
-
-  it('does not merge with checked items — adds a fresh item', async () => {
-    useListDetailStore.setState({
-      items: [{ ...existingItem, isChecked: true }],
-    });
-    (addItemLocally as jest.Mock).mockResolvedValue(
-      makeItem({ localId: 'new-item', name: 'Milk', description: '2L' })
-    );
-
-    await useListDetailStore.getState().addItem('Milk', '2L', null, 'Dairy');
-
-    expect(addItemLocally).toHaveBeenCalled();
-    expect(updateItemDescription).not.toHaveBeenCalled();
-  });
-
-  it('does not merge with soft-deleted items — adds a fresh item', async () => {
-    useListDetailStore.setState({
-      items: [{ ...existingItem, isDeleted: true }],
-    });
-    (addItemLocally as jest.Mock).mockResolvedValue(
-      makeItem({ localId: 'new-item', name: 'Milk', description: '2L' })
-    );
-
-    await useListDetailStore.getState().addItem('Milk', '2L', null, 'Dairy');
-
-    expect(addItemLocally).toHaveBeenCalled();
-    expect(updateItemDescription).not.toHaveBeenCalled();
+    expect(addItemOp).not.toHaveBeenCalled();
   });
 });
 
@@ -673,5 +541,69 @@ describe('clearTrolley', () => {
   it('does nothing when no activeLocalId', async () => {
     await useListDetailStore.getState().clearTrolley();
     expect(clearCheckedItems).not.toHaveBeenCalled();
+  });
+});
+
+// ─── moveItemToCategory ───────────────────────────────────────────────────────
+
+describe('moveItemToCategory', () => {
+  const dairyCategory = { id: 9, name: 'Dairy', ordering: 1 };
+
+  beforeEach(() => {
+    useListDetailStore.setState({
+      items: [makeItem()],
+      activeLocalId: 'list-local-1',
+      activeServerId: 5,
+      allCategories: [dairyCategory],
+    });
+  });
+
+  it('calls moveItemToCategoryOp with resolved category', async () => {
+    await useListDetailStore.getState().moveItemToCategory('item-1', 9);
+
+    expect(moveItemToCategoryOp).toHaveBeenCalledWith({
+      listContext: { activeLocalId: 'list-local-1', activeServerId: 5 },
+      item: expect.objectContaining({ localId: 'item-1' }),
+      category: dairyCategory,
+    });
+  });
+
+  it('calls moveItemToCategoryOp with null when categoryId is null', async () => {
+    await useListDetailStore.getState().moveItemToCategory('item-1', null);
+
+    expect(moveItemToCategoryOp).toHaveBeenCalledWith(
+      expect.objectContaining({ category: null })
+    );
+  });
+
+  it('updates category fields in Zustand state', async () => {
+    (moveItemToCategoryOp as jest.Mock).mockResolvedValue(
+      makeItem({ category: 'Dairy', serverCategoryId: 9, serverCategoryName: 'Dairy', isDirty: true })
+    );
+
+    await useListDetailStore.getState().moveItemToCategory('item-1', 9);
+
+    const item = useListDetailStore.getState().items[0];
+    expect(item.category).toBe('Dairy');
+    expect(item.serverCategoryId).toBe(9);
+    expect(item.isDirty).toBe(true);
+  });
+
+  it('sets Uncategorized when categoryId is null', async () => {
+    (moveItemToCategoryOp as jest.Mock).mockResolvedValue(
+      makeItem({ category: 'Uncategorized', serverCategoryId: null })
+    );
+
+    await useListDetailStore.getState().moveItemToCategory('item-1', null);
+
+    const item = useListDetailStore.getState().items[0];
+    expect(item.category).toBe('Uncategorized');
+    expect(item.serverCategoryId).toBeNull();
+  });
+
+  it('does nothing when no activeLocalId', async () => {
+    useListDetailStore.setState({ activeLocalId: null });
+    await useListDetailStore.getState().moveItemToCategory('item-1', 9);
+    expect(moveItemToCategoryOp).not.toHaveBeenCalled();
   });
 });
