@@ -7,7 +7,6 @@ import {
   upsertItemFromServer,
   removeItemsDeletedOnServer,
   clearCheckedItems,
-  getItem,
 } from '@/db/items';
 import { getAllLists, upsertListFromServer } from '@/db/lists';
 import { useAuthStore } from '@/store/authStore';
