@@ -217,12 +217,13 @@ describe('addItem', () => {
       expect(updateItemDescription).not.toHaveBeenCalled();
     });
 
-    it('returns { action: "merged", item } with updated description', async () => {
+    it('returns { action: "merged", item } with updated description and isDirty=true', async () => {
       const result = await addItem({ listContext: LIST_CTX, currentItems: [existingItem], name: 'Milk', description: '2L', iconKey: null, category: 'Dairy' });
 
       expect(result.action).toBe('merged');
       expect(result.item.localId).toBe('item-milk');
       expect(result.item.description).toBe('3L + 2L');
+      expect(result.item.isDirty).toBe(true);
     });
   });
 });
@@ -384,10 +385,11 @@ describe('toggleImportant', () => {
     expect(enqueue).not.toHaveBeenCalled();
   });
 
-  it('returns updated item with flipped isImportant', async () => {
+  it('returns updated item with flipped isImportant and isDirty=true', async () => {
     const result = await toggleImportant({ listContext: LIST_CTX, item: makeItem({ isImportant: false }) });
 
     expect(result.isImportant).toBe(true);
+    expect(result.isDirty).toBe(true);
   });
 });
 
@@ -506,12 +508,13 @@ describe('saveItem', () => {
     expect(enqueue).not.toHaveBeenCalled();
   });
 
-  it('returns updated item with new name, description, iconKey', async () => {
+  it('returns updated item with new name, description, iconKey and isDirty=true', async () => {
     const result = await saveItem(PARAMS);
 
     expect(result.name).toBe('Almond Milk');
     expect(result.description).toBe('500g');
     expect(result.iconKey).toBe('milk');
+    expect(result.isDirty).toBe(true);
   });
 });
 
