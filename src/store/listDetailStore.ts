@@ -184,8 +184,17 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
     bootstrap: async (householdId, restoreLastList) => {
       set({ loading: true, items: [], activeLocalId: null, activeServerId: null, activeName: '' });
 
-      await get().syncLists(householdId);
-      const lists = get().allLists;
+      let lists = await getAllLists(householdId);
+
+      if (lists.length === 0) {
+        // Nothing cached yet (first launch) — must wait for the server.
+        await get().syncLists(householdId);
+        lists = get().allLists;
+      } else {
+        // Cached data available — show it immediately, refresh in background.
+        set({ allLists: lists });
+        void get().syncLists(householdId);
+      }
 
       if (lists.length === 0) {
         set({ loading: false });
