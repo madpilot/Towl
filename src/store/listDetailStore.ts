@@ -320,15 +320,11 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
         iconKey,
         category,
       });
-      if (result.action === 'added') {
-        set({ items: [...items, result.item] });
-      } else {
-        set({
-          items: items.map((i) =>
-            i.localId === result.item.localId ? { ...i, description: result.item.description } : i
-          ),
-        });
+      if (result.action === 'merged') {
+        set({ items: items.map((i) => (i.localId === result.item.localId ? result.item : i)) });
+        return;
       }
+      set({ items: [...items, result.item] });
     },
 
     clearTrolley: async () => {
