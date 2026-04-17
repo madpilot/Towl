@@ -300,7 +300,7 @@ export async function clearExpiredCheckedItems(
 
 export async function toggleItemImportant(localId: string, important: boolean): Promise<void> {
   const db = await getDb();
-  await db.runAsync('UPDATE local_items SET is_important = ? WHERE local_id = ?', [
+  await db.runAsync('UPDATE local_items SET is_important = ?, is_dirty = 1 WHERE local_id = ?', [
     important ? 1 : 0,
     localId,
   ]);

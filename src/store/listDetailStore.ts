@@ -6,28 +6,25 @@ import {
   getItemsForList,
   upsertItemFromServer,
   removeItemsDeletedOnServer,
-  checkItem,
-  uncheckItem,
   clearCheckedItems,
-  toggleItemImportant,
-  updateItemNameAndIcon,
-  updateItemDescription,
-  addItemLocally,
-  softDeleteItem,
-  hardDeleteItem,
   getItem,
-  updateItemCategory,
 } from '@/db/items';
 import { getAllLists, upsertListFromServer } from '@/db/lists';
-import { enqueue as syncManagerEnqueue, removePendingCheckItem } from '@/sync/syncManager';
 import { useAuthStore } from '@/store/authStore';
 import { matchItem } from '@/data/foodMatcher';
-import { mergeQuantities } from '@/utils/mergeQuantities';
-import { recordItemUsed } from '@/db/history';
 import { SECURE_STORE_KEYS } from '@/utils/constants';
 import type { LocalItem } from '@/db/items';
 import type { LocalList } from '@/db/lists';
 import type { HouseholdCategory } from '@/api/households';
+import {
+  addItem as addItemOp,
+  checkItem as checkItemOp,
+  uncheckItem as uncheckItemOp,
+  toggleImportant as toggleImportantOp,
+  deleteItem as deleteItemOp,
+  saveItem as saveItemOp,
+  moveItemToCategory as moveItemToCategoryOp,
+} from '@/items/itemOperations';
 
 // ─── State shape ─────────────────────────────────────────────────────────────
 
@@ -249,67 +246,26 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
     toggleDone: async (localId) => {
       const { items, activeLocalId, activeServerId } = get();
       const item = items.find((i) => i.localId === localId);
-      if (!item) {
+      if (!item || !activeLocalId) {
         return;
       }
+      const listContext = { activeLocalId, activeServerId };
 
       if (!item.isChecked) {
-        // ── Checking off: move into trolley, remove from server list ──────────
-        const checkedAt = Date.now();
-        await checkItem(localId, checkedAt);
-        const freshItem = await getItem(localId);
-        if (
-          freshItem?.serverId !== null &&
-          freshItem?.serverId !== undefined &&
-          activeServerId !== null &&
-          activeLocalId !== null
-        ) {
-          await syncManagerEnqueue(
-            {
-              opType: 'CHECK_ITEM',
-              listServerId: activeServerId,
-              itemServerId: freshItem.serverId,
-              itemLocalId: localId,
-              removedAt: checkedAt,
-            },
-            activeLocalId
-          );
-        }
-        set({
-          items: items.map((i) =>
-            i.localId === localId ? { ...i, isChecked: true, isDirty: true, checkedAt } : i
-          ),
-        });
-      } else {
-        // ── Unchecking: return item to active list ────────────────────────────
-        const hadPendingOp = await removePendingCheckItem(localId);
-        const freshItem = await getItem(localId);
-        const needsReAdd =
-          !hadPendingOp &&
-          freshItem?.serverId !== null &&
-          freshItem?.serverId !== undefined &&
-          activeServerId !== null &&
-          activeLocalId !== null;
-
-        await uncheckItem(localId, needsReAdd);
-
-        if (needsReAdd && freshItem && activeServerId !== null && activeLocalId !== null) {
-          await syncManagerEnqueue(
-            {
-              opType: 'ADD_ITEM',
-              listServerId: activeServerId,
-              listLocalId: activeLocalId,
-              itemLocalId: localId,
-              name: freshItem.name,
-              description: freshItem.description,
-            },
-            activeLocalId
-          );
-        }
+        const result = await checkItemOp({ listContext, itemLocalId: localId });
         set({
           items: items.map((i) =>
             i.localId === localId
-              ? { ...i, isChecked: false, isDirty: needsReAdd, checkedAt: null }
+              ? { ...i, isChecked: true, isDirty: true, checkedAt: result.checkedAt }
+              : i
+          ),
+        });
+      } else {
+        const result = await uncheckItemOp({ listContext, itemLocalId: localId });
+        set({
+          items: items.map((i) =>
+            i.localId === localId
+              ? { ...i, isChecked: false, isDirty: result.needsReAdd, checkedAt: null }
               : i
           ),
         });
@@ -319,108 +275,45 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
     toggleImportant: async (localId) => {
       const { items, activeLocalId, activeServerId } = get();
       const item = items.find((i) => i.localId === localId);
-      if (!item) {
+      if (!item || !activeLocalId) {
         return;
       }
-      const isImportant = item.isImportant;
-      await toggleItemImportant(localId, !isImportant);
-      const freshItem = await getItem(localId);
-      if (
-        freshItem?.serverId !== null &&
-        freshItem?.serverId !== undefined &&
-        activeServerId !== null &&
-        activeLocalId !== null
-      ) {
-        const serverDescription = freshItem.isImportant
-          ? `!${freshItem.description}`
-          : freshItem.description;
-        await syncManagerEnqueue(
-          {
-            opType: 'UPDATE_ITEM_DESC',
-            listServerId: activeServerId,
-            itemServerId: freshItem.serverId,
-            itemLocalId: localId,
-            description: serverDescription,
-          },
-          activeLocalId
-        );
-      }
+      await toggleImportantOp({
+        listContext: { activeLocalId, activeServerId },
+        itemLocalId: localId,
+        currentIsImportant: item.isImportant,
+      });
       set({
-        items: items.map((i) => (i.localId === localId ? { ...i, isImportant: !isImportant } : i)),
+        items: items.map((i) =>
+          i.localId === localId ? { ...i, isImportant: !item.isImportant } : i
+        ),
       });
     },
 
     deleteItem: async (localId) => {
       const { activeLocalId, activeServerId, items } = get();
-      await softDeleteItem(localId);
-      const freshItem = await getItem(localId);
-      if (
-        freshItem?.serverId !== null &&
-        freshItem?.serverId !== undefined &&
-        activeServerId !== null &&
-        activeLocalId !== null
-      ) {
-        await syncManagerEnqueue(
-          {
-            opType: 'REMOVE_ITEM',
-            listServerId: activeServerId,
-            itemServerId: freshItem.serverId,
-            itemLocalId: localId,
-            removedAt: Date.now(),
-          },
-          activeLocalId
-        );
-      } else {
-        await hardDeleteItem(localId);
+      if (!activeLocalId) {
+        return;
       }
+      await deleteItemOp({
+        listContext: { activeLocalId, activeServerId },
+        itemLocalId: localId,
+      });
       set({ items: items.filter((i) => i.localId !== localId) });
     },
 
     saveItem: async (localId, name, description, iconKey) => {
       const { activeLocalId, activeServerId, items } = get();
-      await updateItemNameAndIcon(localId, name, description, iconKey);
-      const freshItem = await getItem(localId);
-      if (
-        freshItem?.serverId !== null &&
-        freshItem?.serverId !== undefined &&
-        activeServerId !== null &&
-        activeLocalId !== null
-      ) {
-        const category =
-          freshItem.serverCategoryId !== null
-            ? {
-                id: freshItem.serverCategoryId,
-                name: freshItem.serverCategoryName ?? '',
-                ordering: freshItem.serverCategoryOrdering ?? 0,
-              }
-            : null;
-        await syncManagerEnqueue(
-          {
-            opType: 'UPDATE_ITEM',
-            listServerId: activeServerId,
-            itemServerId: freshItem.serverId,
-            itemLocalId: localId,
-            name,
-            description,
-            iconKey,
-            category,
-          },
-          activeLocalId
-        );
-        // description is a per-list-instance field; the catalog endpoint (UPDATE_ITEM) does not
-        // persist it to the shoppinglist. Sync via the dedicated per-list endpoint as well.
-        const serverDescription = freshItem.isImportant ? `!${description}` : description;
-        await syncManagerEnqueue(
-          {
-            opType: 'UPDATE_ITEM_DESC',
-            listServerId: activeServerId,
-            itemServerId: freshItem.serverId,
-            itemLocalId: localId,
-            description: serverDescription,
-          },
-          activeLocalId
-        );
+      if (!activeLocalId) {
+        return;
       }
+      await saveItemOp({
+        listContext: { activeLocalId, activeServerId },
+        itemLocalId: localId,
+        name,
+        description,
+        iconKey,
+      });
       set({
         items: items.map((i) => (i.localId === localId ? { ...i, name, description, iconKey } : i)),
       });
@@ -431,63 +324,23 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
       if (!activeLocalId) {
         return;
       }
-
-      // If a non-checked, non-deleted item with the same name already exists,
-      // merge the quantities rather than inserting a duplicate row.
-      const nameLower = name.trim().toLowerCase();
-      const existing = items.find(
-        (i) => !i.isChecked && !i.isDeleted && i.name.toLowerCase() === nameLower
-      );
-
-      if (existing !== undefined) {
-        const mergedDescription = mergeQuantities(existing.description, description);
-        await updateItemDescription(existing.localId, mergedDescription);
-        if (existing.serverId !== null && activeServerId !== null) {
-          const serverDescription = existing.isImportant
-            ? `!${mergedDescription}`
-            : mergedDescription;
-          await syncManagerEnqueue(
-            {
-              opType: 'UPDATE_ITEM_DESC',
-              listServerId: activeServerId,
-              itemServerId: existing.serverId,
-              itemLocalId: existing.localId,
-              description: serverDescription,
-            },
-            activeLocalId
-          );
-        }
-        set({
-          items: items.map((i) =>
-            i.localId === existing.localId ? { ...i, description: mergedDescription } : i
-          ),
-        });
-        return;
-      }
-
-      const match = iconKey ? { iconKey, category } : matchItem(name);
-      const newItem = await addItemLocally(
-        activeLocalId,
+      const result = await addItemOp({
+        listContext: { activeLocalId, activeServerId },
+        currentItems: items,
         name,
         description,
-        match.iconKey,
-        match.category
-      );
-      await recordItemUsed(name, match.iconKey, match.category);
-      if (activeServerId !== null) {
-        await syncManagerEnqueue(
-          {
-            opType: 'ADD_ITEM',
-            listServerId: activeServerId,
-            listLocalId: activeLocalId,
-            itemLocalId: newItem.localId,
-            name,
-            description,
-          },
-          activeLocalId
-        );
+        iconKey,
+        category,
+      });
+      if (result.action === 'added') {
+        set({ items: [...items, result.item] });
+      } else {
+        set({
+          items: items.map((i) =>
+            i.localId === result.item.localId ? { ...i, description: result.item.description } : i
+          ),
+        });
       }
-      set({ items: [...items, newItem] });
     },
 
     clearTrolley: async () => {
@@ -515,50 +368,27 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
 
     moveItemToCategory: async (localId, categoryId) => {
       const { activeLocalId, activeServerId, items, allCategories } = get();
+      if (!activeLocalId) {
+        return;
+      }
       const category =
         categoryId !== null ? (allCategories.find((c) => c.id === categoryId) ?? null) : null;
 
-      const newName = category?.name ?? 'Uncategorized';
-      const newId = category?.id ?? null;
-      const newCategoryName = category?.name ?? null;
-      const newOrdering = category?.ordering ?? null;
-
-      await updateItemCategory(localId, newName, newId, newCategoryName, newOrdering);
-
-      const freshItem = await getItem(localId);
-      if (
-        freshItem?.serverId !== null &&
-        freshItem?.serverId !== undefined &&
-        activeServerId !== null &&
-        activeLocalId !== null
-      ) {
-        const serverCategory = category
-          ? { id: category.id, name: category.name, ordering: category.ordering }
-          : null;
-        await syncManagerEnqueue(
-          {
-            opType: 'UPDATE_ITEM',
-            listServerId: activeServerId,
-            itemServerId: freshItem.serverId,
-            itemLocalId: localId,
-            name: freshItem.name,
-            description: freshItem.description,
-            iconKey: freshItem.iconKey,
-            category: serverCategory,
-          },
-          activeLocalId
-        );
-      }
+      await moveItemToCategoryOp({
+        listContext: { activeLocalId, activeServerId },
+        itemLocalId: localId,
+        category,
+      });
 
       set({
         items: items.map((i) =>
           i.localId === localId
             ? {
                 ...i,
-                category: newName,
-                serverCategoryId: newId,
-                serverCategoryName: newCategoryName,
-                serverCategoryOrdering: newOrdering,
+                category: category?.name ?? 'Uncategorized',
+                serverCategoryId: category?.id ?? null,
+                serverCategoryName: category?.name ?? null,
+                serverCategoryOrdering: category?.ordering ?? null,
                 isDirty: true,
               }
             : i
