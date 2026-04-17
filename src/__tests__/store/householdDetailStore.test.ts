@@ -3,6 +3,11 @@ jest.mock('react-native', () => ({
   Alert: { alert: jest.fn() },
 }));
 
+const mockSyncLists = jest.fn().mockResolvedValue(undefined);
+jest.mock('@/store/listDetailStore', () => ({
+  useListDetailStore: { getState: jest.fn(() => ({ syncLists: mockSyncLists })) },
+}));
+
 import { useHouseholdDetailStore } from '@/store/householdDetailStore';
 import { useAuthStore } from '@/store/authStore';
 
@@ -45,6 +50,7 @@ const householdsApi = {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockSyncLists.mockResolvedValue(undefined);
   (useAuthStore as unknown as jest.Mock).mockReturnValue({ householdsApi, shoppingListsApi });
   // Mimic getState()
   (useAuthStore as unknown as { getState: () => unknown }).getState = () => ({
@@ -111,6 +117,15 @@ describe('createList', () => {
     expect(useHouseholdDetailStore.getState().lists).toContainEqual(newList);
     expect(mockCreateShoppingList).toHaveBeenCalledWith('Party', 1);
   });
+
+  it('syncs the list detail store after creating', async () => {
+    mockCreateShoppingList.mockResolvedValue({ id: 99, name: 'Party', items: [] });
+    useHouseholdDetailStore.setState({ householdId: 1, lists: [] });
+
+    await useHouseholdDetailStore.getState().createList('Party');
+
+    expect(mockSyncLists).toHaveBeenCalledWith(1);
+  });
 });
 
 describe('renameList', () => {
@@ -125,6 +140,18 @@ describe('renameList', () => {
 
     expect(useHouseholdDetailStore.getState().lists[0]?.name).toBe('New Name');
   });
+
+  it('syncs the list detail store after renaming', async () => {
+    mockRenameShoppingList.mockResolvedValue(undefined);
+    useHouseholdDetailStore.setState({
+      householdId: 1,
+      lists: [{ id: 5, name: 'Old Name', items: [] }] as never,
+    });
+
+    await useHouseholdDetailStore.getState().renameList(5, 'New Name');
+
+    expect(mockSyncLists).toHaveBeenCalledWith(1);
+  });
 });
 
 describe('deleteList', () => {
@@ -138,6 +165,18 @@ describe('deleteList', () => {
     await useHouseholdDetailStore.getState().deleteList(5);
 
     expect(useHouseholdDetailStore.getState().lists).toHaveLength(0);
+  });
+
+  it('syncs the list detail store after deleting', async () => {
+    mockDeleteShoppingList.mockResolvedValue(undefined);
+    useHouseholdDetailStore.setState({
+      householdId: 1,
+      lists: [{ id: 5, name: 'Doomed', items: [] }] as never,
+    });
+
+    await useHouseholdDetailStore.getState().deleteList(5);
+
+    expect(mockSyncLists).toHaveBeenCalledWith(1);
   });
 });
 

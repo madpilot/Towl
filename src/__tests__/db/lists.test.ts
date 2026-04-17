@@ -140,21 +140,72 @@ describe('lists db', () => {
   });
 
   describe('upsertListFromServer', () => {
-    it('reads back the upserted row and returns the mapped list', async () => {
+    it('creates a new local row when no existing list has that serverId', async () => {
       const { upsertListFromServer } = getModule();
-      // db is cached; getFirstAsync is called once for the read-back after upsert
-      mockDb.getFirstAsync.mockResolvedValueOnce(
-        makeListRow({ local_id: 'uuid-1', server_id: 5, name: 'Party' })
-      );
+      mockDb.getFirstAsync
+        .mockResolvedValueOnce(null) // lookup by server_id — not found
+        .mockResolvedValueOnce(makeListRow({ local_id: 'uuid-1', server_id: 5, name: 'Party' })); // read-back
 
       const list = await upsertListFromServer(5, 1, 'Party');
 
       expect(mockDb.runAsync).toHaveBeenCalledWith(
         expect.stringContaining('INSERT INTO local_lists'),
-        expect.arrayContaining([5, 1, 'Party'])
+        expect.arrayContaining(['uuid-1', 5, 1, 'Party'])
       );
       expect(list.name).toBe('Party');
       expect(list.serverId).toBe(5);
+      expect(list.localId).toBe('uuid-1');
+    });
+
+    it('reuses the existing localId when the list already exists in SQLite', async () => {
+      const { upsertListFromServer } = getModule();
+      mockDb.getFirstAsync
+        .mockResolvedValueOnce(makeListRow({ local_id: 'existing-1', server_id: 5 })) // found
+        .mockResolvedValueOnce(makeListRow({ local_id: 'existing-1', server_id: 5, name: 'Party' })); // read-back
+
+      const list = await upsertListFromServer(5, 1, 'Party');
+
+      expect(mockDb.runAsync).toHaveBeenCalledWith(
+        expect.stringContaining('INSERT INTO local_lists'),
+        expect.arrayContaining(['existing-1', 5, 1, 'Party'])
+      );
+      expect(list.localId).toBe('existing-1');
+    });
+  });
+
+  describe('removeListsDeletedOnServer', () => {
+    it('deletes synced non-deleted lists absent from the server list', async () => {
+      const { removeListsDeletedOnServer } = getModule();
+      await removeListsDeletedOnServer(1, [10, 20]);
+
+      expect(mockDb.runAsync).toHaveBeenCalledWith(
+        expect.stringContaining('server_id NOT IN'),
+        [1, 10, 20]
+      );
+    });
+
+    it('deletes all synced lists when serverIds is empty', async () => {
+      const { removeListsDeletedOnServer } = getModule();
+      await removeListsDeletedOnServer(1, []);
+
+      expect(mockDb.runAsync).toHaveBeenCalledWith(
+        expect.stringContaining('server_id IS NOT NULL'),
+        [1]
+      );
+      expect(mockDb.runAsync).not.toHaveBeenCalledWith(
+        expect.stringContaining('NOT IN'),
+        expect.anything()
+      );
+    });
+
+    it('does not delete lists that are pending a DELETE_LIST sync op (is_deleted=1)', async () => {
+      const { removeListsDeletedOnServer } = getModule();
+      await removeListsDeletedOnServer(1, []);
+
+      expect(mockDb.runAsync).toHaveBeenCalledWith(
+        expect.stringContaining('is_deleted = 0'),
+        expect.anything()
+      );
     });
   });
 });
