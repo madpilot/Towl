@@ -50,7 +50,7 @@ export async function addItem(params: {
         activeLocalId
       );
     }
-    return { action: 'merged', item: { ...existing, description: mergedDescription } };
+    return { action: 'merged', item: { ...existing, description: mergedDescription, isDirty: true } };
   }
 
   const match = iconKey ? { iconKey, category } : matchItem(name);
@@ -151,7 +151,7 @@ export async function toggleImportant(params: {
       activeLocalId
     );
   }
-  return { ...item, isImportant: newIsImportant };
+  return { ...item, isImportant: newIsImportant, isDirty: true };
 }
 
 export async function deleteItem(params: {
@@ -222,7 +222,7 @@ export async function saveItem(params: {
       activeLocalId
     );
   }
-  return { ...item, name, description, iconKey };
+  return { ...item, name, description, iconKey, isDirty: true };
 }
 
 export async function moveItemToCategory(params: {
