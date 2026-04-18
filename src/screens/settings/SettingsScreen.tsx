@@ -26,7 +26,6 @@ import {
   SecondaryBtn,
 } from '@/components/settings';
 import { Colors, Spacing, Radii, FontSize } from '@/theme';
-import type { Household } from '@/api/households';
 import type { ApiSessionToken } from '@/api/auth';
 import type { SettingsScreenProps } from '@/navigation/types';
 
@@ -111,9 +110,9 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
   const authApi = useAuthStore((s) => s.authApi);
   const householdsApi = useAuthStore((s) => s.householdsApi);
   const serverUrl = useAuthStore((s) => s.serverUrl);
+  const households = useHouseholdStore((s) => s.households);
   const setStoreHouseholds = useHouseholdStore((s) => s.setHouseholds);
 
-  const [households, setHouseholds] = useState<Household[]>([]);
   const [loadingHouseholds, setLoadingHouseholds] = useState(true);
   const [modal, setModal] = useState<ModalKind>(null);
 
@@ -193,7 +192,6 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
     try {
       setLoadingHouseholds(true);
       const data = await householdsApi.getHouseholds();
-      setHouseholds(data);
       setStoreHouseholds(data);
     } catch {
       Alert.alert('Error', 'Could not load households.');

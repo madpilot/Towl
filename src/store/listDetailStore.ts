@@ -73,6 +73,7 @@ type ListDetailState = {
 
   // Category data
   fetchCategories: (householdId: number) => Promise<void>;
+  setAllCategories: (categories: HouseholdCategory[]) => void;
 };
 
 // ─── Store ───────────────────────────────────────────────────────────────────
@@ -321,14 +322,14 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
       if (!item) {
         return;
       }
-      const updated = await saveItemOp({
+      set({ items: items.map((i) => (i.localId === localId ? { ...i, name, description, iconKey, isDirty: true } : i)) });
+      await saveItemOp({
         listContext: { activeLocalId, activeServerId },
         item,
         name,
         description,
         iconKey,
       });
-      set({ items: items.map((i) => (i.localId === localId ? updated : i)) });
     },
 
     addItem: async (name, description, iconKey, category) => {
@@ -373,6 +374,8 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
         // Offline or transient failure — keep existing categories.
       }
     },
+
+    setAllCategories: (categories) => set({ allCategories: categories }),
 
     moveItemToCategory: async (localId, categoryId) => {
       const { activeLocalId, activeServerId, items, allCategories } = get();

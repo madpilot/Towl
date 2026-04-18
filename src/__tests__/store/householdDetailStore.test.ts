@@ -8,6 +8,17 @@ jest.mock('@/store/listDetailStore', () => ({
   useListDetailStore: { getState: jest.fn(() => ({ syncLists: mockSyncLists })) },
 }));
 
+jest.mock('@/store/householdStore', () => ({
+  useHouseholdStore: {
+    getState: () => ({
+      households: [],
+      selectedHousehold: null,
+      setHouseholds: jest.fn(),
+      selectHousehold: jest.fn(),
+    }),
+  },
+}));
+
 import { useHouseholdDetailStore } from '@/store/householdDetailStore';
 import { useAuthStore } from '@/store/authStore';
 

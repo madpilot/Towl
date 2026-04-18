@@ -150,7 +150,7 @@ describe('inviteMember', () => {
     await api.inviteMember(1, 'charlie');
 
     expect(mockGet).toHaveBeenCalledWith('/user/search', { params: { query: 'charlie' } });
-    expect(mockPut).toHaveBeenCalledWith('/household/1/member/7');
+    expect(mockPut).toHaveBeenCalledWith('/household/1/member/7', {});
   });
 
   it('throws when no user with that username is found', async () => {

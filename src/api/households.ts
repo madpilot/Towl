@@ -126,7 +126,7 @@ export class HouseholdsApi {
     if (!user) {
       throw new Error(`User "${username}" not found`);
     }
-    await this.client.put(`/household/${householdId}/member/${user.id}`);
+    await this.client.put(`/household/${householdId}/member/${user.id}`, {});
   }
 
   async removeMember(householdId: number, memberId: number): Promise<void> {

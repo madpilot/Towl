@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
 import { useAuthStore } from './authStore';
 import { useListDetailStore } from './listDetailStore';
+import { useHouseholdStore } from './householdStore';
 import type { ApiShoppingList } from '@/api/shoppinglists';
 import type { HouseholdCategory, HouseholdMember } from '@/api/households';
 
@@ -114,6 +115,12 @@ export const useHouseholdDetailStore = create<HouseholdDetailState>((set, get) =
     }
     await householdsApi.renameHousehold(householdId, name);
     set({ householdName: name });
+    const { households, selectedHousehold, setHouseholds, selectHousehold } =
+      useHouseholdStore.getState();
+    setHouseholds(households.map((h) => (h.id === householdId ? { ...h, name } : h)));
+    if (selectedHousehold?.id === householdId) {
+      selectHousehold({ ...selectedHousehold, name });
+    }
   },
 
   leaveHousehold: async () => {
@@ -126,6 +133,8 @@ export const useHouseholdDetailStore = create<HouseholdDetailState>((set, get) =
       return;
     }
     await householdsApi.leaveHousehold(householdId, user.id);
+    const { households, setHouseholds } = useHouseholdStore.getState();
+    setHouseholds(households.filter((h) => h.id !== householdId));
   },
 
   // ── Lists ──────────────────────────────────────────────────────────────────
