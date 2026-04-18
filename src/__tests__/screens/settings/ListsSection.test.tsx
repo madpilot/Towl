@@ -24,9 +24,7 @@ const sampleLists = [
   { id: 2, name: 'Party', items: [] },
 ] as unknown as ApiShoppingList[];
 
-const defaultList = {
-  id: 3, name: 'Groceries', household_id: 1, isDefault: true, items: [], recentItems: [],
-};
+const defaultList = { id: 3, name: 'Groceries', household_id: 1, items: [], recentItems: [] };
 
 function mockHook(overrides: Record<string, unknown> = {}) {
   (useListsSection as jest.Mock).mockReturnValue({
@@ -90,13 +88,13 @@ describe('ListsSection', () => {
   });
 
   it('shows a default pill on the default list row', () => {
-    mockHook({ lists: [defaultList] });
+    mockHook({ lists: [{ ...defaultList, isDefault: true }] });
     render(<ListsSection />);
     expect(screen.getByText('default')).toBeTruthy();
   });
 
   it('does not show the delete button for the default list', () => {
-    mockHook({ lists: [defaultList] });
+    mockHook({ lists: [{ ...defaultList, isDefault: true }] });
     render(<ListsSection />);
     fireEvent.press(screen.getByText('Groceries'));
     expect(screen.getByText('Save changes')).toBeTruthy();
