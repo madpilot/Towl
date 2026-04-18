@@ -109,7 +109,7 @@ export default function HouseholdCategoriesScreen({
 
   const [loading, setLoading] = useState(true);
   const [scrollEnabled, setScrollEnabled] = useState(true);
-  const [categories, setCategories] = useState<HouseholdCategory[]>([]);
+  const categories = useListDetailStore((s) => s.allCategories);
   const categoriesRef = useRef(categories);
   categoriesRef.current = categories;
 
@@ -193,7 +193,7 @@ export default function HouseholdCategoriesScreen({
     }
     try {
       const fetched = await householdsApi.getCategories(householdId);
-      setCategories(fetched.slice().sort((a, b) => a.ordering - b.ordering));
+      useListDetailStore.getState().setAllCategories(fetched.slice().sort((a, b) => a.ordering - b.ordering));
     } catch {
       Alert.alert('Error', 'Could not load categories. Check your connection.');
     }
@@ -202,12 +202,6 @@ export default function HouseholdCategoriesScreen({
   useEffect(() => {
     void load().finally(() => setLoading(false));
   }, [load]);
-
-  // Keep listDetailStore in sync so new/renamed/deleted/reordered categories
-  // are visible on the shopping list page without a full refresh.
-  useEffect(() => {
-    useListDetailStore.getState().setAllCategories(categories);
-  }, [categories]);
 
   // ── Sheet helpers ──────────────────────────────────────────────────────────
 
@@ -239,7 +233,7 @@ export default function HouseholdCategoriesScreen({
       const created = await householdsApi.createCategory(householdId, name.trim(), ordering);
       // Override the server-echoed ordering with the value we sent — the server may
       // return a different ordering value in its response.
-      setCategories((prev) => [...prev, { ...created, ordering }]);
+      useListDetailStore.getState().setAllCategories([...categoriesRef.current, { ...created, ordering }]);
       closeSheet();
     } catch (e: unknown) {
       Alert.alert('Error', e instanceof Error ? e.message : 'Failed to create category.');
@@ -255,8 +249,8 @@ export default function HouseholdCategoriesScreen({
     setAction('update');
     try {
       await householdsApi.updateCategory(editingCat.id, name.trim(), editingCat.ordering);
-      setCategories((prev) =>
-        prev.map((c) => (c.id === editingCat.id ? { ...c, name: name.trim() } : c))
+      useListDetailStore.getState().setAllCategories(
+        categoriesRef.current.map((c) => (c.id === editingCat.id ? { ...c, name: name.trim() } : c))
       );
       closeSheet();
     } catch (e: unknown) {
@@ -273,7 +267,7 @@ export default function HouseholdCategoriesScreen({
     setAction('delete');
     try {
       await householdsApi.deleteCategory(editingCat.id);
-      setCategories((prev) => prev.filter((c) => c.id !== editingCat.id));
+      useListDetailStore.getState().setAllCategories(categoriesRef.current.filter((c) => c.id !== editingCat.id));
       closeSheet();
     } catch (e: unknown) {
       Alert.alert('Error', e instanceof Error ? e.message : 'Failed to delete category.');
@@ -331,7 +325,7 @@ export default function HouseholdCategoriesScreen({
         const [moved] = newCats.splice(fromIndex, 1);
         newCats.splice(target, 0, moved);
         const ordered = newCats.map((c, i) => ({ ...c, ordering: i }));
-        setCategories(ordered);
+        useListDetailStore.getState().setAllCategories(ordered);
         if (householdsApi) {
           ordered.forEach((c) => {
             void householdsApi.updateCategory(c.id, c.name, c.ordering);
