@@ -81,9 +81,8 @@ export class HouseholdsApi {
     return HouseholdDetailSchema.parse(res.data);
   }
 
-  // Endpoint unknown — stub until confirmed
-  async renameHousehold(_householdId: number, _name: string): Promise<void> {
-    throw new Error('renameHousehold: KitchenOwl API endpoint not yet confirmed');
+  async renameHousehold(householdId: number, name: string): Promise<void> {
+    await this.client.post(`/household/${householdId}`, { name });
   }
 
   // ── Categories ─────────────────────────────────────────────────────────────
@@ -120,16 +119,22 @@ export class HouseholdsApi {
     return detail.member;
   }
 
-  async inviteMember(_householdId: number, _username: string): Promise<void> {
-    throw new Error('inviteMember: KitchenOwl API endpoint not yet confirmed');
+  async inviteMember(householdId: number, username: string): Promise<void> {
+    const res = await this.client.get<unknown>(`/user/search`, { params: { query: username } });
+    const users = z.array(HouseholdMemberSchema).parse(res.data);
+    const user = users.find((u) => u.username === username);
+    if (!user) {
+      throw new Error(`User "${username}" not found`);
+    }
+    await this.client.put(`/household/${householdId}/member/${user.id}`);
   }
 
-  async removeMember(_householdId: number, _memberId: number): Promise<void> {
-    throw new Error('removeMember: KitchenOwl API endpoint not yet confirmed');
+  async removeMember(householdId: number, memberId: number): Promise<void> {
+    await this.client.delete(`/household/${householdId}/member/${memberId}`);
   }
 
-  async leaveHousehold(_householdId: number): Promise<void> {
-    throw new Error('leaveHousehold: KitchenOwl API endpoint not yet confirmed');
+  async leaveHousehold(householdId: number, userId: number): Promise<void> {
+    await this.client.delete(`/household/${householdId}/member/${userId}`);
   }
 
   // ── Household items (catalog) ───────────────────────────────────────────────
