@@ -11,7 +11,7 @@ import {
   SecondaryBtn,
 } from '@/components/settings';
 import { useListsSection } from '@/store/householdDetailStore';
-import { Colors, Spacing, FontSize } from '@/theme';
+import { Colors, Radii, Spacing, FontSize } from '@/theme';
 
 export function ListsSection() {
   const { lists, defaultListId, createList, renameList, deleteList } = useListsSection();
@@ -81,7 +81,14 @@ export function ListsSection() {
             <View key={list.id}>
               <Row
                 label={list.name}
-                sub={`${list.items.length} item${list.items.length !== 1 ? 's' : ''}${list.id === defaultListId ? ' · default' : ''}`}
+                sub={`${list.items.length} item${list.items.length !== 1 ? 's' : ''}`}
+                badge={
+                  list.id === defaultListId ? (
+                    <View style={styles.pill}>
+                      <Text style={styles.pillText}>default</Text>
+                    </View>
+                  ) : undefined
+                }
                 onPress={() => {
                   setEditingListId(list.id);
                   setListName(list.name);
@@ -141,4 +148,16 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: FontSize.body, color: Colors.textFaded },
   addRow: { paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md + 2 },
   addLabel: { fontSize: FontSize.body, fontWeight: '700', color: Colors.mint },
+  pill: {
+    backgroundColor: Colors.mintPale,
+    borderRadius: Radii.full,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 3,
+    marginRight: Spacing.sm,
+  },
+  pillText: {
+    fontSize: FontSize.tiny,
+    fontWeight: '700',
+    color: Colors.mint,
+  },
 });

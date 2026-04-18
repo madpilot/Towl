@@ -5,18 +5,20 @@ import { Colors, Spacing, FontSize } from '@/theme';
 export type RowProps = {
   label: string;
   sub?: string;
+  badge?: React.ReactNode;
   onPress?: () => void;
   danger?: boolean;
   showChevron?: boolean;
 };
 
-export function Row({ label, sub, onPress, danger = false, showChevron = true }: RowProps) {
+export function Row({ label, sub, badge, onPress, danger = false, showChevron = true }: RowProps) {
   return (
     <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.text}>
         <Text style={[styles.label, danger && styles.dangerLabel]}>{label}</Text>
         {sub ? <Text style={styles.sub}>{sub}</Text> : null}
       </View>
+      {badge}
       {showChevron && <Text style={styles.chevron}>›</Text>}
     </TouchableOpacity>
   );

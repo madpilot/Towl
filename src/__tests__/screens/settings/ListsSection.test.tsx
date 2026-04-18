@@ -90,10 +90,10 @@ describe('ListsSection', () => {
     expect(screen.getByText('Delete list')).toBeTruthy();
   });
 
-  it('shows · default suffix on the default list row', () => {
+  it('shows a default pill on the default list row', () => {
     mockHook({ lists: [defaultList], defaultListId: 3 });
     render(<ListsSection />);
-    expect(screen.getByText(/· default/)).toBeTruthy();
+    expect(screen.getByText('default')).toBeTruthy();
   });
 
   it('does not show the delete button for the default list', () => {
