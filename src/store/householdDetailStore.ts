@@ -9,6 +9,7 @@ import type { HouseholdCategory, HouseholdMember } from '@/api/households';
 interface HouseholdDetailState {
   householdId: number | null;
   householdName: string;
+  defaultListId: number | null;
   lists: ApiShoppingList[];
   members: HouseholdMember[];
   categories: HouseholdCategory[];
@@ -45,6 +46,7 @@ interface HouseholdDetailState {
 export const useHouseholdDetailStore = create<HouseholdDetailState>((set, get) => ({
   householdId: null,
   householdName: '',
+  defaultListId: null,
   lists: [],
   members: [],
   categories: [],
@@ -53,7 +55,7 @@ export const useHouseholdDetailStore = create<HouseholdDetailState>((set, get) =
   initialize: (householdId, householdName) => {
     // Clear stale data when switching to a different household
     if (get().householdId !== householdId) {
-      set({ householdId, householdName, lists: [], members: [], categories: [] });
+      set({ householdId, householdName, defaultListId: null, lists: [], members: [], categories: [] });
     } else {
       set({ householdId, householdName });
     }
@@ -71,15 +73,19 @@ export const useHouseholdDetailStore = create<HouseholdDetailState>((set, get) =
 
     set({ loading: true });
     try {
-      const [listsResult, categoriesResult] = await Promise.allSettled([
+      const [listsResult, categoriesResult, householdResult] = await Promise.allSettled([
         shoppingListsApi.getShoppingLists(householdId),
         householdsApi.getCategories(householdId),
+        householdsApi.getHousehold(householdId),
       ]);
       if (listsResult.status === 'fulfilled') {
         set({ lists: listsResult.value });
       }
       if (categoriesResult.status === 'fulfilled') {
         set({ categories: categoriesResult.value });
+      }
+      if (householdResult.status === 'fulfilled') {
+        set({ defaultListId: householdResult.value.default_shopping_list?.id ?? null });
       }
 
       try {
@@ -271,6 +277,7 @@ export function useListsSection() {
   return useHouseholdDetailStore(
     useShallow((s) => ({
       lists: s.lists,
+      defaultListId: s.defaultListId,
       createList: s.createList,
       renameList: s.renameList,
       deleteList: s.deleteList,

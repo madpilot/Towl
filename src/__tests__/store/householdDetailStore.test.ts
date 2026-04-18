@@ -57,6 +57,7 @@ beforeEach(() => {
     householdsApi,
     shoppingListsApi,
   });
+  mockGetHousehold.mockResolvedValue({ id: 1, name: 'Home', photo: null, member: [], default_shopping_list: null });
   // Reset store to clean state before each test
   useHouseholdDetailStore.setState({
     householdId: null,
@@ -103,6 +104,31 @@ describe('loadAll', () => {
     expect(state.categories).toEqual(categories);
     expect(state.members).toEqual(members);
     expect(state.loading).toBe(false);
+  });
+
+  it('sets defaultListId from the household default_shopping_list', async () => {
+    mockGetShoppingLists.mockResolvedValue([]);
+    mockGetCategories.mockResolvedValue([]);
+    mockGetHousehold.mockResolvedValue({
+      id: 1, name: 'Home', photo: null, member: [],
+      default_shopping_list: { id: 5, name: 'Groceries', household_id: 1 },
+    });
+
+    useHouseholdDetailStore.setState({ householdId: 1 });
+    await useHouseholdDetailStore.getState().loadAll();
+
+    expect(useHouseholdDetailStore.getState().defaultListId).toBe(5);
+  });
+
+  it('sets defaultListId to null when household has no default list', async () => {
+    mockGetShoppingLists.mockResolvedValue([]);
+    mockGetCategories.mockResolvedValue([]);
+    // mockGetHousehold already returns null default_shopping_list from beforeEach
+
+    useHouseholdDetailStore.setState({ householdId: 1 });
+    await useHouseholdDetailStore.getState().loadAll();
+
+    expect(useHouseholdDetailStore.getState().defaultListId).toBeNull();
   });
 });
 
