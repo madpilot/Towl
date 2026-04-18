@@ -19,6 +19,7 @@ export function ListsSection() {
   const [modal, setModal] = useState<'new' | 'edit' | null>(null);
   const [listName, setListName] = useState('');
   const [editingListId, setEditingListId] = useState<number | null>(null);
+  const [editingIsDefault, setEditingIsDefault] = useState(false);
   const [saving, setSaving] = useState(false);
 
   async function handleCreate() {
@@ -80,10 +81,11 @@ export function ListsSection() {
             <View key={list.id}>
               <Row
                 label={list.name}
-                sub={`${list.items.length} item${list.items.length !== 1 ? 's' : ''}`}
+                sub={`${list.items.length} item${list.items.length !== 1 ? 's' : ''}${list.is_default ? ' · default' : ''}`}
                 onPress={() => {
                   setEditingListId(list.id);
                   setListName(list.name);
+                  setEditingIsDefault(list.is_default ?? false);
                   setModal('edit');
                 }}
               />
@@ -124,7 +126,9 @@ export function ListsSection() {
           placeholder="e.g. Weekend Shop"
         />
         <PrimaryBtn label="Save changes" onPress={handleRename} loading={saving} />
-        <PrimaryBtn label="Delete list" onPress={handleDelete} loading={saving} danger />
+        {!editingIsDefault && (
+          <PrimaryBtn label="Delete list" onPress={handleDelete} loading={saving} danger />
+        )}
         <SecondaryBtn label="Cancel" onPress={() => setModal(null)} />
         <View style={{ height: Spacing.xl }} />
       </Sheet>
