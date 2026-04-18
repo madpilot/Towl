@@ -11,7 +11,6 @@ import {
   TextInput,
 } from 'react-native';
 import Sheet from '@/components/Sheet';
-import BottomNav from '@/components/BottomNav';
 import { SectionLabel, Card, PrimaryBtn } from '@/components/settings';
 import { MembersSection } from './MembersSection';
 import { ListsSection } from './ListsSection';
@@ -142,7 +141,6 @@ export default function HouseholdDetailScreen({ navigation, route }: HouseholdDe
         )}
       </ScrollView>
 
-      <BottomNav active="settings" />
 
       <Sheet visible={modal === 'rename'} title="Rename household" onClose={() => setModal(null)}>
         <View style={styles.nameRow}>

@@ -21,7 +21,6 @@ import { useListDetailStore, useListNav, useItemActions } from '@/store/listDeta
 import { DragDropProvider, useDragDrop } from '@/components/DragDropContext';
 import CategorySection from '@/components/CategorySection';
 import AddItemBar from '@/components/AddItemBar';
-import BottomNav from '@/components/BottomNav';
 import HouseIcon from '@/components/icons/HouseIcon';
 import KitchenOwlIcon from '@/components/KitchenOwlIcon';
 import ListPickerModal from '@/screens/lists/ListPickerModal';
@@ -364,8 +363,6 @@ function ListDetailContent({ navigation }: ListDetailContentProps) {
         )}
       </KeyboardAvoidingView>
 
-      {/* BottomNav is position:absolute — anchor it to SafeAreaView, not KAV. */}
-      <BottomNav active="lists" />
 
       {/* Drag ghost — absolute overlay, follows the finger during drag. */}
       <DragGhost />

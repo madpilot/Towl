@@ -12,7 +12,6 @@ import {
   ScrollView,
 } from 'react-native';
 import Sheet from '@/components/Sheet';
-import BottomNav from '@/components/BottomNav';
 import { Card, Sep, PrimaryBtn } from '@/components/settings';
 import { useAuthStore } from '@/store/authStore';
 import { Colors, Spacing, Radii, FontSize } from '@/theme';
@@ -420,7 +419,6 @@ export default function HouseholdCategoriesScreen({
         </View>
       )}
 
-      <BottomNav active="settings" />
 
       {/* Create sheet */}
       <Sheet visible={sheet === 'new'} title="New category" onClose={closeSheet}>

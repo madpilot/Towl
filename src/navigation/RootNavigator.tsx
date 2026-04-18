@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, useNavigationState } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import { useAuthStore } from '@/store/authStore';
@@ -20,6 +20,7 @@ import SettingsScreen from '@/screens/settings/SettingsScreen';
 import HouseholdDetailScreen from '@/screens/settings/HouseholdDetailScreen';
 import HouseholdItemsScreen from '@/screens/settings/HouseholdItemsScreen';
 import HouseholdCategoriesScreen from '@/screens/settings/HouseholdCategoriesScreen';
+import BottomNav from '@/components/BottomNav';
 
 import type { AuthStackParamList, MainStackParamList } from './types';
 
@@ -38,6 +39,12 @@ function AuthNavigator() {
 
 function MainNavigator() {
   const selectedHousehold = useHouseholdStore((s) => s.selectedHousehold);
+  const routeName = useNavigationState((state) => state?.routes[state.index]?.name);
+  const showNav =
+    selectedHousehold !== null &&
+    routeName !== undefined &&
+    routeName !== 'HouseholdPicker';
+  const activeTab: 'lists' | 'settings' = routeName === 'ListDetail' ? 'lists' : 'settings';
 
   useEffect(() => {
     void socketManager.connect();
@@ -50,34 +57,37 @@ function MainNavigator() {
   }, []);
 
   return (
-    <MainStack.Navigator screenOptions={{ headerShown: false }}>
-      {selectedHousehold === null ? (
-        // Onboarding: only the picker is available; selecting auto-transitions
-        <MainStack.Screen name="HouseholdPicker" component={HouseholdPickerScreen} />
-      ) : (
-        // Authenticated: list is the root; picker is reachable from the nav bar
-        <>
-          <MainStack.Screen
-            name="ListDetail"
-            component={ListDetailScreen}
-            options={{ animation: 'none' }}
-          />
-          <MainStack.Screen
-            name="HouseholdPicker"
-            component={HouseholdPickerScreen}
-            options={{ animation: 'slide_from_bottom' }}
-          />
-          <MainStack.Screen
-            name="Settings"
-            component={SettingsScreen}
-            options={{ animation: 'none' }}
-          />
-          <MainStack.Screen name="HouseholdDetail" component={HouseholdDetailScreen} />
-          <MainStack.Screen name="HouseholdItems" component={HouseholdItemsScreen} />
-          <MainStack.Screen name="HouseholdCategories" component={HouseholdCategoriesScreen} />
-        </>
-      )}
-    </MainStack.Navigator>
+    <View style={styles.navigator}>
+      <MainStack.Navigator screenOptions={{ headerShown: false }}>
+        {selectedHousehold === null ? (
+          // Onboarding: only the picker is available; selecting auto-transitions
+          <MainStack.Screen name="HouseholdPicker" component={HouseholdPickerScreen} />
+        ) : (
+          // Authenticated: list is the root; picker is reachable from the nav bar
+          <>
+            <MainStack.Screen
+              name="ListDetail"
+              component={ListDetailScreen}
+              options={{ animation: 'none' }}
+            />
+            <MainStack.Screen
+              name="HouseholdPicker"
+              component={HouseholdPickerScreen}
+              options={{ animation: 'slide_from_bottom' }}
+            />
+            <MainStack.Screen
+              name="Settings"
+              component={SettingsScreen}
+              options={{ animation: 'none' }}
+            />
+            <MainStack.Screen name="HouseholdDetail" component={HouseholdDetailScreen} />
+            <MainStack.Screen name="HouseholdItems" component={HouseholdItemsScreen} />
+            <MainStack.Screen name="HouseholdCategories" component={HouseholdCategoriesScreen} />
+          </>
+        )}
+      </MainStack.Navigator>
+      {showNav && <BottomNav active={activeTab} />}
+    </View>
   );
 }
 
@@ -108,5 +118,8 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  navigator: {
+    flex: 1,
   },
 });
