@@ -31,7 +31,6 @@ const defaultList: ApiShoppingList = {
 function mockHook(overrides: Record<string, unknown> = {}) {
   (useListsSection as jest.Mock).mockReturnValue({
     lists: [],
-    defaultListId: null,
     createList: mockCreateList,
     renameList: mockRenameList,
     deleteList: mockDeleteList,

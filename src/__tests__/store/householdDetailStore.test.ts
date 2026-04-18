@@ -62,7 +62,6 @@ beforeEach(() => {
   useHouseholdDetailStore.setState({
     householdId: null,
     householdName: '',
-    defaultListId: null,
     lists: [],
     members: [],
     categories: [],
