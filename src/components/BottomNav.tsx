@@ -1,12 +1,10 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import type { NavigationProp } from '@react-navigation/native';
+import { navigationRef } from '@/navigation/navigationRef';
 import TommyOwl from '@/components/TommyOwl';
 import ListsIcon from '@/components/icons/ListsIcon';
 import SettingsIcon from '@/components/icons/SettingsIcon';
 import { Colors, Spacing, FontSize, Radii } from '@/theme';
-import type { MainStackParamList } from '@/navigation/types';
 
 type ActiveTab = 'lists' | 'settings';
 
@@ -15,13 +13,11 @@ type BottomNavProps = {
 };
 
 export default function BottomNav({ active }: BottomNavProps) {
-  const navigation = useNavigation<NavigationProp<MainStackParamList>>();
-
   return (
     <View style={styles.bar}>
       <TouchableOpacity
         style={styles.navBtn}
-        onPress={() => navigation.reset({ index: 0, routes: [{ name: 'ListDetail' }] })}
+        onPress={() => navigationRef.reset({ index: 0, routes: [{ name: 'ListDetail' }] })}
         activeOpacity={0.7}
       >
         <ListsIcon color={active === 'lists' ? Colors.mintLight : Colors.mint} size={24} />
@@ -32,7 +28,7 @@ export default function BottomNav({ active }: BottomNavProps) {
 
       <TouchableOpacity
         style={styles.navBtn}
-        onPress={() => navigation.reset({ index: 0, routes: [{ name: 'Settings' }] })}
+        onPress={() => navigationRef.reset({ index: 0, routes: [{ name: 'Settings' }] })}
         activeOpacity={0.7}
       >
         <SettingsIcon color={active === 'settings' ? Colors.mintLight : Colors.mint} size={24} />

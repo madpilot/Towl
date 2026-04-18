@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
-import { NavigationContainer, useNavigationState } from '@react-navigation/native';
+import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import { useAuthStore } from '@/store/authStore';
@@ -21,6 +21,7 @@ import HouseholdDetailScreen from '@/screens/settings/HouseholdDetailScreen';
 import HouseholdItemsScreen from '@/screens/settings/HouseholdItemsScreen';
 import HouseholdCategoriesScreen from '@/screens/settings/HouseholdCategoriesScreen';
 import BottomNav from '@/components/BottomNav';
+import { navigationRef } from './navigationRef';
 
 import type { AuthStackParamList, MainStackParamList } from './types';
 
@@ -39,12 +40,6 @@ function AuthNavigator() {
 
 function MainNavigator() {
   const selectedHousehold = useHouseholdStore((s) => s.selectedHousehold);
-  const routeName = useNavigationState((state) => state?.routes[state.index]?.name);
-  const showNav =
-    selectedHousehold !== null &&
-    routeName !== undefined &&
-    routeName !== 'HouseholdPicker';
-  const activeTab: 'lists' | 'settings' = routeName === 'ListDetail' ? 'lists' : 'settings';
 
   useEffect(() => {
     void socketManager.connect();
@@ -57,46 +52,52 @@ function MainNavigator() {
   }, []);
 
   return (
-    <View style={styles.navigator}>
-      <MainStack.Navigator screenOptions={{ headerShown: false }}>
-        {selectedHousehold === null ? (
-          // Onboarding: only the picker is available; selecting auto-transitions
-          <MainStack.Screen name="HouseholdPicker" component={HouseholdPickerScreen} />
-        ) : (
-          // Authenticated: list is the root; picker is reachable from the nav bar
-          <>
-            <MainStack.Screen
-              name="ListDetail"
-              component={ListDetailScreen}
-              options={{ animation: 'none' }}
-            />
-            <MainStack.Screen
-              name="HouseholdPicker"
-              component={HouseholdPickerScreen}
-              options={{ animation: 'slide_from_bottom' }}
-            />
-            <MainStack.Screen
-              name="Settings"
-              component={SettingsScreen}
-              options={{ animation: 'none' }}
-            />
-            <MainStack.Screen name="HouseholdDetail" component={HouseholdDetailScreen} />
-            <MainStack.Screen name="HouseholdItems" component={HouseholdItemsScreen} />
-            <MainStack.Screen name="HouseholdCategories" component={HouseholdCategoriesScreen} />
-          </>
-        )}
-      </MainStack.Navigator>
-      {showNav && <BottomNav active={activeTab} />}
-    </View>
+    <MainStack.Navigator screenOptions={{ headerShown: false }}>
+      {selectedHousehold === null ? (
+        // Onboarding: only the picker is available; selecting auto-transitions
+        <MainStack.Screen name="HouseholdPicker" component={HouseholdPickerScreen} />
+      ) : (
+        // Authenticated: list is the root; picker is reachable from the nav bar
+        <>
+          <MainStack.Screen
+            name="ListDetail"
+            component={ListDetailScreen}
+            options={{ animation: 'none' }}
+          />
+          <MainStack.Screen
+            name="HouseholdPicker"
+            component={HouseholdPickerScreen}
+            options={{ animation: 'slide_from_bottom' }}
+          />
+          <MainStack.Screen
+            name="Settings"
+            component={SettingsScreen}
+            options={{ animation: 'none' }}
+          />
+          <MainStack.Screen name="HouseholdDetail" component={HouseholdDetailScreen} />
+          <MainStack.Screen name="HouseholdItems" component={HouseholdItemsScreen} />
+          <MainStack.Screen name="HouseholdCategories" component={HouseholdCategoriesScreen} />
+        </>
+      )}
+    </MainStack.Navigator>
   );
 }
 
 export default function RootNavigator() {
   const status = useAuthStore((s) => s.status);
+  const selectedHousehold = useHouseholdStore((s) => s.selectedHousehold);
+  const [routeName, setRouteName] = useState<string | undefined>();
 
   useEffect(() => {
     getDb().then(initializeAuth).catch(console.error);
   }, []);
+
+  const showNav =
+    status === 'authenticated' &&
+    selectedHousehold !== null &&
+    routeName !== undefined &&
+    routeName !== 'HouseholdPicker';
+  const activeTab: 'lists' | 'settings' = routeName === 'ListDetail' ? 'lists' : 'settings';
 
   if (status === 'unknown') {
     return (
@@ -107,19 +108,26 @@ export default function RootNavigator() {
   }
 
   return (
-    <NavigationContainer>
-      {status === 'authenticated' ? <MainNavigator /> : <AuthNavigator />}
-    </NavigationContainer>
+    <View style={styles.root}>
+      <NavigationContainer
+        ref={navigationRef}
+        onReady={() => setRouteName(navigationRef.getCurrentRoute()?.name)}
+        onStateChange={() => setRouteName(navigationRef.getCurrentRoute()?.name)}
+      >
+        {status === 'authenticated' ? <MainNavigator /> : <AuthNavigator />}
+      </NavigationContainer>
+      {showNav && <BottomNav active={activeTab} />}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
   splash: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  navigator: {
-    flex: 1,
   },
 });
