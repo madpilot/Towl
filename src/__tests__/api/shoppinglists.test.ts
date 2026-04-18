@@ -8,9 +8,11 @@ import type { ApiClientManager } from '@/api/client';
 const mockGet = jest.fn();
 const mockPost = jest.fn();
 const mockDelete = jest.fn();
+const mockPut = jest.fn();
 const client = {
   get: mockGet,
   post: mockPost,
+  put: mockPut,
   delete: mockDelete,
 } as unknown as ApiClientManager;
 const api = new ShoppingListsApi(client);
@@ -91,5 +93,15 @@ describe('searchItems', () => {
     mockGet.mockResolvedValue({ data: { not: 'an array' } });
 
     await expect(api.searchItems(1, 'avo')).rejects.toThrow();
+  });
+});
+
+describe('renameShoppingList', () => {
+  it('POSTs name to /shoppinglist/:id', async () => {
+    mockPost.mockResolvedValue({ data: {} });
+
+    await api.renameShoppingList(5, 'Weekend Shop');
+
+    expect(mockPost).toHaveBeenCalledWith('/shoppinglist/5', { name: 'Weekend Shop' });
   });
 });

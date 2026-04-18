@@ -113,8 +113,7 @@ export class ShoppingListsApi {
     return z.array(ApiShoppingListItemSchema).parse(res.data);
   }
 
-  // Endpoint unknown — stub until confirmed
-  async renameShoppingList(_listId: number, _name: string): Promise<void> {
-    throw new Error('renameShoppingList: KitchenOwl API endpoint not yet confirmed');
+  async renameShoppingList(listId: number, name: string): Promise<void> {
+    await this.client.post(`/shoppinglist/${listId}`, { name });
   }
 }

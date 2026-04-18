@@ -121,11 +121,11 @@ export const useHouseholdDetailStore = create<HouseholdDetailState>((set, get) =
     if (householdId === null) {
       return;
     }
-    const { householdsApi } = useAuthStore.getState();
-    if (!householdsApi) {
+    const { householdsApi, user } = useAuthStore.getState();
+    if (!householdsApi || !user) {
       return;
     }
-    await householdsApi.leaveHousehold(householdId);
+    await householdsApi.leaveHousehold(householdId, user.id);
   },
 
   // ── Lists ──────────────────────────────────────────────────────────────────

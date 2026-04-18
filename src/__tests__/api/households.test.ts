@@ -7,8 +7,9 @@ import type { ApiClientManager } from '@/api/client';
 
 const mockGet = jest.fn();
 const mockPost = jest.fn();
+const mockPut = jest.fn();
 const mockDelete = jest.fn();
-const client = { get: mockGet, post: mockPost, delete: mockDelete } as unknown as ApiClientManager;
+const client = { get: mockGet, post: mockPost, put: mockPut, delete: mockDelete } as unknown as ApiClientManager;
 const api = new HouseholdsApi(client);
 
 const householdDetailFixture = {
@@ -25,6 +26,7 @@ const householdDetailFixture = {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockPut.mockResolvedValue({ data: {} });
 });
 
 describe('getHousehold', () => {
@@ -105,3 +107,56 @@ describe('getMembers', () => {
     expect(members[1]).toMatchObject({ id: 2, name: 'Bob', photo: 'avatar.jpg' });
   });
 });
+
+describe('renameHousehold', () => {
+  it('POSTs name to /household/:id', async () => {
+    mockPost.mockResolvedValue({ data: {} });
+
+    await api.renameHousehold(1, 'Beach House');
+
+    expect(mockPost).toHaveBeenCalledWith('/household/1', { name: 'Beach House' });
+  });
+});
+
+describe('removeMember', () => {
+  it('sends DELETE /household/:id/member/:userId', async () => {
+    mockDelete.mockResolvedValue({ data: {} });
+
+    await api.removeMember(1, 3);
+
+    expect(mockDelete).toHaveBeenCalledWith('/household/1/member/3');
+  });
+});
+
+describe('leaveHousehold', () => {
+  it('sends DELETE /household/:id/member/:userId for the current user', async () => {
+    mockDelete.mockResolvedValue({ data: {} });
+
+    await api.leaveHousehold(1, 42);
+
+    expect(mockDelete).toHaveBeenCalledWith('/household/1/member/42');
+  });
+});
+
+describe('inviteMember', () => {
+  const searchResults = [
+    { id: 7, name: 'Charlie', username: 'charlie', photo: null },
+    { id: 8, name: 'Dave', username: 'dave', photo: null },
+  ];
+
+  it('searches for the user then PUTs to /household/:id/member/:userId', async () => {
+    mockGet.mockResolvedValue({ data: searchResults });
+
+    await api.inviteMember(1, 'charlie');
+
+    expect(mockGet).toHaveBeenCalledWith('/user/search', { params: { query: 'charlie' } });
+    expect(mockPut).toHaveBeenCalledWith('/household/1/member/7');
+  });
+
+  it('throws when no user with that username is found', async () => {
+    mockGet.mockResolvedValue({ data: searchResults });
+
+    await expect(api.inviteMember(1, 'nobody')).rejects.toThrow('User "nobody" not found');
+  });
+});
+
