@@ -9,6 +9,7 @@ import { initializeAuth } from '@/auth/authManager';
 import { getDb } from '@/db/schema';
 import { startNetworkMonitoring, stopNetworkMonitoring } from '@/sync/connectivityMonitor';
 import { drain } from '@/sync/syncManager';
+import { socketManager } from '@/socket/socketManager';
 
 import WelcomeScreen from '@/screens/auth/WelcomeScreen';
 import ServerSetupScreen from '@/screens/auth/ServerSetupScreen';
@@ -39,11 +40,13 @@ function MainNavigator() {
   const selectedHousehold = useHouseholdStore((s) => s.selectedHousehold);
 
   useEffect(() => {
-    startNetworkMonitoring(() => {
-      void drain();
-    });
+    void socketManager.connect();
+    startNetworkMonitoring(() => { void drain(); });
     void drain();
-    return () => stopNetworkMonitoring();
+    return () => {
+      socketManager.disconnect();
+      stopNetworkMonitoring();
+    };
   }, []);
 
   return (
