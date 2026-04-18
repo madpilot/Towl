@@ -60,7 +60,10 @@ class SocketManager {
     if (!activeLocalId || activeServerId !== payload.shoppinglist.id) {return;}
 
     const { item } = payload;
-    const match = matchItem(item.name);
+    // Prefer the icon key over the name: the icon is a normalised food
+    // identifier (e.g. "milk_carton") that maps more reliably to a category
+    // than a free-text name that may be localised or user-entered.
+    const match = matchItem(item.icon ?? item.name);
     await upsertItemFromServer(
       item.id,
       activeLocalId,
