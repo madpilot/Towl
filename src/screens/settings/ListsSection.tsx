@@ -14,7 +14,7 @@ import { useListsSection } from '@/store/householdDetailStore';
 import { Colors, Radii, Spacing, FontSize } from '@/theme';
 
 export function ListsSection() {
-  const { lists, defaultListId, createList, renameList, deleteList } = useListsSection();
+  const { lists, createList, renameList, deleteList } = useListsSection();
 
   const [modal, setModal] = useState<'new' | 'edit' | null>(null);
   const [listName, setListName] = useState('');
@@ -83,7 +83,7 @@ export function ListsSection() {
                 label={list.name}
                 sub={`${list.items.length} item${list.items.length !== 1 ? 's' : ''}`}
                 badge={
-                  list.id === defaultListId ? (
+                  list.isDefault ? (
                     <View style={styles.pill}>
                       <Text style={styles.pillText}>default</Text>
                     </View>
@@ -92,7 +92,7 @@ export function ListsSection() {
                 onPress={() => {
                   setEditingListId(list.id);
                   setListName(list.name);
-                  setEditingIsDefault(list.id === defaultListId);
+                  setEditingIsDefault(list.isDefault);
                   setModal('edit');
                 }}
               />
