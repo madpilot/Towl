@@ -246,6 +246,14 @@ export async function hardDeleteItem(localId: string): Promise<void> {
   await db.runAsync('DELETE FROM local_items WHERE local_id = ?', [localId]);
 }
 
+export async function removeItemByServerId(listLocalId: string, serverId: number): Promise<void> {
+  const db = await getDb();
+  await db.runAsync(
+    'DELETE FROM local_items WHERE list_local_id = ? AND server_id = ?',
+    [listLocalId, serverId]
+  );
+}
+
 /** Move an item into the trolley: marks it checked, dirty, and records when it was checked. */
 export async function checkItem(localId: string, checkedAt: number): Promise<void> {
   const db = await getDb();

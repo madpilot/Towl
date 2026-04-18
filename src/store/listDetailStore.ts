@@ -123,6 +123,9 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
         return;
       }
       for (const apiItem of apiList.items) {
+        // Prefer the icon key over the name: the icon is a normalised food
+        // identifier (e.g. "milk_carton") that maps more reliably to a category
+        // than a free-text name that may be localised or user-entered.
         const match = matchItem(apiItem.icon ?? apiItem.name);
         await upsertItemFromServer(
           apiItem.id,
