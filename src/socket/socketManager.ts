@@ -25,13 +25,13 @@ class SocketManager {
   private socket: Socket | null = null;
 
   async connect(): Promise<void> {
-    if (this.socket?.connected) return;
+    if (this.socket?.connected) {return;}
 
     const [serverUrl, tokens] = await Promise.all([
       TokenStore.instance.getServerUrl(),
       TokenStore.instance.getTokens(),
     ]);
-    if (!serverUrl || !tokens) return;
+    if (!serverUrl || !tokens) {return;}
 
     this.socket = io(serverUrl, {
       path: '/socket.io/',
@@ -57,7 +57,7 @@ class SocketManager {
 
   private async onItemAdd(payload: ShoppinglistEventPayload): Promise<void> {
     const { activeLocalId, activeServerId } = useListDetailStore.getState();
-    if (!activeLocalId || activeServerId !== payload.shoppinglist.id) return;
+    if (!activeLocalId || activeServerId !== payload.shoppinglist.id) {return;}
 
     const { item } = payload;
     const match = matchItem(item.icon ?? item.name);
@@ -77,7 +77,7 @@ class SocketManager {
 
   private async onItemRemove(payload: ShoppinglistEventPayload): Promise<void> {
     const { activeLocalId, activeServerId } = useListDetailStore.getState();
-    if (!activeLocalId || activeServerId !== payload.shoppinglist.id) return;
+    if (!activeLocalId || activeServerId !== payload.shoppinglist.id) {return;}
 
     await removeItemByServerId(activeLocalId, payload.item.id);
     await useListDetailStore.getState().reloadAfterSync();
