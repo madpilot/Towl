@@ -322,14 +322,14 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
       if (!item) {
         return;
       }
-      const updated = await saveItemOp({
+      set({ items: items.map((i) => (i.localId === localId ? { ...i, name, description, iconKey, isDirty: true } : i)) });
+      await saveItemOp({
         listContext: { activeLocalId, activeServerId },
         item,
         name,
         description,
         iconKey,
       });
-      set({ items: items.map((i) => (i.localId === localId ? updated : i)) });
     },
 
     addItem: async (name, description, iconKey, category) => {
