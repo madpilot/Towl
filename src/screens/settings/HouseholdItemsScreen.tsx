@@ -14,7 +14,6 @@ import type { FlashListRef } from '@shopify/flash-list';
 import Sheet from '@/components/Sheet';
 import IconPicker from '@/components/IconPicker';
 import KitchenOwlIcon from '@/components/KitchenOwlIcon';
-import BottomNav from '@/components/BottomNav';
 import { Card, Sep, PrimaryBtn } from '@/components/settings';
 import { useAuthStore } from '@/store/authStore';
 import { Colors, Spacing, Radii, FontSize } from '@/theme';
@@ -422,7 +421,6 @@ export default function HouseholdItemsScreen({ navigation, route }: HouseholdIte
         </View>
       )}
 
-      <BottomNav active="settings" />
 
       {/* Create / Edit sheet */}
       <Sheet

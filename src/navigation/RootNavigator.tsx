@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -20,6 +20,8 @@ import SettingsScreen from '@/screens/settings/SettingsScreen';
 import HouseholdDetailScreen from '@/screens/settings/HouseholdDetailScreen';
 import HouseholdItemsScreen from '@/screens/settings/HouseholdItemsScreen';
 import HouseholdCategoriesScreen from '@/screens/settings/HouseholdCategoriesScreen';
+import BottomNav from '@/components/BottomNav';
+import { navigationRef } from './navigationRef';
 
 import type { AuthStackParamList, MainStackParamList } from './types';
 
@@ -83,10 +85,19 @@ function MainNavigator() {
 
 export default function RootNavigator() {
   const status = useAuthStore((s) => s.status);
+  const selectedHousehold = useHouseholdStore((s) => s.selectedHousehold);
+  const [routeName, setRouteName] = useState<string | undefined>();
 
   useEffect(() => {
     getDb().then(initializeAuth).catch(console.error);
   }, []);
+
+  const showNav =
+    status === 'authenticated' &&
+    selectedHousehold !== null &&
+    routeName !== undefined &&
+    routeName !== 'HouseholdPicker';
+  const activeTab: 'lists' | 'settings' = routeName === 'ListDetail' ? 'lists' : 'settings';
 
   if (status === 'unknown') {
     return (
@@ -97,13 +108,23 @@ export default function RootNavigator() {
   }
 
   return (
-    <NavigationContainer>
-      {status === 'authenticated' ? <MainNavigator /> : <AuthNavigator />}
-    </NavigationContainer>
+    <View style={styles.root}>
+      <NavigationContainer
+        ref={navigationRef}
+        onReady={() => setRouteName(navigationRef.getCurrentRoute()?.name)}
+        onStateChange={() => setRouteName(navigationRef.getCurrentRoute()?.name)}
+      >
+        {status === 'authenticated' ? <MainNavigator /> : <AuthNavigator />}
+      </NavigationContainer>
+      {showNav && <BottomNav active={activeTab} />}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
   splash: {
     flex: 1,
     alignItems: 'center',

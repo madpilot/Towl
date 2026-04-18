@@ -14,7 +14,6 @@ import AuthenticatedImage from '@/components/AuthenticatedImage';
 import { logout } from '@/auth/authManager';
 import { useAuthStore } from '@/store/authStore';
 import { TokenStore } from '@/auth/tokenStore';
-import BottomNav from '@/components/BottomNav';
 import { useHouseholdStore } from '@/store/householdStore';
 import {
   SectionLabel,
@@ -390,7 +389,6 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
         </Card>
       </ScrollView>
 
-      <BottomNav active="settings" />
 
       {/* Edit name modal */}
       <Sheet visible={modal === 'editName'} title="Your name" onClose={() => setModal(null)}>

@@ -20,12 +20,33 @@ jest.mock('@/sync/connectivityMonitor', () => ({
   stopNetworkMonitoring: jest.fn(),
 }));
 
+jest.mock('@/navigation/navigationRef', () => ({
+  navigationRef: {
+    reset: jest.fn(),
+    getCurrentRoute: jest.fn(() => undefined),
+    isReady: jest.fn(() => false),
+  },
+}));
+
 jest.mock('@react-navigation/native', () => {
   const React = require('react');
   return {
-    NavigationContainer: ({ children }: { children: React.ReactNode }) =>
-      React.createElement(React.Fragment, null, children),
+    NavigationContainer: ({
+      children,
+      onReady,
+    }: {
+      children: React.ReactNode;
+      onReady?: () => void;
+    }) => {
+      React.useEffect(() => { onReady?.(); }, [onReady]);
+      return React.createElement(React.Fragment, null, children);
+    },
     useFocusEffect: jest.fn(),
+    createNavigationContainerRef: jest.fn(() => ({
+      reset: jest.fn(),
+      getCurrentRoute: jest.fn(() => undefined),
+      isReady: jest.fn(() => false),
+    })),
   };
 });
 
