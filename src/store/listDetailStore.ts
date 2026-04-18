@@ -73,6 +73,7 @@ type ListDetailState = {
 
   // Category data
   fetchCategories: (householdId: number) => Promise<void>;
+  setAllCategories: (categories: HouseholdCategory[]) => void;
 };
 
 // ─── Store ───────────────────────────────────────────────────────────────────
@@ -373,6 +374,8 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
         // Offline or transient failure — keep existing categories.
       }
     },
+
+    setAllCategories: (categories) => set({ allCategories: categories }),
 
     moveItemToCategory: async (localId, categoryId) => {
       const { activeLocalId, activeServerId, items, allCategories } = get();

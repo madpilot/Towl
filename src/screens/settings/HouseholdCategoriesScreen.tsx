@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useListDetailStore } from '@/store/listDetailStore';
 import {
   View,
   Text,
@@ -201,6 +202,12 @@ export default function HouseholdCategoriesScreen({
   useEffect(() => {
     void load().finally(() => setLoading(false));
   }, [load]);
+
+  // Keep listDetailStore in sync so new/renamed/deleted/reordered categories
+  // are visible on the shopping list page without a full refresh.
+  useEffect(() => {
+    useListDetailStore.getState().setAllCategories(categories);
+  }, [categories]);
 
   // ── Sheet helpers ──────────────────────────────────────────────────────────
 
