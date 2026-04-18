@@ -123,7 +123,7 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
         return;
       }
       for (const apiItem of apiList.items) {
-        const match = matchItem(apiItem.icon ?? apiItem.name);
+        const match = matchItem(apiItem.name);
         await upsertItemFromServer(
           apiItem.id,
           localId,

@@ -60,7 +60,7 @@ class SocketManager {
     if (!activeLocalId || activeServerId !== payload.shoppinglist.id) {return;}
 
     const { item } = payload;
-    const match = matchItem(item.icon ?? item.name);
+    const match = matchItem(item.name);
     await upsertItemFromServer(
       item.id,
       activeLocalId,
