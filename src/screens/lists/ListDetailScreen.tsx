@@ -428,7 +428,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   chevron: {
-    fontSize: FontSize.heading,
+    fontSize: 26,
     color: Colors.mint,
     marginTop: 2,
   },

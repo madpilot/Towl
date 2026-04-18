@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import KitchenOwlIcon from '@/components/KitchenOwlIcon';
-import CameraIcon from '@/components/icons/CameraIcon';
 import { useItemSuggestions } from '@/hooks/useItemSuggestions';
 import { useHouseholdStore } from '@/store/householdStore';
 import { useAuthStore } from '@/store/authStore';
@@ -101,6 +100,7 @@ export default function AddItemBar({ onAdd }: AddItemBarProps) {
     commit(s.displayName, description, s.iconKey, s.category);
   }
 
+  const canAdd = trimmedValue.length > 0;
   const busy = parsing;
 
   return (
@@ -120,18 +120,16 @@ export default function AddItemBar({ onAdd }: AddItemBarProps) {
           testID="add-item-input"
         />
         <TouchableOpacity
-          style={[styles.addBtn, busy && styles.addBtnBusy]}
+          style={[styles.addBtn, (!canAdd || busy) && styles.addBtnDisabled]}
           onPress={handleAdd}
           activeOpacity={0.85}
-          disabled={busy}
+          disabled={!canAdd || busy}
           testID="add-item-submit"
         >
           {busy ? (
             <ActivityIndicator size="small" color={Colors.white} />
-          ) : value.trim() ? (
-            <Text style={styles.addBtnPlus}>+</Text>
           ) : (
-            <CameraIcon size={20} color={Colors.white} />
+            <Text style={styles.addBtnPlus}>+</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -229,8 +227,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  addBtnBusy: {
-    opacity: 0.6,
+  addBtnDisabled: {
+    opacity: 0.35,
   },
   addBtnPlus: {
     color: Colors.white,
