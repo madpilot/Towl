@@ -20,13 +20,14 @@ export function ListsSection() {
   const [listName, setListName] = useState('');
   const [editingListId, setEditingListId] = useState<number | null>(null);
   const [editingIsDefault, setEditingIsDefault] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [action, setAction] = useState<'create' | 'rename' | 'delete' | null>(null);
+  const saving = action !== null;
 
   async function handleCreate() {
     if (!listName.trim()) {
       return;
     }
-    setSaving(true);
+    setAction('create');
     try {
       await createList(listName.trim());
       setListName('');
@@ -34,7 +35,7 @@ export function ListsSection() {
     } catch (e: unknown) {
       Alert.alert('Error', e instanceof Error ? e.message : 'Failed to create list.');
     } finally {
-      setSaving(false);
+      setAction(null);
     }
   }
 
@@ -42,14 +43,14 @@ export function ListsSection() {
     if (!listName.trim() || editingListId === null) {
       return;
     }
-    setSaving(true);
+    setAction('rename');
     try {
       await renameList(editingListId, listName.trim());
       setModal(null);
     } catch (e: unknown) {
       Alert.alert('Not yet available', e instanceof Error ? e.message : 'Failed to rename list.');
     } finally {
-      setSaving(false);
+      setAction(null);
     }
   }
 
@@ -57,14 +58,14 @@ export function ListsSection() {
     if (editingListId === null) {
       return;
     }
-    setSaving(true);
+    setAction('delete');
     try {
       await deleteList(editingListId);
       setModal(null);
     } catch (e: unknown) {
       Alert.alert('Error', e instanceof Error ? e.message : 'Failed to delete list.');
     } finally {
-      setSaving(false);
+      setAction(null);
     }
   }
 
@@ -120,7 +121,12 @@ export function ListsSection() {
           onChangeText={setListName}
           placeholder="e.g. Weekend Shop"
         />
-        <PrimaryBtn label="Create list" onPress={handleCreate} loading={saving} />
+        <PrimaryBtn
+          label="Create list"
+          onPress={handleCreate}
+          loading={action === 'create'}
+          disabled={saving}
+        />
         <SecondaryBtn label="Cancel" onPress={() => setModal(null)} />
         <View style={{ height: Spacing.xl }} />
       </Sheet>
@@ -132,9 +138,20 @@ export function ListsSection() {
           onChangeText={setListName}
           placeholder="e.g. Weekend Shop"
         />
-        <PrimaryBtn label="Save changes" onPress={handleRename} loading={saving} />
+        <PrimaryBtn
+          label="Save changes"
+          onPress={handleRename}
+          loading={action === 'rename'}
+          disabled={saving}
+        />
         {!editingIsDefault && (
-          <PrimaryBtn label="Delete list" onPress={handleDelete} loading={saving} danger />
+          <PrimaryBtn
+            label="Delete list"
+            onPress={handleDelete}
+            loading={action === 'delete'}
+            disabled={saving}
+            danger
+          />
         )}
         <SecondaryBtn label="Cancel" onPress={() => setModal(null)} />
         <View style={{ height: Spacing.xl }} />

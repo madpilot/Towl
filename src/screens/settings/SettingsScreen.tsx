@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -202,9 +203,11 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
     }
   }, [householdsApi, setStoreHouseholds]);
 
-  useEffect(() => {
-    void loadHouseholds();
-  }, [loadHouseholds]);
+  useFocusEffect(
+    useCallback(() => {
+      void loadHouseholds();
+    }, [loadHouseholds])
+  );
 
   async function handleSaveName() {
     if (!editName.trim() || !authApi) {
