@@ -276,7 +276,8 @@ export function useHouseholdDetail() {
 export function useListsSection() {
   return useHouseholdDetailStore(
     useShallow((s) => ({
-      lists: s.lists.map((l) => ({ ...l, isDefault: l.id === s.defaultListId })),
+      lists: s.lists,
+      defaultListId: s.defaultListId,
       createList: s.createList,
       renameList: s.renameList,
       deleteList: s.deleteList,
