@@ -44,11 +44,11 @@ beforeEach(() => {
 
 describe('AddItemBar', () => {
   describe('add-as-typed row', () => {
-    it('shows the typed row when there are no suggestions', () => {
+    it('submit button is disabled when input is empty', () => {
       const onAdd = jest.fn();
-      const { queryByText } = render(<AddItemBar onAdd={onAdd} />);
-      // No input yet — suggestions panel is hidden entirely
-      expect(queryByText('+')).toBeNull();
+      const { getByTestId } = render(<AddItemBar onAdd={onAdd} />);
+      // No input yet — button is present but disabled
+      expect(getByTestId('add-item-submit').props.accessibilityState?.disabled).toBe(true);
     });
 
     it('shows the typed row when no suggestion exactly matches the input', () => {
