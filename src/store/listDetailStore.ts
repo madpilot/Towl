@@ -182,8 +182,9 @@ export const useListDetailStore = create<ListDetailState>((set, get) => {
     },
 
     bootstrap: async (householdId, restoreLastList) => {
-      const { activeLocalId, activeServerId } = get();
-      if (activeLocalId) {
+      const { activeLocalId, activeServerId, allLists } = get();
+      const activeListStillExists = activeLocalId != null && allLists.some((l) => l.localId === activeLocalId);
+      if (activeListStillExists) {
         // Already loaded — refresh in background without disrupting the UI.
         void get().syncLists(householdId);
         void syncFromServer(activeLocalId, activeServerId, householdId);

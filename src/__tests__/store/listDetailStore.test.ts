@@ -261,10 +261,12 @@ describe('bootstrap', () => {
   });
 
   it('skips full reload and fires background refresh when already loaded', async () => {
+    const list = makeList();
     useListDetailStore.setState({
       activeLocalId: 'list-local-1',
       activeServerId: 5,
       items: [makeItem()],
+      allLists: [list],
       loading: false,
     });
 
@@ -275,6 +277,26 @@ describe('bootstrap', () => {
     expect(useListDetailStore.getState().items).toHaveLength(1);
     // Should not have called getItemsForList for a fresh load
     expect(getItemsForList).not.toHaveBeenCalled();
+  });
+
+  it('does a full bootstrap when the active list was deleted', async () => {
+    const remainingList = makeList({ localId: 'list-2', name: 'Pharmacy', serverId: 8 });
+    // activeLocalId set, but deleted list is absent from allLists
+    useListDetailStore.setState({
+      activeLocalId: 'list-local-1',
+      activeServerId: 5,
+      items: [makeItem()],
+      allLists: [remainingList], // deleted list not present
+      loading: false,
+    });
+    (getAllLists as jest.Mock).mockResolvedValue([remainingList]);
+
+    await useListDetailStore.getState().bootstrap(1, false);
+
+    // Should have selected the surviving list
+    expect(useListDetailStore.getState().activeLocalId).toBe('list-2');
+    expect(useListDetailStore.getState().loading).toBe(false);
+    expect(getItemsForList).toHaveBeenCalledWith('list-2');
   });
 
   it('sets loading: false and no active list when no lists exist', async () => {
