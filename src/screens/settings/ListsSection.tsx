@@ -14,7 +14,7 @@ import { useListsSection } from '@/store/householdDetailStore';
 import { Colors, Spacing, FontSize } from '@/theme';
 
 export function ListsSection() {
-  const { lists, createList, renameList, deleteList } = useListsSection();
+  const { lists, defaultListId, createList, renameList, deleteList } = useListsSection();
 
   const [modal, setModal] = useState<'new' | 'edit' | null>(null);
   const [listName, setListName] = useState('');
@@ -81,11 +81,11 @@ export function ListsSection() {
             <View key={list.id}>
               <Row
                 label={list.name}
-                sub={`${list.items.length} item${list.items.length !== 1 ? 's' : ''}${list.is_default ? ' · default' : ''}`}
+                sub={`${list.items.length} item${list.items.length !== 1 ? 's' : ''}${list.id === defaultListId ? ' · default' : ''}`}
                 onPress={() => {
                   setEditingListId(list.id);
                   setListName(list.name);
-                  setEditingIsDefault(list.is_default ?? false);
+                  setEditingIsDefault(list.id === defaultListId);
                   setModal('edit');
                 }}
               />

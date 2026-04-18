@@ -35,7 +35,6 @@ export const ApiShoppingListSchema = z.object({
   id: z.number(),
   name: z.string(),
   household_id: z.number(),
-  is_default: z.boolean().optional().default(false),
   items: z.array(ApiShoppingListItemSchema).default([]),
   recentItems: z.array(ApiShoppingListItemSchema).default([]),
 });

@@ -20,17 +20,18 @@ const mockRenameList = jest.fn();
 const mockDeleteList = jest.fn();
 
 const sampleLists = [
-  { id: 1, name: 'Weekly Shop', items: [{ id: 10 }, { id: 11 }], is_default: false },
-  { id: 2, name: 'Party', items: [], is_default: false },
+  { id: 1, name: 'Weekly Shop', items: [{ id: 10 }, { id: 11 }] },
+  { id: 2, name: 'Party', items: [] },
 ] as unknown as ApiShoppingList[];
 
 const defaultList: ApiShoppingList = {
-  id: 3, name: 'Groceries', household_id: 1, is_default: true, items: [], recentItems: [],
+  id: 3, name: 'Groceries', household_id: 1, items: [], recentItems: [],
 };
 
 function mockHook(overrides: Record<string, unknown> = {}) {
   (useListsSection as jest.Mock).mockReturnValue({
     lists: [],
+    defaultListId: null,
     createList: mockCreateList,
     renameList: mockRenameList,
     deleteList: mockDeleteList,
@@ -90,13 +91,13 @@ describe('ListsSection', () => {
   });
 
   it('shows · default suffix on the default list row', () => {
-    mockHook({ lists: [defaultList] });
+    mockHook({ lists: [defaultList], defaultListId: 3 });
     render(<ListsSection />);
     expect(screen.getByText(/· default/)).toBeTruthy();
   });
 
   it('does not show the delete button for the default list', () => {
-    mockHook({ lists: [defaultList] });
+    mockHook({ lists: [defaultList], defaultListId: 3 });
     render(<ListsSection />);
     fireEvent.press(screen.getByText('Groceries'));
     expect(screen.getByText('Save changes')).toBeTruthy();
