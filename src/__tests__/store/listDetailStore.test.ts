@@ -279,6 +279,27 @@ describe('bootstrap', () => {
     expect(getItemsForList).not.toHaveBeenCalled();
   });
 
+  it('does a full bootstrap when the household changes (household switch)', async () => {
+    const oldList = makeList({ localId: 'list-local-1', householdId: 1 });
+    const newList = makeList({ localId: 'list-local-2', householdId: 2, serverId: 9, name: 'New HH Groceries' });
+    useListDetailStore.setState({
+      activeLocalId: 'list-local-1',
+      activeServerId: 5,
+      items: [makeItem()],
+      allLists: [oldList],
+      loading: false,
+    });
+    (getAllLists as jest.Mock).mockResolvedValue([newList]);
+    (getItemsForList as jest.Mock).mockResolvedValue([]);
+
+    // Bootstrap with a different householdId — should not reuse the old list
+    await useListDetailStore.getState().bootstrap(2, false);
+
+    expect(useListDetailStore.getState().activeLocalId).toBe('list-local-2');
+    expect(useListDetailStore.getState().activeName).toBe('New HH Groceries');
+    expect(getItemsForList).toHaveBeenCalledWith('list-local-2');
+  });
+
   it('does a full bootstrap when the active list was deleted', async () => {
     const remainingList = makeList({ localId: 'list-2', name: 'Pharmacy', serverId: 8 });
     // activeLocalId set, but deleted list is absent from allLists
