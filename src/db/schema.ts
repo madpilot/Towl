@@ -1,8 +1,18 @@
-import { openDatabaseAsync, type SQLiteDatabase } from 'expo-sqlite';
+import { openDatabaseAsync, deleteDatabaseAsync, type SQLiteDatabase } from 'expo-sqlite';
 
 // Promise-cache: a single in-flight open+migrate is shared across all callers,
 // preventing duplicate opens if getDb() is called concurrently before the DB is ready.
 let dbPromise: Promise<SQLiteDatabase> | null = null;
+
+/**
+ * Deletes the database file and clears the promise cache so the next
+ * getDb() call starts completely fresh. Used as a last-resort recovery
+ * when the initial open or migration fails.
+ */
+export async function resetDb(): Promise<void> {
+  dbPromise = null;
+  await deleteDatabaseAsync('towl.db');
+}
 
 export function getDb(): Promise<SQLiteDatabase> {
   dbPromise ??= openDatabaseAsync('towl.db').then(async (instance) => {

@@ -115,4 +115,27 @@ describe('initializeAuth', () => {
     expect(setAuthenticated).toHaveBeenCalledWith(null, SERVER_URL);
     expect(setUnauthenticated).not.toHaveBeenCalled();
   });
+
+  it('sets unauthenticated when the Keystore/Keychain throws (e.g. Android PIN change)', async () => {
+    (mockTokenStore.getServerUrl as jest.Mock).mockRejectedValue(
+      new Error('KeyStoreException: key not found')
+    );
+
+    await initializeAuth();
+
+    expect(setUnauthenticated).toHaveBeenCalled();
+    expect(setAuthenticated).not.toHaveBeenCalled();
+  });
+
+  it('sets unauthenticated when getTokens throws after a successful getServerUrl', async () => {
+    (mockTokenStore.getServerUrl as jest.Mock).mockResolvedValue(SERVER_URL);
+    (mockTokenStore.getTokens as jest.Mock).mockRejectedValue(
+      new Error('KeyStoreException: key not found')
+    );
+
+    await initializeAuth();
+
+    expect(setUnauthenticated).toHaveBeenCalled();
+    expect(setAuthenticated).not.toHaveBeenCalled();
+  });
 });
