@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" fill="none">
+  <!-- Background -->
+  <rect width="1024" height="1024" fill="#f0faf6"/>
+
+  <!-- Tommy Owl (scaled to ~160px at center, original viewBox 176x176 → scale ~0.91) -->
+  <!-- Centered at (512, 440): owl body center at 88,91 in original coords -->
+  <!-- Transform: scale(0.91) then translate to center body at (512, 440) -->
+  <!-- body center in original: (88, 91) → after scale: (80, 82.8) → offset: (512-80, 440-82.8) = (432, 357.2) -->
+  <g transform="translate(432, 357) scale(0.91)">
+    <!-- Ear tufts -->
+    <path d="M70 59 Q64 41 72 35 Q76 49 78 57Z" fill="white" stroke="#3d8c7a" stroke-width="2.5" stroke-linejoin="round"/>
+    <path d="M106 59 Q112 41 104 35 Q100 49 98 57Z" fill="white" stroke="#3d8c7a" stroke-width="2.5" stroke-linejoin="round"/>
+    <!-- Body -->
+    <circle cx="88" cy="91" r="62" fill="white" stroke="#3d8c7a" stroke-width="3"/>
+    <!-- Chest feathers -->
+    <ellipse cx="88" cy="94" rx="44" ry="40" fill="none" stroke="#3d8c7a" stroke-width="1.8" opacity="0.35"/>
+    <!-- Eyebrows -->
+    <path d="M 60 70 Q 70 65 80 68" stroke="#3d8c7a" stroke-width="2.2" stroke-linecap="round" fill="none" opacity="0.45"/>
+    <path d="M 96 68 Q 106 65 116 70" stroke="#3d8c7a" stroke-width="2.2" stroke-linecap="round" fill="none" opacity="0.45"/>
+    <!-- Left eye -->
+    <ellipse cx="70" cy="88" rx="16" ry="16" fill="white" stroke="#3d8c7a" stroke-width="2.6"/>
+    <circle cx="70" cy="88" r="9" fill="#3d8c7a"/>
+    <circle cx="73" cy="84" r="3" fill="white"/>
+    <!-- Right eye -->
+    <ellipse cx="106" cy="88" rx="16" ry="16" fill="white" stroke="#3d8c7a" stroke-width="2.6"/>
+    <circle cx="106" cy="88" r="9" fill="#3d8c7a"/>
+    <circle cx="109" cy="84" r="3" fill="white"/>
+    <!-- Beak -->
+    <path d="M82 104 Q88 115 94 104 Q88 100 82 104Z" fill="#f9c74f" stroke="#3d8c7a" stroke-width="2.2" stroke-linejoin="round"/>
+  </g>
+
+  <!-- App name "Towl" -->
+  <text
+    x="512"
+    y="600"
+    font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+    font-size="96"
+    font-weight="900"
+    fill="#3d8c7a"
+    text-anchor="middle"
+    letter-spacing="-2"
+  >towl</text>
+</svg>
