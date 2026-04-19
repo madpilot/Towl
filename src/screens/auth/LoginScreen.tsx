@@ -145,7 +145,7 @@ export default function LoginScreen({ route }: LoginScreenProps) {
 
           <View style={screenStyles.spacer} />
 
-          <FadeIn visible={v} delay={250}>
+          <FadeIn visible={v} delay={250} style={{ marginTop: 16 }}>
             <PrimaryButton onPress={handleLogin} loading={loading} testID="login-button">
               {loading ? 'Signing in…' : 'Sign in →'}
             </PrimaryButton>

@@ -134,7 +134,7 @@ export default function ServerSetupScreen({ navigation }: ServerSetupScreenProps
 
           <View style={screenStyles.spacer} />
 
-          <FadeIn visible={v} delay={250}>
+          <FadeIn visible={v} delay={250} style={{ marginTop: 16 }}>
             <PrimaryButton onPress={handleConnect} loading={loading} testID="connect-btn">
               {loading ? 'Connecting…' : 'Connect →'}
             </PrimaryButton>

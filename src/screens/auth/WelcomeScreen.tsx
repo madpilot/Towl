@@ -55,7 +55,7 @@ export default function WelcomeScreen({ navigation }: WelcomeScreenProps) {
 
           <View style={screenStyles.spacer} />
 
-          <FadeIn visible={v2} delay={100}>
+          <FadeIn visible={v2} delay={100} style={{ marginTop: 16 }}>
             <PrimaryButton
               onPress={() => navigation.navigate('ServerSetup')}
               testID="welcome-next-btn"

@@ -1,31 +1,31 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 176 176" width="176" height="176" fill="none">
   <!-- Background -->
-  <rect width="176" height="176" fill="#f0faf6"/>
+  <rect width="176" height="176" fill="#3d8c7a"/>
 
   <!-- Ear tufts -->
-  <path d="M70 68 Q64 50 72 44 Q76 58 78 66Z" fill="#f0faf6" stroke="#3d8c7a" stroke-width="2.5" stroke-linejoin="round"/>
-  <path d="M106 68 Q112 50 104 44 Q100 58 98 66Z" fill="#f0faf6" stroke="#3d8c7a" stroke-width="2.5" stroke-linejoin="round"/>
+  <path d="M70 59 Q64 41 72 35 Q76 49 78 57Z" fill="white" stroke="white" stroke-width="2.5" stroke-linejoin="round"/>
+  <path d="M106 59 Q112 41 104 35 Q100 49 98 57Z" fill="white" stroke="white" stroke-width="2.5" stroke-linejoin="round"/>
 
   <!-- Body -->
-  <circle cx="88" cy="100" r="62" fill="#f0faf6" stroke="#3d8c7a" stroke-width="3"/>
+  <circle cx="88" cy="91" r="62" fill="white" stroke="white" stroke-width="3"/>
 
   <!-- Chest feathers -->
-  <ellipse cx="88" cy="103" rx="44" ry="40" fill="none" stroke="#3d8c7a" stroke-width="1.8" opacity="0.35"/>
+  <ellipse cx="88" cy="94" rx="44" ry="40" fill="none" stroke="#3d8c7a" stroke-width="1.8" opacity="0.35"/>
 
   <!-- Normal eyebrows -->
-  <path d="M 60 79 Q 70 74 80 77" stroke="#3d8c7a" stroke-width="2.2" stroke-linecap="round" fill="none" opacity="0.45"/>
-  <path d="M 96 77 Q 106 74 116 79" stroke="#3d8c7a" stroke-width="2.2" stroke-linecap="round" fill="none" opacity="0.45"/>
+  <path d="M 60 70 Q 70 65 80 68" stroke="#3d8c7a" stroke-width="2.2" stroke-linecap="round" fill="none" opacity="0.45"/>
+  <path d="M 96 68 Q 106 65 116 70" stroke="#3d8c7a" stroke-width="2.2" stroke-linecap="round" fill="none" opacity="0.45"/>
 
   <!-- Left eye -->
-  <ellipse cx="70" cy="97" rx="16" ry="16" fill="white" stroke="#3d8c7a" stroke-width="2.6"/>
-  <circle cx="70" cy="97" r="9" fill="#3d8c7a"/>
-  <circle cx="73" cy="93" r="3" fill="white"/>
+  <ellipse cx="70" cy="88" rx="16" ry="16" fill="white" stroke="#3d8c7a" stroke-width="2.6"/>
+  <circle cx="70" cy="88" r="9" fill="#3d8c7a"/>
+  <circle cx="73" cy="84" r="3" fill="white"/>
 
   <!-- Right eye -->
-  <ellipse cx="106" cy="97" rx="16" ry="16" fill="white" stroke="#3d8c7a" stroke-width="2.6"/>
-  <circle cx="106" cy="97" r="9" fill="#3d8c7a"/>
-  <circle cx="109" cy="93" r="3" fill="white"/>
+  <ellipse cx="106" cy="88" rx="16" ry="16" fill="white" stroke="#3d8c7a" stroke-width="2.6"/>
+  <circle cx="106" cy="88" r="9" fill="#3d8c7a"/>
+  <circle cx="109" cy="84" r="3" fill="white"/>
 
   <!-- Beak -->
-  <path d="M82 113 Q88 124 94 113 Q88 109 82 113Z" fill="#f9c74f" stroke="#3d8c7a" stroke-width="2.2" stroke-linejoin="round"/>
+  <path d="M82 104 Q88 115 94 104 Q88 100 82 104Z" fill="#f9c74f" stroke="#3d8c7a" stroke-width="2.2" stroke-linejoin="round"/>
 </svg>
