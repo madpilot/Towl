@@ -9,7 +9,7 @@ import { ApiClientManager } from '@/api/client';
 import { AuthApi } from '@/api/auth';
 import { HouseholdsApi } from '@/api/households';
 import { ShoppingListsApi } from '@/api/shoppinglists';
-import { TokenStore } from '@/auth/tokenStore';
+import { TokenStore, type StoredTokens } from '@/auth/tokenStore';
 import { useAuthStore } from '@/store/authStore';
 import { restoreSelectedHousehold } from '@/store/householdStore';
 
@@ -34,21 +34,25 @@ function createApis(serverUrl: string): AuthApi {
 }
 
 export async function initializeAuth(): Promise<void> {
-  const serverUrl = await TokenStore.instance.getServerUrl();
-  if (!serverUrl) {
+  let serverUrl: string | null;
+  let tokens: StoredTokens | null;
+  try {
+    serverUrl = await TokenStore.instance.getServerUrl();
+    tokens = serverUrl ? await TokenStore.instance.getTokens() : null;
+  } catch {
+    // Android Keystore or iOS Keychain can become unavailable after security
+    // setting changes (new PIN, biometric enrolment, some OEM OS updates).
+    // Fall through to unauthenticated so the user can log in again.
     useAuthStore.getState().setUnauthenticated();
     return;
   }
 
-  const tokens = await TokenStore.instance.getTokens();
-  if (!tokens) {
+  if (!serverUrl || !tokens) {
     useAuthStore.getState().setUnauthenticated();
     return;
   }
 
-  // User data is best-effort — a schema mismatch from an older install returns null,
-  // but that's fine. The interceptor will get fresh user data on the first API call
-  // if needed, and the token chain handles re-authentication transparently.
+  // User data is best-effort — a schema mismatch from an older install returns null.
   const user = await TokenStore.instance.getUser();
 
   useAuthStore.getState().setServerUrl(serverUrl);
