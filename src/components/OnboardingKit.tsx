@@ -9,7 +9,6 @@ import React, { useEffect, useMemo } from 'react';
 import {
   Animated,
   Platform,
-  SafeAreaView,
   StyleSheet,
   Text,
   TextStyle,
@@ -18,6 +17,7 @@ import {
   ViewStyle,
 } from 'react-native';
 import Svg, { Circle, Ellipse, Line, Path } from 'react-native-svg';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors, FontSize, Spacing } from '@/theme';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────

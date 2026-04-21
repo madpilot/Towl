@@ -4,12 +4,12 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   ActivityIndicator,
   Alert,
   StyleSheet,
   TextInput,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Sheet from '@/components/Sheet';
 import BottomNav from '@/components/BottomNav';
 import { SectionLabel, Card, PrimaryBtn } from '@/components/settings';

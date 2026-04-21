@@ -7,8 +7,8 @@ import {
   FlatList,
   TextInput,
   StyleSheet,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { ICON_CODEPOINTS } from '@/icons/kitchenowlIcons';
 import KitchenOwlIcon from '@/components/KitchenOwlIcon';
 import { Colors, Spacing, Radii, FontSize } from '@/theme';

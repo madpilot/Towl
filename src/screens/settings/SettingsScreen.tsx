@@ -4,11 +4,11 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   ActivityIndicator,
   Alert,
   StyleSheet,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Sheet from '@/components/Sheet';
 import AuthenticatedImage from '@/components/AuthenticatedImage';
 import { logout } from '@/auth/authManager';

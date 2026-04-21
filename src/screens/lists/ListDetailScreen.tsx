@@ -5,7 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   ActivityIndicator,
   RefreshControl,
   KeyboardAvoidingView,
@@ -14,6 +13,7 @@ import {
   type NativeScrollEvent,
 } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
 import { useHouseholdStore } from '@/store/householdStore';
 import { useSyncStore } from '@/store/syncStore';

@@ -3,13 +3,13 @@ import {
   View,
   Text,
   TouchableOpacity,
-  SafeAreaView,
   ActivityIndicator,
   Alert,
   StyleSheet,
   TextInput,
   ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Sheet from '@/components/Sheet';
 import BottomNav from '@/components/BottomNav';
 import { Card, Sep, PrimaryBtn } from '@/components/settings';
