@@ -25,7 +25,6 @@
       "predictiveBackGestureEnabled": false,
       "softwareKeyboardLayoutMode": "resize",
       "permissions": [
-        "android.permission.RECORD_AUDIO",
         "android.permission.RECORD_AUDIO"
       ],
       "package": "au.id.eftos.myles.towl"
@@ -47,6 +46,11 @@
           "cameraPermission": "Allow Towl to use the camera to take a profile picture."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "fc01f6d3-db41-4210-943a-03abc4112a62"
+      }
+    }
   }
 }
