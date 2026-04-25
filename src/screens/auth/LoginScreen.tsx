@@ -130,6 +130,9 @@ export default function LoginScreen({ route }: LoginScreenProps) {
                     secureTextEntry={!showPw}
                     returnKeyType="go"
                     editable={!loading}
+                    autoCorrect={false}
+                    autoCapitalize="none"
+                    textContentType="password"
                   />
                   <TouchableOpacity
                     onPress={() => setShowPw((s) => !s)}
