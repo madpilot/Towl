@@ -18,7 +18,8 @@
   "submit": {
     "production": {
       "ios": {
-        "ascAppId": "6763523092"
+        "ascAppId": "6763523092",
+        "appName": "Towl"
       }
     }
   }
