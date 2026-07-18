@@ -85,5 +85,8 @@
     "react-test-renderer": "19.1.0",
     "typescript": "~5.9.2"
   },
-  "private": true
+  "private": true,
+  "allowScripts": {
+    "fsevents@2.3.3": true
+  }
 }
